@@ -1,0 +1,5 @@
+
+> @viralcut/ui-tokens@0.0.0 build E:\Viralcut\packages\ui-tokens
+> node build-tokens.mjs
+
+Built ui-tokens: E:\Viralcut\packages\ui-tokens\dist\web.css E:\Viralcut\packages\ui-tokens\dist\viralcut_token_colors.dart

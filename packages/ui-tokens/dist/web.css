@@ -1,0 +1,36 @@
+/* Generated from packages/ui-tokens/tokens.json — do not edit by hand */
+:root {
+  --vc-primary: #630ED4;
+  --vc-primary-variant: #7C3AED;
+  --vc-money: #006C49;
+  --vc-money-bright: #16A34A;
+  --vc-background: #F8F9FF;
+  --vc-surface: #FFFFFF;
+  --vc-surface-variant: #EEF0FF;
+  --vc-on-background: #0B1C30;
+  --vc-on-surface: #0B1C30;
+  --vc-deep-surface: #0F172A;
+  --vc-border: #E2E8F0;
+  --vc-muted: #64748B;
+  --vc-error: #BA1A1A;
+  --vc-warning: #AA4900;
+  --vc-on-primary: #FFFFFF;
+}
+
+.dark {
+  --vc-primary: #9B6DFF;
+  --vc-primary-variant: #A78BFA;
+  --vc-money: #34D399;
+  --vc-money-bright: #4ADE80;
+  --vc-background: #0B1220;
+  --vc-surface: #111827;
+  --vc-surface-variant: #1F2937;
+  --vc-on-background: #F1F5F9;
+  --vc-on-surface: #E2E8F0;
+  --vc-deep-surface: #020617;
+  --vc-border: #334155;
+  --vc-muted: #94A3B8;
+  --vc-error: #F87171;
+  --vc-warning: #FB923C;
+  --vc-on-primary: #FFFFFF;
+}

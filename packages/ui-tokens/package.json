@@ -1,0 +1,13 @@
+{
+  "name": "@viralcut/ui-tokens",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node build-tokens.mjs"
+  },
+  "exports": {
+    ".": "./tokens.json",
+    "./web.css": "./dist/web.css",
+    "./flutter": "./lib/viralcut_token_colors.dart"
+  }
+}

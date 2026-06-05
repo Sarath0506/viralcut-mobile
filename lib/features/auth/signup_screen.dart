@@ -1,0 +1,174 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../core/api/api_client.dart';
+import '../../core/auth/auth_provider.dart';
+import '../../core/format/phone_format.dart';
+import '../../theme/token_colors.dart';
+import 'widgets/auth_page_layout.dart';
+import 'widgets/auth_switch_link.dart';
+import 'widgets/auth_ui.dart';
+
+class SignupScreen extends ConsumerStatefulWidget {
+  const SignupScreen({super.key});
+
+  @override
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
+}
+
+class _SignupScreenState extends ConsumerState<SignupScreen> {
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _countryController = TextEditingController(text: '+91');
+  final _phoneController = TextEditingController();
+  bool _busy = false;
+  String? _lastOtpPhone;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.addListener(_tryAdvance);
+    _emailController.addListener(_tryAdvance);
+    _phoneController.addListener(_tryAdvance);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _countryController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  String? get _phoneE164 => normalizeIndiaPhone(
+        countryCode: _countryController.text,
+        localNumber: _phoneController.text,
+      );
+
+  bool _isValidEmail(String value) {
+    return RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(value);
+  }
+
+  bool get _isFormComplete {
+    if (_phoneController.text.length != 10) return false;
+    if (_nameController.text.trim().length < 2) return false;
+    return _isValidEmail(_emailController.text.trim());
+  }
+
+  void _tryAdvance() {
+    if (_phoneController.text.length < 10) {
+      _lastOtpPhone = null;
+      return;
+    }
+    if (!_isFormComplete || _busy) return;
+    final phone = _phoneE164;
+    if (phone == null || phone == _lastOtpPhone) return;
+    _lastOtpPhone = phone;
+    _sendOtpAndContinue();
+  }
+
+  Future<void> _sendOtpAndContinue() async {
+    final phone = _phoneE164;
+    if (phone == null) return;
+
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+
+    setState(() => _busy = true);
+    try {
+      await ref.read(apiClientProvider).requestOtp(phone);
+      if (!mounted) return;
+      context.push(
+        Uri(
+          path: '/otp',
+          queryParameters: {
+            'phone': phone,
+            'flow': 'signup',
+            'name': name,
+            'email': email,
+          },
+        ).toString(),
+      );
+    } on ApiException catch (e) {
+      _lastOtpPhone = null;
+      _showError(e.message);
+    } catch (_) {
+      _lastOtpPhone = null;
+      _showError('Something went wrong. Please try again.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 6),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AuthPageLayout(
+      title: 'Create account',
+      subtitle: 'Join the elite network of digital entrepreneurs.',
+      footer: const AuthSwitchLink(
+        leadText: 'Already have an account? ',
+        linkText: 'Log in',
+        route: '/login',
+      ),
+      form: AuthFormCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AuthLabeledField(
+              label: 'Full name',
+              child: AuthTextFormField(
+                controller: _nameController,
+                hint: 'Enter your full name',
+                textInputAction: TextInputAction.next,
+                suffixIcon: Icon(
+                  Icons.person_outline,
+                  size: 20,
+                  color: ViralCutTokenColors.mutedLight,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            AuthLabeledField(
+              label: 'Phone',
+              child: AuthPhoneRow(
+                countryController: _countryController,
+                phoneController: _phoneController,
+              ),
+            ),
+            const SizedBox(height: 16),
+            AuthLabeledField(
+              label: 'Email',
+              child: AuthTextFormField(
+                controller: _emailController,
+                hint: 'name@company.com',
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.done,
+                suffixIcon: Icon(
+                  Icons.mail_outline,
+                  size: 20,
+                  color: ViralCutTokenColors.mutedLight,
+                ),
+              ),
+            ),
+            if (_busy) ...[
+              const SizedBox(height: 20),
+              const Center(child: CircularProgressIndicator()),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
