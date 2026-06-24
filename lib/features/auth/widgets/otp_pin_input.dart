@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../theme/token_colors.dart';
+import '../../../theme/viralcut_colors.dart';
 import 'auth_ui.dart';
 
 /// Six separate boxes; focus moves forward on digit, back on delete.
@@ -85,6 +86,8 @@ class OtpPinInputState extends State<OtpPinInput> {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
+    final primary = Theme.of(context).colorScheme.primary;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(_length, (i) {
@@ -106,33 +109,28 @@ class OtpPinInputState extends State<OtpPinInput> {
               style: AuthUi.bodyFont(context).copyWith(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
+                color: vc.onSurface,
               ),
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: InputDecoration(
                 counterText: '',
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: vc.surface,
                 contentPadding: EdgeInsets.zero,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      const BorderSide(color: ViralCutTokenColors.borderLight),
+                  borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
+                  borderSide: BorderSide(color: vc.border),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
                   borderSide: BorderSide(
-                    color: filled || hasFocus
-                        ? Theme.of(context).colorScheme.primary
-                        : ViralCutTokenColors.borderLight,
+                    color: filled || hasFocus ? primary : vc.border,
                     width: hasFocus ? 1.5 : 1,
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.primary,
-                    width: 1.5,
-                  ),
+                  borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
+                  borderSide: BorderSide(color: primary, width: 1.5),
                 ),
               ),
               onChanged: (v) => _onChanged(i, v),

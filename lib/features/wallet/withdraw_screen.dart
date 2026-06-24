@@ -58,13 +58,18 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
                 const SizedBox(height: 8),
                 const Text('Platform fee 1.5% applies'),
                 const SizedBox(height: 16),
-                ...list.map(
-                  (m) => RadioListTile<String>(
-                    title: Text(m.label),
-                    subtitle: Text(m.accountMasked),
-                    value: m.id,
-                    groupValue: _methodId,
-                    onChanged: (v) => setState(() => _methodId = v),
+                RadioGroup<String>(
+                  groupValue: _methodId,
+                  onChanged: (v) => setState(() => _methodId = v),
+                  child: Column(
+                    children: [
+                      for (final m in list)
+                        RadioListTile<String>(
+                          title: Text(m.label),
+                          subtitle: Text(m.accountMasked),
+                          value: m.id,
+                        ),
+                    ],
                   ),
                 ),
                 const Spacer(),

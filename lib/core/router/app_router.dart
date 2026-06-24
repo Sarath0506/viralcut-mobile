@@ -13,22 +13,38 @@ import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/splash/splash_screen.dart';
-import '../../features/submissions/submission_detail_screen.dart';
+import '../../features/submissions/participation_detail_screen.dart';
 import '../../features/submissions/submissions_screen.dart';
 import '../../features/wallet/wallet_screen.dart';
 import '../../features/wallet/withdraw_screen.dart';
 import '../auth/auth_provider.dart';
+import '../format/phone_format.dart';
+import 'auth_router_refresh.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final isAuthed = ref.watch(authStateProvider);
+  final refreshListenable = ref.watch(authRouterRefreshProvider);
 
-  return GoRouter(
+  final router = GoRouter(
     navigatorKey: _rootKey,
     initialLocation: '/splash',
+    refreshListenable: refreshListenable,
     redirect: (context, state) {
+      final authStatus = ref.read(authStateProvider);
       final path = state.matchedLocation;
+
+      if (authStatus == AuthStatus.unknown) {
+        if (path != '/splash') return '/splash';
+        return null;
+      }
+
+      if (path.startsWith('/otp')) {
+        final phone = state.uri.queryParameters['phone'];
+        if (!isValidIndiaE164(phone)) return '/login';
+      }
+
+      final isAuthed = authStatus == AuthStatus.authed;
       final isPublicRoute = path.startsWith('/splash') ||
           path.startsWith('/onboarding') ||
           path.startsWith('/login') ||
@@ -83,11 +99,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             SubmitWorkScreen(campaignId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/submissions/:id',
+        path: '/participations/:id',
         builder: (_, state) =>
-            SubmissionDetailScreen(id: state.pathParameters['id']!),
+            ParticipationDetailScreen(id: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/submissions/:id',
+        redirect: (_, state) => '/participations/${state.pathParameters['id']}',
       ),
       GoRoute(path: '/withdraw', builder: (_, __) => const WithdrawScreen()),
     ],
   );
+
+  ref.onDispose(router.dispose);
+  return router;
 });

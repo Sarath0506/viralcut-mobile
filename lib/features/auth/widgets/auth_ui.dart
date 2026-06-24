@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../theme/token_colors.dart';
+import '../../../theme/viralcut_colors.dart';
+import '../../../theme/viralcut_text_styles.dart';
 
-/// Stitch-aligned auth chrome: gradients, fields, buttons, social row.
+/// Shared auth chrome: background, fields, buttons, and social row.
 abstract final class AuthUi {
   static TextStyle displayFont(BuildContext context) =>
-      GoogleFonts.plusJakartaSans(
-        textStyle: Theme.of(context).textTheme.bodyMedium,
-      );
+      ViralCutTextStyles.display(context);
 
   static TextStyle bodyFont(BuildContext context) =>
-      GoogleFonts.inter(textStyle: Theme.of(context).textTheme.bodyMedium);
+      ViralCutTextStyles.body(context);
 
   static void showComingSoon(BuildContext context, String provider) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -31,18 +30,9 @@ class AuthGradientBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFF3EEFF),
-            Color(0xFFF8F9FF),
-            Color(0xFFEDE9FE),
-          ],
-        ),
-      ),
+    final vc = ViralCutColors.of(context);
+    return ColoredBox(
+      color: vc.surface,
       child: child,
     );
   }
@@ -55,18 +45,19 @@ class AuthBrandHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
       child: Row(
         children: [
           Text(
-            'ViralCut',
+            'Halchal',
             style: AuthUi.displayFont(context).copyWith(
               fontSize: 22,
               fontWeight: FontWeight.w800,
               color: primary,
-              letterSpacing: -0.5,
+              letterSpacing: 0,
             ),
           ),
           const Spacer(),
@@ -74,9 +65,9 @@ class AuthBrandHeader extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: vc.surface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: ViralCutTokenColors.borderLight),
+                border: Border.all(color: vc.border),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -85,9 +76,10 @@ class AuthBrandHeader extends StatelessWidget {
                   const SizedBox(width: 4),
                   Text(
                     'EN',
-                    style: AuthUi.bodyFont(context).copyWith(
+                    style: ViralCutTextStyles.bodyText(context).copyWith(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
+                      color: vc.onSurface,
                     ),
                   ),
                 ],
@@ -106,17 +98,19 @@ class AuthFormCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: vc.surface,
+        borderRadius: BorderRadius.circular(ViralCutTokenRadius.xl),
+        border: Border.all(color: vc.border.withValues(alpha: 0.7)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+            color: vc.onSurface.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -139,6 +133,7 @@ class AuthLabeledField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -147,11 +142,10 @@ class AuthLabeledField extends StatelessWidget {
             Expanded(
               child: Text(
                 label.toUpperCase(),
-                style: AuthUi.bodyFont(context).copyWith(
-                  fontSize: 11,
+                style: ViralCutTextStyles.label(context).copyWith(
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.6,
-                  color: ViralCutTokenColors.mutedLight,
+                  color: vc.muted,
                 ),
               ),
             ),
@@ -191,6 +185,7 @@ class AuthTextFormField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
@@ -198,29 +193,29 @@ class AuthTextFormField extends StatelessWidget {
       inputFormatters: inputFormatters,
       onChanged: onChanged,
       textInputAction: textInputAction,
-      style: AuthUi.bodyFont(context).copyWith(fontSize: 15),
+      style: ViralCutTextStyles.bodyText(context).copyWith(color: vc.onSurface),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: AuthUi.bodyFont(context).copyWith(
-          color: ViralCutTokenColors.mutedLight.withValues(alpha: 0.7),
+        hintStyle: ViralCutTextStyles.bodyText(context).copyWith(
+          color: vc.muted.withValues(alpha: 0.7),
         ),
         prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon, size: 20, color: ViralCutTokenColors.mutedLight)
+            ? Icon(prefixIcon, size: 20, color: vc.muted)
             : null,
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: vc.surface,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: ViralCutTokenColors.borderLight),
+          borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
+          borderSide: BorderSide(color: vc.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: ViralCutTokenColors.borderLight),
+          borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
+          borderSide: BorderSide(color: vc.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
           borderSide: BorderSide(
             color: Theme.of(context).colorScheme.primary,
             width: 1.5,
@@ -245,6 +240,7 @@ class AuthPhoneRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -252,24 +248,24 @@ class AuthPhoneRow extends StatelessWidget {
           width: 72,
           child: TextField(
             controller: countryController,
+            readOnly: true,
+            enableInteractiveSelection: false,
             textAlign: TextAlign.center,
-            style: AuthUi.bodyFont(context).copyWith(
+            style: ViralCutTextStyles.bodyText(context).copyWith(
               fontWeight: FontWeight.w600,
-              fontSize: 15,
+              color: vc.onSurface,
             ),
             decoration: InputDecoration(
               filled: true,
-              fillColor: ViralCutTokenColors.surfaceVariantLight,
+              fillColor: vc.surfaceVariant,
               contentPadding: const EdgeInsets.symmetric(vertical: 14),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide:
-                    const BorderSide(color: ViralCutTokenColors.borderLight),
+                borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
+                borderSide: BorderSide(color: vc.border),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide:
-                    const BorderSide(color: ViralCutTokenColors.borderLight),
+                borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
+                borderSide: BorderSide(color: vc.border),
               ),
             ),
           ),
@@ -353,6 +349,7 @@ class AuthPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return SizedBox(
       width: double.infinity,
       height: 52,
@@ -363,12 +360,12 @@ class AuthPrimaryButton extends StatelessWidget {
           elevation: 0,
         ),
         child: loading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 22,
                 height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Colors.white,
+                  color: vc.onPrimary,
                 ),
               )
             : Row(
@@ -376,14 +373,14 @@ class AuthPrimaryButton extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: AuthUi.bodyFont(context).copyWith(
-                      color: Colors.white,
+                    style: ViralCutTextStyles.bodyText(context).copyWith(
+                      color: vc.onPrimary,
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward, size: 18, color: Colors.white),
+                  Icon(Icons.arrow_forward, size: 18, color: vc.onPrimary),
                 ],
               ),
       ),
@@ -396,23 +393,24 @@ class AuthOrDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Row(
         children: [
-          const Expanded(child: Divider(color: ViralCutTokenColors.borderLight)),
+          Expanded(child: Divider(color: vc.border)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               'OR',
-              style: AuthUi.bodyFont(context).copyWith(
+              style: ViralCutTextStyles.label(context).copyWith(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: ViralCutTokenColors.mutedLight,
+                color: vc.muted,
               ),
             ),
           ),
-          const Expanded(child: Divider(color: ViralCutTokenColors.borderLight)),
+          Expanded(child: Divider(color: vc.border)),
         ],
       ),
     );
@@ -452,13 +450,16 @@ class _SocialButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        side: const BorderSide(color: ViralCutTokenColors.borderLight),
-        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
+        ),
+        side: BorderSide(color: vc.border),
+        backgroundColor: vc.surface,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -468,17 +469,18 @@ class _SocialButton extends StatelessWidget {
             height: 18,
             decoration: BoxDecoration(
               color: label == 'Google'
-                  ? const Color(0xFF4285F4)
-                  : const Color(0xFF1877F2),
+                  ? ViralCutOAuthColors.google
+                  : ViralCutOAuthColors.facebook,
               borderRadius: BorderRadius.circular(4),
             ),
           ),
           const SizedBox(width: 8),
           Text(
             label,
-            style: AuthUi.bodyFont(context).copyWith(
+            style: ViralCutTextStyles.meta(context).copyWith(
               fontWeight: FontWeight.w600,
               fontSize: 14,
+              color: vc.onSurface,
             ),
           ),
         ],
@@ -492,13 +494,13 @@ class LoginHeroIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
+    final vc = ViralCutColors.of(context);
     return Container(
       width: 72,
       height: 72,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: primary.withValues(alpha: 0.12),
+        color: vc.primary.withValues(alpha: 0.12),
       ),
       child: Center(
         child: Container(
@@ -506,9 +508,9 @@ class LoginHeroIcon extends StatelessWidget {
           height: 48,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: primary,
+            color: vc.primary,
           ),
-          child: const Icon(Icons.currency_rupee, color: Colors.white, size: 26),
+          child: Icon(Icons.currency_rupee, color: vc.onPrimary, size: 26),
         ),
       ),
     );
@@ -520,15 +522,13 @@ class EarningSocialProof extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFEEF4FF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: ViralCutTokenColors.borderLight,
-          style: BorderStyle.solid,
-        ),
+        color: vc.infoSurface,
+        borderRadius: BorderRadius.circular(ViralCutTokenRadius.lg),
+        border: Border.all(color: vc.border),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -542,15 +542,15 @@ class EarningSocialProof extends StatelessWidget {
                   left: i * 22.0,
                   child: CircleAvatar(
                     radius: 16,
-                    backgroundColor: [
-                      const Color(0xFF94A3B8),
-                      const Color(0xFF64748B),
-                      const Color(0xFF475569),
-                    ][i],
+                    backgroundColor: Color.lerp(
+                      vc.muted,
+                      vc.onSurface,
+                      i * 0.25,
+                    ),
                     child: Icon(
                       Icons.person,
                       size: 18,
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: vc.onPrimary.withValues(alpha: 0.9),
                     ),
                   ),
                 );
@@ -560,8 +560,8 @@ class EarningSocialProof extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             '+ 2.4k earning now',
-            style: AuthUi.bodyFont(context).copyWith(
-              color: ViralCutTokenColors.mutedLight,
+            style: ViralCutTextStyles.meta(context).copyWith(
+              color: vc.muted,
               fontWeight: FontWeight.w500,
               fontSize: 14,
             ),

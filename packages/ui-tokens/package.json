@@ -1,12 +1,9 @@
 {
-  "name": "@viralcut/ui-tokens",
+  "name": "@viralcut/ui-tokens-mobile",
   "version": "0.0.0",
   "private": true,
-  "scripts": {
-    "build": "node build-tokens.mjs"
-  },
+  "description": "Generated UI tokens synced from viralcut-web/packages/ui-tokens. Run pnpm tokens:build in viralcut-web.",
   "exports": {
-    ".": "./tokens.json",
     "./web.css": "./dist/web.css",
     "./flutter": "./lib/viralcut_token_colors.dart"
   }

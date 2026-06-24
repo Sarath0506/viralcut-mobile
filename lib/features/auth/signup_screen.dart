@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/format/phone_format.dart';
-import '../../theme/token_colors.dart';
 import 'widgets/auth_page_layout.dart';
 import 'widgets/auth_switch_link.dart';
 import 'widgets/auth_ui.dart';
@@ -52,19 +51,32 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   }
 
   bool get _isFormComplete {
-    if (_phoneController.text.length != 10) return false;
+    if (_phoneE164 == null) return false;
     if (_nameController.text.trim().length < 2) return false;
     return _isValidEmail(_emailController.text.trim());
   }
 
   void _tryAdvance() {
-    if (_phoneController.text.length < 10) {
+    final digits = _phoneController.text;
+    if (digits.length < 10) {
       _lastOtpPhone = null;
       return;
     }
-    if (!_isFormComplete || _busy) return;
+    if (_busy) return;
+
     final phone = _phoneE164;
-    if (phone == null || phone == _lastOtpPhone) return;
+    if (phone == null) {
+      if (digits.length == 10 &&
+          _nameController.text.trim().length >= 2 &&
+          _isValidEmail(_emailController.text.trim()) &&
+          mounted) {
+        _showError(kInvalidIndiaPhoneMessage);
+      }
+      _lastOtpPhone = null;
+      return;
+    }
+    if (!_isFormComplete) return;
+    if (phone == _lastOtpPhone) return;
     _lastOtpPhone = phone;
     _sendOtpAndContinue();
   }
@@ -93,10 +105,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       );
     } on ApiException catch (e) {
       _lastOtpPhone = null;
-      _showError(e.message);
+      if (mounted) _showError(e.message);
     } catch (_) {
       _lastOtpPhone = null;
-      _showError('Something went wrong. Please try again.');
+      if (mounted) _showError('Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -132,11 +144,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 controller: _nameController,
                 hint: 'Enter your full name',
                 textInputAction: TextInputAction.next,
-                suffixIcon: Icon(
-                  Icons.person_outline,
-                  size: 20,
-                  color: ViralCutTokenColors.mutedLight,
-                ),
+                prefixIcon: Icons.person_outline,
               ),
             ),
             const SizedBox(height: 16),
@@ -155,11 +163,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 hint: 'name@company.com',
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.done,
-                suffixIcon: Icon(
-                  Icons.mail_outline,
-                  size: 20,
-                  color: ViralCutTokenColors.mutedLight,
-                ),
+                prefixIcon: Icons.mail_outline,
               ),
             ),
             if (_busy) ...[

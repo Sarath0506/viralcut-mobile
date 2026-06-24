@@ -1,7 +1,12 @@
 import 'package:dio/dio.dart';
 
 import '../auth/auth_storage.dart';
+import '../campaign/campaign_models.dart';
+import '../participation/participation_models.dart';
 import 'api_base_url.dart';
+
+export '../campaign/campaign_models.dart';
+export '../participation/participation_models.dart';
 
 class ApiException implements Exception {
   ApiException(this.code, this.message);
@@ -35,20 +40,149 @@ class ApiEnvelope<T> {
   }
 }
 
+typedef SessionRefreshedCallback = Future<void> Function(AuthSession session);
+typedef SessionExpiredCallback = Future<void> Function();
+
+/// Dio [RequestOptions.extra] keys (dart-flutter-patterns).
+abstract final class ApiRequestExtra {
+  static const auth = 'auth';
+  static const skipRefresh = 'skipRefresh';
+  static const isRetry = '_isRetry';
+}
+
 class ApiClient {
-  ApiClient({AuthStorage? storage})
-      : _storage = storage ?? AuthStorage(),
-        _dio = Dio(
-          BaseOptions(
-            baseUrl: kApiBaseUrl,
-            connectTimeout: const Duration(seconds: 15),
-            receiveTimeout: const Duration(seconds: 15),
-            headers: {'Content-Type': 'application/json'},
-          ),
-        );
+  ApiClient({
+    AuthStorage? storage,
+    SessionRefreshedCallback? onSessionRefreshed,
+    SessionExpiredCallback? onSessionExpired,
+    Dio? dio,
+  })  : _storage = storage ?? AuthStorage(),
+        _onSessionRefreshed = onSessionRefreshed,
+        _onSessionExpired = onSessionExpired,
+        _dio = dio ??
+            Dio(
+              BaseOptions(
+                baseUrl: kApiBaseUrl,
+                connectTimeout: const Duration(seconds: 15),
+                receiveTimeout: const Duration(seconds: 15),
+                headers: {'Content-Type': 'application/json'},
+              ),
+            ) {
+    if (dio == null) {
+      _attachAuthInterceptors();
+    }
+  }
+
+  void _attachAuthInterceptors() {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          if (options.extra[ApiRequestExtra.auth] != false) {
+            final token = await _storage.getAccessToken();
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+          }
+          handler.next(options);
+        },
+      ),
+    );
+    _dio.interceptors.add(
+      QueuedInterceptorsWrapper(
+        onError: (error, handler) async {
+          final resolved = await _tryRefreshAndRetry(error);
+          if (resolved != null) {
+            handler.resolve(resolved);
+            return;
+          }
+          handler.next(error);
+        },
+      ),
+    );
+  }
+
+  /// Parses API error envelopes for tests and interceptors.
+  static ApiException? parseErrorEnvelope(dynamic data) {
+    if (data is! Map<String, dynamic>) return null;
+    if (data['success'] == true) return null;
+    final err = data['error'] as Map<String, dynamic>?;
+    if (err == null) return null;
+    return ApiException(
+      err['code'] as String? ?? 'INTERNAL_ERROR',
+      err['message'] as String? ?? 'Request failed',
+    );
+  }
 
   final Dio _dio;
   final AuthStorage _storage;
+  final SessionRefreshedCallback? _onSessionRefreshed;
+  final SessionExpiredCallback? _onSessionExpired;
+  Future<AuthSession?>? _refreshInFlight;
+
+  Future<Response<dynamic>?> _tryRefreshAndRetry(DioException error) async {
+    final status = error.response?.statusCode;
+    if (status != 401) return null;
+
+    final extra = error.requestOptions.extra;
+    if (extra[ApiRequestExtra.auth] == false ||
+        extra[ApiRequestExtra.skipRefresh] == true ||
+        extra[ApiRequestExtra.isRetry] == true) {
+      return null;
+    }
+
+    final envelope = _errorEnvelopeFromResponse(error.response?.data);
+    if (envelope?.code != 'UNAUTHORIZED') return null;
+
+    final session = await _refreshSession();
+    if (session == null) return null;
+
+    final options = error.requestOptions;
+    options.extra[ApiRequestExtra.isRetry] = true;
+    options.headers['Authorization'] = 'Bearer ${session.accessToken}';
+    try {
+      return await _dio.fetch<dynamic>(options);
+    } on DioException {
+      return null;
+    }
+  }
+
+  Future<AuthSession?> _refreshSession() async {
+    if (_refreshInFlight != null) {
+      return _refreshInFlight;
+    }
+
+    _refreshInFlight = _doRefreshSession();
+    try {
+      return await _refreshInFlight;
+    } finally {
+      _refreshInFlight = null;
+    }
+  }
+
+  Future<AuthSession?> _doRefreshSession() async {
+    final refresh = await _storage.getRefreshToken();
+    if (refresh == null) {
+      await _onSessionExpired?.call();
+      return null;
+    }
+
+    try {
+      final response = await _dio.post<dynamic>(
+        '/auth/refresh',
+        data: {'refreshToken': refresh},
+        options: _options(auth: false, skipRefresh: true),
+      );
+      final session = await _parse(
+        response,
+        (data) => AuthSession.fromJson(data as Map<String, dynamic>),
+      );
+      await _onSessionRefreshed?.call(session);
+      return session;
+    } catch (_) {
+      await _onSessionExpired?.call();
+      return null;
+    }
+  }
 
   Future<Response<dynamic>> _request(Future<Response<dynamic>> Function() call) async {
     try {
@@ -58,6 +192,15 @@ class ApiClient {
     }
   }
 
+  Options _options({bool auth = true, bool skipRefresh = false}) {
+    return Options(
+      extra: {
+        ApiRequestExtra.auth: auth,
+        ApiRequestExtra.skipRefresh: skipRefresh,
+      },
+    );
+  }
+
   ApiException _mapDioError(DioException e) {
     final isEmulatorHost = kApiBaseUrl.contains('10.0.2.2');
     final deviceHint = isEmulatorHost
@@ -65,6 +208,11 @@ class ApiClient {
             'flutter run --dart-define=API_BASE_URL=http://YOUR_PC_IP:3001\n'
             '(same Wi‑Fi, API running on PC)'
         : 'Check API is running at $kApiBaseUrl and firewall allows port 3001.';
+
+    final envelope = _errorEnvelopeFromResponse(e.response?.data);
+    if (envelope != null) {
+      return envelope;
+    }
 
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
@@ -94,6 +242,9 @@ class ApiClient {
     }
   }
 
+  ApiException? _errorEnvelopeFromResponse(dynamic data) =>
+      ApiClient.parseErrorEnvelope(data);
+
   Future<T> _parse<T>(
     Response<dynamic> response,
     T Function(dynamic data) mapData,
@@ -118,12 +269,11 @@ class ApiClient {
     bool auth = true,
     Map<String, dynamic>? query,
   }) async {
-    final headers = auth ? await _authHeaders() : null;
     final res = await _request(
       () => _dio.get<dynamic>(
         path,
         queryParameters: query,
-        options: Options(headers: headers),
+        options: _options(auth: auth),
       ),
     );
     return _parse(res, mapData);
@@ -135,12 +285,11 @@ class ApiClient {
     T Function(dynamic data) mapData, {
     bool auth = true,
   }) async {
-    final headers = auth ? await _authHeaders() : null;
     final res = await _request(
       () => _dio.post<dynamic>(
         path,
         data: body,
-        options: Options(headers: headers),
+        options: _options(auth: auth),
       ),
     );
     return _parse(res, mapData);
@@ -152,23 +301,14 @@ class ApiClient {
     T Function(dynamic data) mapData, {
     bool auth = true,
   }) async {
-    final headers = auth ? await _authHeaders() : null;
     final res = await _request(
       () => _dio.patch<dynamic>(
         path,
         data: body,
-        options: Options(headers: headers),
+        options: _options(auth: auth),
       ),
     );
     return _parse(res, mapData);
-  }
-
-  Future<Map<String, String>> _authHeaders() async {
-    final token = await _storage.getAccessToken();
-    if (token == null) {
-      throw ApiException('UNAUTHORIZED', 'Not logged in');
-    }
-    return {'Authorization': 'Bearer $token'};
   }
 
   /// Revokes refresh token on server (best-effort).
@@ -180,7 +320,7 @@ class ApiClient {
         () => _dio.post<void>(
           '/auth/logout',
           data: {'refreshToken': refresh},
-          options: Options(headers: {'Content-Type': 'application/json'}),
+          options: _options(auth: false, skipRefresh: true),
         ),
       );
     } on ApiException {
@@ -201,6 +341,7 @@ class ApiClient {
     required String code,
     String? displayName,
     String? username,
+    String? email,
   }) async {
     final data = await post<Map<String, dynamic>>(
       '/auth/creator/otp/verify',
@@ -209,6 +350,7 @@ class ApiClient {
         'code': code,
         if (displayName != null) 'displayName': displayName,
         if (username != null) 'username': username,
+        if (email != null) 'email': email,
       },
       (d) => d as Map<String, dynamic>,
       auth: false,
@@ -234,37 +376,53 @@ class ApiClient {
         (d) => Campaign.fromJson(d as Map<String, dynamic>),
       );
 
-  Future<List<SubmissionItem>> fetchSubmissions({String tab = 'active'}) =>
+  Future<Participation> joinCampaign(String campaignId) => post(
+        '/creator/campaigns/$campaignId/join',
+        {},
+        (d) => Participation.fromJson(d as Map<String, dynamic>),
+      );
+
+  Future<Participation> fetchParticipationByCampaign(String campaignId) =>
       get(
-        '/creator/submissions',
+        '/creator/campaigns/$campaignId/participation',
+        (d) => Participation.fromJson(d as Map<String, dynamic>),
+      );
+
+  Future<List<ParticipationListItem>> fetchParticipations({
+    String tab = 'active',
+  }) =>
+      get(
+        '/creator/participations',
         (d) => (d as List<dynamic>)
-            .map((e) => SubmissionItem.fromJson(e as Map<String, dynamic>))
+            .map(
+              (e) => ParticipationListItem.fromJson(e as Map<String, dynamic>),
+            )
             .toList(),
         query: {'tab': tab},
       );
 
-  Future<SubmissionDetail> fetchSubmission(String id) => get(
-        '/creator/submissions/$id',
-        (d) => SubmissionDetail.fromJson(d as Map<String, dynamic>),
+  Future<Participation> fetchParticipation(String id) => get(
+        '/creator/participations/$id',
+        (d) => Participation.fromJson(d as Map<String, dynamic>),
       );
 
-  Future<void> createSubmission({
-    required String campaignId,
+  Future<void> submitDeliverableDraft({
+    required String deliverableId,
     required String draftDriveUrl,
   }) =>
-      post<Map<String, dynamic>>(
-        '/creator/submissions',
-        {'campaignId': campaignId, 'draftDriveUrl': draftDriveUrl},
-        (d) => d as Map<String, dynamic>,
+      patch<void>(
+        '/creator/deliverables/$deliverableId/draft',
+        {'draftDriveUrl': draftDriveUrl},
+        (_) {},
       );
 
-  Future<void> submitLiveLink({
-    required String submissionId,
-    required String liveReelUrl,
+  Future<void> submitDeliverableLiveProof({
+    required String deliverableId,
+    required String livePostUrl,
   }) =>
       patch<void>(
-        '/creator/submissions/$submissionId/live-link',
-        {'liveReelUrl': liveReelUrl},
+        '/creator/deliverables/$deliverableId/live-proof',
+        {'livePostUrl': livePostUrl},
         (_) {},
       );
 
@@ -327,106 +485,43 @@ class AuthSession {
   }
 }
 
+class SocialLinks {
+  const SocialLinks({required this.instagram, required this.youtube});
+
+  final bool instagram;
+  final bool youtube;
+
+  factory SocialLinks.fromJson(Map<String, dynamic>? json) => SocialLinks(
+        instagram: json?['instagram'] as bool? ?? false,
+        youtube: json?['youtube'] as bool? ?? false,
+      );
+}
+
 class CreatorDashboard {
-  CreatorDashboard({required this.wallet, required this.clipsUnderReview, required this.trending});
+  CreatorDashboard({
+    required this.wallet,
+    required this.clipsUnderReview,
+    required this.socialLinks,
+    required this.trending,
+  });
+
   final WalletData wallet;
   final int clipsUnderReview;
+  final SocialLinks socialLinks;
   final List<Campaign> trending;
 
   factory CreatorDashboard.fromJson(Map<String, dynamic> json) {
     return CreatorDashboard(
       wallet: WalletData.fromJson(json['wallet'] as Map<String, dynamic>),
       clipsUnderReview: json['clipsUnderReview'] as int? ?? 0,
+      socialLinks: SocialLinks.fromJson(
+        json['socialLinks'] as Map<String, dynamic>?,
+      ),
       trending: (json['trending'] as List<dynamic>? ?? [])
           .map((e) => Campaign.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
   }
-}
-
-class Campaign {
-  Campaign({
-    required this.id,
-    required this.title,
-    required this.ratePer1kDisplay,
-    required this.maxPayoutPaise,
-    required this.poolPercent,
-    required this.brief,
-    this.category,
-    this.productUrl,
-  });
-
-  final String id;
-  final String title;
-  final String ratePer1kDisplay;
-  final int maxPayoutPaise;
-  final int poolPercent;
-  final String brief;
-  final String? category;
-  final String? productUrl;
-
-  factory Campaign.fromJson(Map<String, dynamic> json) => Campaign(
-        id: json['id'] as String,
-        title: json['title'] as String,
-        ratePer1kDisplay: json['ratePer1kDisplay'] as String,
-        maxPayoutPaise: json['maxPayoutPaise'] as int,
-        poolPercent: json['poolPercent'] as int? ?? 0,
-        brief: json['brief'] as String? ?? '',
-        category: json['category'] as String?,
-        productUrl: json['productUrl'] as String?,
-      );
-}
-
-class SubmissionItem {
-  SubmissionItem({
-    required this.id,
-    required this.status,
-    required this.campaignTitle,
-    required this.estimatedPaise,
-  });
-
-  final String id;
-  final String status;
-  final String campaignTitle;
-  final int estimatedPaise;
-
-  factory SubmissionItem.fromJson(Map<String, dynamic> json) => SubmissionItem(
-        id: json['id'] as String,
-        status: json['status'] as String,
-        campaignTitle: json['campaignTitle'] as String,
-        estimatedPaise: json['estimatedPaise'] as int? ?? 0,
-      );
-}
-
-class SubmissionDetail {
-  SubmissionDetail({
-    required this.id,
-    required this.status,
-    required this.ratePer1kDisplay,
-    required this.eligibleViews,
-    required this.estimatedPaise,
-    this.liveReelUrl,
-    this.rejectionReason,
-  });
-
-  final String id;
-  final String status;
-  final String ratePer1kDisplay;
-  final int eligibleViews;
-  final int estimatedPaise;
-  final String? liveReelUrl;
-  final String? rejectionReason;
-
-  factory SubmissionDetail.fromJson(Map<String, dynamic> json) =>
-      SubmissionDetail(
-        id: json['id'] as String,
-        status: json['status'] as String,
-        ratePer1kDisplay: json['ratePer1kDisplay'] as String? ?? '',
-        eligibleViews: json['eligibleViews'] as int? ?? 0,
-        estimatedPaise: json['estimatedPaise'] as int? ?? 0,
-        liveReelUrl: json['liveReelUrl'] as String?,
-        rejectionReason: json['rejectionReason'] as String?,
-      );
 }
 
 class WalletData {

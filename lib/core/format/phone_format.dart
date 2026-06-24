@@ -1,3 +1,12 @@
+const kInvalidIndiaPhoneMessage =
+    'Enter a valid Indian mobile number (starts with 6–9).';
+
+final _indiaE164Regex = RegExp(r'^\+91[6-9]\d{9}$');
+
+/// Returns true when [phone] is E.164 India format accepted by the API.
+bool isValidIndiaE164(String? phone) =>
+    phone != null && _indiaE164Regex.hasMatch(phone);
+
 /// Normalizes India mobile input to E.164 `+91XXXXXXXXXX` for the API.
 String? normalizeIndiaPhone({
   required String countryCode,

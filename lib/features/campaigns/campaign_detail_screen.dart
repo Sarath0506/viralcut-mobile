@@ -4,22 +4,81 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
-import '../../core/format/money_format.dart';
+import '../../core/realtime/campaign_realtime_scope.dart';
+import '../../core/layout/app_spacing.dart';
+import 'campaign_providers.dart';
 import '../../core/widgets/vc_scaffold.dart';
-
-final campaignDetailProvider =
-    FutureProvider.family<Campaign, String>((ref, id) async {
-  return ref.read(apiClientProvider).fetchCampaign(id);
-});
+import '../../theme/viralcut_colors.dart';
+import 'widgets/campaign_detail_body.dart';
 
 class CampaignDetailScreen extends ConsumerWidget {
   const CampaignDetailScreen({super.key, required this.id});
 
   final String id;
 
+  String _ctaLabel(Participation? participation) {
+    if (participation == null) return 'Join campaign';
+    switch (participation.summary) {
+      case 'joined':
+      case 'drafts_incomplete':
+        return 'Continue submission';
+      case 'in_review':
+      case 'action_required':
+      case 'proof_complete':
+      case 'closed':
+        return 'View submission';
+      default:
+        return 'View submission';
+    }
+  }
+
+  void _onCta(
+    BuildContext context,
+    WidgetRef ref,
+    Participation? participation,
+  ) async {
+    if (participation == null) {
+      try {
+        await ref.read(apiClientProvider).joinCampaign(id);
+        ref.invalidate(campaignParticipationProvider(id));
+        if (!context.mounted) return;
+        context.push('/campaigns/$id/submit');
+      } on ApiException catch (e) {
+        if (e.code == 'ALREADY_JOINED') {
+          try {
+            final existing = await ref
+                .read(apiClientProvider)
+                .fetchParticipationByCampaign(id);
+            ref.invalidate(campaignParticipationProvider(id));
+            if (!context.mounted) return;
+            context.push('/campaigns/${existing.campaignId}/submit');
+            return;
+          } on ApiException {
+            // Fall through to the original error message.
+          }
+        }
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
+      return;
+    }
+
+    if (participation.summary == 'joined' ||
+        participation.summary == 'drafts_incomplete') {
+      context.push('/campaigns/$id/submit');
+      return;
+    }
+
+    context.push('/participations/${participation.id}');
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final campaign = ref.watch(campaignDetailProvider(id));
+    final participation = ref.watch(campaignParticipationProvider(id));
+    final vc = ViralCutColors.of(context);
 
     return campaign.when(
       loading: () => const VcScaffold(
@@ -32,31 +91,32 @@ class CampaignDetailScreen extends ConsumerWidget {
         showBack: true,
         body: Center(child: Text('$e')),
       ),
-      data: (c) => VcScaffold(
-        title: c.title,
-        showBack: true,
-        body: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Text(
-              c.ratePer1kDisplay,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+      data: (c) {
+        final p = participation.valueOrNull;
+        final cta = _ctaLabel(p);
+        final joining = participation.isLoading && p == null;
+
+        return CampaignRealtimeScope(
+          campaignId: id,
+          child: Scaffold(
+            backgroundColor: vc.background,
+            appBar: AppBar(
+              title: Text(c.displayBrand),
+              leading: const BackButton(),
             ),
-            const SizedBox(height: 8),
-            Text('Max payout ${formatPaise(c.maxPayoutPaise)}'),
-            const SizedBox(height: 16),
-            Text(c.brief),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () => context.push('/campaigns/$id/submit'),
-              child: const Text('Submit work for review'),
+            body: CampaignDetailBody(campaign: c),
+            bottomNavigationBar: SafeArea(
+              child: Padding(
+                padding: AppSpacing.bottomActionPadding(context),
+                child: FilledButton(
+                  onPressed: joining ? null : () => _onCta(context, ref, p),
+                  child: Text(joining ? 'Loading…' : cta),
+                ),
+              ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

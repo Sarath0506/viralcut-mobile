@@ -1,5 +1,5 @@
 name: viralcut_mobile
-description: ViralCut creator app — campaigns, submissions, wallet (Flutter).
+description: Halchal creator app — campaigns, submissions, wallet (Flutter).
 publish_to: "none"
 version: 0.1.0+1
 
@@ -19,6 +19,9 @@ dependencies:
   shared_preferences: ^2.5.3
   intl: ^0.20.2
   google_fonts: ^6.2.1
+  url_launcher: ^6.3.1
+  socket_io_client: ^3.1.2
+  flutter_animate: ^4.5.2
 
 dev_dependencies:
   flutter_test:
@@ -29,3 +32,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/viralcut_app_icon.png
+    - assets/images/halchal_logo.png

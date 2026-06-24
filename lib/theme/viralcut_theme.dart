@@ -2,68 +2,90 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'token_colors.dart';
+import 'viralcut_colors.dart';
 
 abstract final class ViralCutTheme {
   static ThemeData get light => _build(Brightness.light);
   static ThemeData get dark => _build(Brightness.dark);
 
   static ThemeData _build(Brightness brightness) {
+    final vc = ViralCutColors.forBrightness(brightness);
     final isDark = brightness == Brightness.dark;
-    final primary = isDark
-        ? ViralCutTokenColors.primaryDark
-        : ViralCutTokenColors.primaryLight;
-    final background = isDark
-        ? ViralCutTokenColors.backgroundDark
-        : ViralCutTokenColors.backgroundLight;
-    final surface = isDark
-        ? ViralCutTokenColors.surfaceDark
-        : ViralCutTokenColors.surfaceLight;
-    final onSurface = isDark
-        ? ViralCutTokenColors.onSurfaceDark
-        : ViralCutTokenColors.onSurfaceLight;
 
-    final textTheme = brightness == Brightness.light
-        ? GoogleFonts.interTextTheme(ThemeData.light().textTheme)
-        : GoogleFonts.interTextTheme(ThemeData.dark().textTheme);
+    final textTheme = GoogleFonts.interTextTheme(
+      isDark ? ThemeData.dark().textTheme : ThemeData.light().textTheme,
+    );
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       textTheme: textTheme,
+      extensions: [vc],
       colorScheme: ColorScheme(
         brightness: brightness,
-        primary: primary,
-        onPrimary: ViralCutTokenColors.onPrimaryLight,
-        secondary: primary,
-        onSecondary: ViralCutTokenColors.onPrimaryLight,
-        error: isDark
-            ? ViralCutTokenColors.errorDark
-            : ViralCutTokenColors.errorLight,
-        onError: Colors.white,
-        surface: surface,
-        onSurface: onSurface,
+        primary: vc.primary,
+        onPrimary: vc.onPrimary,
+        primaryContainer: vc.surfaceVariant,
+        onPrimaryContainer: vc.onSurface,
+        secondary: vc.primaryVariant,
+        onSecondary: vc.onPrimary,
+        tertiary: vc.money,
+        onTertiary: vc.onPrimary,
+        error: vc.error,
+        onError: vc.onPrimary,
+        surface: vc.surface,
+        onSurface: vc.onSurface,
+        outline: vc.border,
       ),
-      scaffoldBackgroundColor: background,
+      scaffoldBackgroundColor: vc.background,
       appBarTheme: AppBarTheme(
-        backgroundColor: background,
-        foregroundColor: onSurface,
+        backgroundColor: vc.background,
+        foregroundColor: vc.onSurface,
         elevation: 0,
       ),
       cardTheme: CardThemeData(
-        color: surface,
+        color: vc.surface,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ViralCutTokenRadius.lg),
+        ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(48),
+          backgroundColor: vc.primary,
+          foregroundColor: vc.onPrimary,
+          minimumSize: const Size.fromHeight(52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
         ),
       ),
+      navigationBarTheme: NavigationBarThemeData(
+        height: 68,
+        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+        indicatorColor: vc.primary.withValues(alpha: 0.12),
+        backgroundColor: vc.surface,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: vc.surface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
+          borderSide: BorderSide(color: vc.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
+          borderSide: BorderSide(color: vc.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
+          borderSide: BorderSide(color: vc.primary, width: 1.5),
+        ),
+      ),
+      dividerTheme: DividerThemeData(color: vc.border),
     );
   }
 }

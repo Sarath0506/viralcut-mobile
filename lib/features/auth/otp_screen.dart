@@ -1,10 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
-import '../../theme/token_colors.dart';
+import '../../theme/viralcut_colors.dart';
 import 'widgets/auth_page_layout.dart';
 import 'widgets/auth_switch_link.dart';
 import 'widgets/auth_ui.dart';
@@ -32,6 +33,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final name =
         GoRouterState.of(context).uri.queryParameters['name']?.trim();
     return name != null && name.isNotEmpty ? name : null;
+  }
+
+  String? get _email {
+    final email =
+        GoRouterState.of(context).uri.queryParameters['email']?.trim();
+    return email != null && email.isNotEmpty ? email : null;
   }
 
   bool get _isSignup => _flow == 'signup';
@@ -76,15 +83,16 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
             phone: _phone,
             code: code,
             displayName: _isSignup ? _displayName : null,
+            email: _isSignup ? _email : null,
           );
       await ref.read(authStateProvider.notifier).login(session);
       if (mounted) context.go('/dashboard');
     } on ApiException catch (e) {
       if (mounted) {
+        _pinKey.currentState?.clear();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
         );
-        _goBackToPhone();
       }
     } finally {
       if (mounted) setState(() => _verifying = false);
@@ -103,7 +111,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       showBack: true,
       onBack: _goBackToPhone,
       footer: AuthSwitchLink(
-        leadText: _isSignup ? 'Already have an account? ' : 'New to ViralCut? ',
+        leadText: _isSignup ? 'Already have an account? ' : 'New to Halchal? ',
         linkText: _isSignup ? 'Log in' : 'Sign up',
         route: _isSignup ? '/login' : '/signup',
       ),
@@ -116,6 +124,17 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               enabled: !_verifying,
               onCompleted: _verify,
             ),
+            if (kDebugMode) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Dev: OTP is always 000000',
+                textAlign: TextAlign.center,
+                style: AuthUi.bodyFont(context).copyWith(
+                  color: ViralCutColors.of(context).muted,
+                  fontSize: 13,
+                ),
+              ),
+            ],
             if (_verifying) ...[
               const SizedBox(height: 20),
               const Center(child: CircularProgressIndicator()),

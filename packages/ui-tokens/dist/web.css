@@ -15,6 +15,10 @@
   --vc-error: #BA1A1A;
   --vc-warning: #AA4900;
   --vc-on-primary: #FFFFFF;
+  --vc-auth-gradient-start: #F3EEFF;
+  --vc-auth-gradient-mid: #F8F9FF;
+  --vc-auth-gradient-end: #EDE9FE;
+  --vc-info-surface: #EEF4FF;
 }
 
 .dark {
@@ -33,4 +37,8 @@
   --vc-error: #F87171;
   --vc-warning: #FB923C;
   --vc-on-primary: #FFFFFF;
+  --vc-auth-gradient-start: #0B1220;
+  --vc-auth-gradient-mid: #111827;
+  --vc-auth-gradient-end: #1F2937;
+  --vc-info-surface: #1E293B;
 }

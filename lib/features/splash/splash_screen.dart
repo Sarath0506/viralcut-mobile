@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_provider.dart';
+import '../../theme/viralcut_colors.dart';
+import '../auth/widgets/auth_app_icon.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -13,9 +17,13 @@ class SplashScreen extends ConsumerStatefulWidget {
 
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
+  static const _splashDelay = Duration(milliseconds: 2400);
+  static const _authPollInterval = Duration(milliseconds: 50);
+
   late final AnimationController _controller;
   late final Animation<double> _scale;
   late final Animation<double> _fade;
+  Timer? _navigationTimer;
 
   @override
   void initState() {
@@ -34,56 +42,81 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       ),
     );
     _controller.forward();
-    _navigateAfterSplash();
+    _navigationTimer = Timer(_splashDelay, _navigateAfterSplash);
   }
 
-  Future<void> _navigateAfterSplash() async {
-    await Future<void>.delayed(const Duration(milliseconds: 2400));
+  void _navigateAfterSplash() {
     if (!mounted) return;
-    final isAuthed = ref.read(authStateProvider);
-    context.go(isAuthed ? '/dashboard' : '/onboarding');
+
+    final status = ref.read(authStateProvider);
+    if (status == AuthStatus.unknown) {
+      _navigationTimer = Timer(_authPollInterval, _navigateAfterSplash);
+      return;
+    }
+
+    context.go(status == AuthStatus.authed ? '/dashboard' : '/onboarding');
   }
 
   @override
   void dispose() {
+    _navigationTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0B1C30),
+      backgroundColor: vc.deepSurface,
       body: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: RadialGradient(
-            center: Alignment(0, -0.2),
+            center: const Alignment(0, -0.2),
             radius: 1.1,
             colors: [
-              Color(0xFF152A45),
-              Color(0xFF0B1C30),
+              Color.lerp(vc.deepSurface, vc.primary, 0.15)!,
+              vc.deepSurface,
             ],
           ),
         ),
-        child: Center(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              return Opacity(
-                opacity: _fade.value,
-                child: Transform.scale(
-                  scale: _scale.value,
-                  child: child,
-                ),
-              );
-            },
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: Image.asset(
-                'assets/images/viralcut_app_icon.png',
-                width: 120,
-                height: 120,
-                fit: BoxFit.cover,
+        child: SafeArea(
+          child: Center(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: _fade.value,
+                  child: Transform.scale(
+                    scale: _scale.value,
+                    child: child,
+                  ),
+                );
+              },
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 178,
+                    height: 178,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: vc.primary.withValues(alpha: 0.34),
+                          blurRadius: 58,
+                          spreadRadius: 8,
+                        ),
+                        BoxShadow(
+                          color: vc.onPrimary.withValues(alpha: 0.18),
+                          blurRadius: 46,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const AuthAppIcon.splash(),
+                ],
               ),
             ),
           ),

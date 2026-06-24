@@ -42,13 +42,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
 
   void _onPhoneChanged() {
-    if (_phoneController.text.length < 10) {
+    final digits = _phoneController.text;
+    if (digits.length < 10) {
       _lastOtpPhone = null;
       return;
     }
     if (_busy) return;
+
     final phone = _phoneE164;
-    if (phone == null || phone == _lastOtpPhone) return;
+    if (phone == null) {
+      if (digits.length == 10 && mounted) {
+        _showError(kInvalidIndiaPhoneMessage);
+      }
+      _lastOtpPhone = null;
+      return;
+    }
+    if (phone == _lastOtpPhone) return;
     _lastOtpPhone = phone;
     _sendOtpAndContinue();
   }
@@ -94,7 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       title: 'Log in',
       subtitle: 'Continue earning from your clips.',
       footer: const AuthSwitchLink(
-        leadText: 'New to ViralCut? ',
+        leadText: 'New to Halchal? ',
         linkText: 'Sign up',
         route: '/signup',
       ),

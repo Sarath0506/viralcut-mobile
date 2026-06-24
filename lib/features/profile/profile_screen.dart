@@ -7,23 +7,9 @@ import '../../core/api/api_base_url.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/format/money_format.dart';
-import '../../theme/token_colors.dart';
+import 'profile_providers.dart';
+import '../../theme/viralcut_colors.dart';
 import '../../theme/theme_provider.dart';
-
-final profileMeProvider = FutureProvider<Map<String, dynamic>>((ref) async {
-  return ref.read(apiClientProvider).fetchMe();
-});
-
-final profileDashboardProvider =
-    FutureProvider<CreatorDashboard>((ref) async {
-  return ref.read(apiClientProvider).fetchDashboard();
-});
-
-final profileActiveSubmissionsProvider = FutureProvider<int>((ref) async {
-  final items =
-      await ref.read(apiClientProvider).fetchSubmissions(tab: 'active');
-  return items.length;
-});
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -62,10 +48,11 @@ class ProfileScreen extends ConsumerWidget {
     final dash = ref.watch(profileDashboardProvider);
     final activeCount = ref.watch(profileActiveSubmissionsProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final vc = ViralCutColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
-      backgroundColor: ViralCutTokenColors.backgroundLight,
+      backgroundColor: vc.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -135,8 +122,11 @@ class ProfileScreen extends ConsumerWidget {
                                   child: CircleAvatar(
                                     radius: 14,
                                     backgroundColor: primary,
-                                    child: const Icon(Icons.edit,
-                                        size: 14, color: Colors.white),
+                                    child: Icon(Icons.edit,
+                                        size: 14,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onPrimary),
                                   ),
                                 ),
                               ],
@@ -153,14 +143,14 @@ class ProfileScreen extends ConsumerWidget {
                               Text(
                                 '@$username',
                                 style: GoogleFonts.inter(
-                                  color: ViralCutTokenColors.mutedLight,
+                                  color: vc.muted,
                                 ),
                               )
                             else if (phone.isNotEmpty)
                               Text(
                                 phone,
                                 style: GoogleFonts.inter(
-                                  color: ViralCutTokenColors.mutedLight,
+                                  color: vc.muted,
                                 ),
                               ),
                           ],
@@ -214,8 +204,8 @@ class ProfileScreen extends ConsumerWidget {
                           label: 'KYC status',
                           badge: kycStatus.toUpperCase(),
                           badgeColor: kycStatus == 'verified'
-                              ? ViralCutTokenColors.moneyBrightLight
-                              : ViralCutTokenColors.warningLight,
+                              ? vc.moneyBright
+                              : vc.warning,
                           onTap: () {},
                         ),
                         _SettingsTile(
@@ -267,7 +257,12 @@ class _ProfileError extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('$error', textAlign: TextAlign.center),
+            Text(
+              error is ApiException
+                  ? (error as ApiException).message
+                  : '$error',
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 8),
             Text(
               'API: $kApiBaseUrl\n'
@@ -295,11 +290,12 @@ class _EarningsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: ViralCutTokenColors.deepSurfaceLight,
+        color: vc.deepSurface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -307,15 +303,13 @@ class _EarningsCard extends StatelessWidget {
         children: [
           Text(
             'Total earned',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+            style: TextStyle(color: vc.onPrimary.withValues(alpha: 0.7)),
           ),
           const SizedBox(height: 4),
           Text(
             error ? '—' : formatPaise(lifetimePaise),
             style: TextStyle(
-              color: error
-                  ? Colors.white70
-                  : ViralCutTokenColors.moneyBrightLight,
+              color: error ? vc.onPrimary.withValues(alpha: 0.7) : vc.moneyBright,
               fontSize: 28,
               fontWeight: FontWeight.w800,
             ),
@@ -331,14 +325,15 @@ class _EarningsCardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return Container(
       height: 100,
       decoration: BoxDecoration(
-        color: ViralCutTokenColors.deepSurfaceLight,
+        color: vc.deepSurface,
         borderRadius: BorderRadius.circular(16),
       ),
       alignment: Alignment.center,
-      child: const CircularProgressIndicator(color: Colors.white54),
+      child: CircularProgressIndicator(color: vc.onPrimary.withValues(alpha: 0.54)),
     );
   }
 }
@@ -356,38 +351,40 @@ class _StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: vc.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ViralCutTokenColors.borderLight),
+        border: Border.all(color: vc.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
-              color: ViralCutTokenColors.mutedLight,
+              color: vc.muted,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
+              color: vc.onSurface,
             ),
           ),
           Text(
             subtitle,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: ViralCutTokenColors.mutedLight,
+              color: vc.muted,
             ),
           ),
         ],
@@ -413,15 +410,16 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: ViralCutTokenColors.borderLight),
+        side: BorderSide(color: vc.border),
       ),
       child: ListTile(
-        leading: Icon(icon, color: ViralCutTokenColors.mutedLight),
+        leading: Icon(icon, color: vc.muted),
         title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -431,8 +429,7 @@ class _SettingsTile extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: (badgeColor ?? ViralCutTokenColors.warningLight)
-                      .withValues(alpha: 0.15),
+                  color: (badgeColor ?? vc.warning).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -440,7 +437,7 @@ class _SettingsTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: badgeColor ?? ViralCutTokenColors.warningLight,
+                    color: badgeColor ?? vc.warning,
                   ),
                 ),
               ),
@@ -460,21 +457,22 @@ class _LogoutButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: onPressed,
-        icon: const Icon(Icons.logout, color: ViralCutTokenColors.errorLight),
-        label: const Text(
+        icon: Icon(Icons.logout, color: vc.error),
+        label: Text(
           'Log out',
           style: TextStyle(
-            color: ViralCutTokenColors.errorLight,
+            color: vc.error,
             fontWeight: FontWeight.w600,
           ),
         ),
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 14),
-          backgroundColor: const Color(0xFFEFF6FF),
+          backgroundColor: vc.infoSurface,
           side: BorderSide.none,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),

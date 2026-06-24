@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/token_colors.dart';
+import '../../core/layout/app_spacing.dart';
+import '../../core/layout/bottom_action_bar.dart';
+import '../../core/layout/onboarding_text_block.dart';
+import '../../theme/viralcut_colors.dart';
+import '../../theme/viralcut_text_styles.dart';
+import '../auth/widgets/auth_app_icon.dart';
 import '../auth/widgets/auth_ui.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -34,54 +39,68 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     super.dispose();
   }
 
-  TextStyle get _display => GoogleFonts.plusJakartaSans();
-  TextStyle get _body => GoogleFonts.inter();
-
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
 
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFFF5F3FF),
-            Color(0xFFF8F9FF),
-            Color(0xFFECFDF5),
+            vc.authGradientStart,
+            vc.authGradientMid,
+            vc.money.withValues(alpha: 0.08),
           ],
         ),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
+        resizeToAvoidBottomInset: false,
         body: SafeArea(
+          bottom: false,
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 12, 0),
-                child: Row(
-                  children: [
-                    Text(
-                      'ViralCut',
-                      style: _display.copyWith(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: primary,
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () => context.go('/signup'),
-                      child: Text(
-                        'Skip',
-                        style: _body.copyWith(
-                          color: ViralCutTokenColors.mutedLight,
-                          fontWeight: FontWeight.w500,
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screenHorizontal,
+                  AppSpacing.sm,
+                  AppSpacing.sm,
+                  0,
+                ),
+                child: SizedBox(
+                  height: AppSpacing.minTouchTarget,
+                  child: Row(
+                    children: [
+                      const AuthAppIcon.header(),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        'Halchal',
+                        style: ViralCutTextStyles.sectionTitle(context).copyWith(
+                          color: primary,
                         ),
                       ),
-                    ),
-                  ],
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => context.go('/signup'),
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(
+                            AppSpacing.minTouchTarget,
+                            AppSpacing.minTouchTarget,
+                          ),
+                        ),
+                        child: Text(
+                          'Skip',
+                          style: ViralCutTextStyles.meta(context).copyWith(
+                            color: vc.muted,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               Expanded(
@@ -91,20 +110,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   children: [
                     _WalletOnboardingSlide(
                       floatAnimation: _floatController,
-                      displayStyle: _display,
                     ),
-                    _MarketplaceOnboardingSlide(
-                      displayStyle: _display,
-                      bodyStyle: _body,
-                    ),
+                    const _MarketplaceOnboardingSlide(),
                   ],
                 ),
               ),
-              _PageDots(activeIndex: _page, count: 2),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                child: AuthPrimaryButton(
+              BottomActionBar(
+                indicator: _PageDots(activeIndex: _page, count: 2),
+                primary: AuthPrimaryButton(
                   label: _page == 0 ? 'Get Started' : 'Continue',
                   onPressed: () {
                     if (_page == 0) {
@@ -117,15 +130,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     }
                   },
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: TextButton(
+                secondary: TextButton(
                   onPressed: () => context.go('/login'),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(
+                      AppSpacing.minTouchTarget,
+                      AppSpacing.minTouchTarget,
+                    ),
+                  ),
                   child: RichText(
                     text: TextSpan(
-                      style: _body.copyWith(
-                        color: ViralCutTokenColors.mutedLight,
+                      style: ViralCutTextStyles.meta(context).copyWith(
+                        color: vc.muted,
                         fontSize: 14,
                       ),
                       children: [
@@ -158,6 +174,7 @@ class _PageDots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -169,7 +186,7 @@ class _PageDots extends StatelessWidget {
           width: active ? 28 : 8,
           height: 8,
           decoration: BoxDecoration(
-            color: active ? primary : Colors.grey.shade300,
+            color: active ? primary : vc.border,
             borderRadius: BorderRadius.circular(8),
           ),
         );
@@ -179,39 +196,31 @@ class _PageDots extends StatelessWidget {
 }
 
 class _WalletOnboardingSlide extends StatelessWidget {
-  const _WalletOnboardingSlide({
-    required this.floatAnimation,
-    required this.displayStyle,
-  });
+  const _WalletOnboardingSlide({required this.floatAnimation});
 
   final Animation<double> floatAnimation;
-  final TextStyle displayStyle;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Spacer(),
-        AnimatedBuilder(
-          animation: floatAnimation,
-          builder: (context, child) {
-            final dy = (floatAnimation.value - 0.5) * 12;
-            return Transform.translate(offset: Offset(0, dy), child: child);
-          },
-          child: const _PhoneWalletMockup(),
-        ),
-        const Spacer(),
-        Text(
-          'Post clips. Get paid.',
-          textAlign: TextAlign.center,
-          style: displayStyle.copyWith(
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            color: ViralCutTokenColors.onSurfaceLight,
-            letterSpacing: -0.5,
+        Expanded(
+          child: Center(
+            child: AnimatedBuilder(
+              animation: floatAnimation,
+              builder: (context, child) {
+                final dy = (floatAnimation.value - 0.5) * 12;
+                return Transform.translate(offset: Offset(0, dy), child: child);
+              },
+              child: const _PhoneWalletMockup(),
+            ),
           ),
         ),
-        const SizedBox(height: 48),
+        const OnboardingTextBlock(
+          title: 'Post clips. Get paid.',
+          subtitle:
+              'Turn your short-form content into real earnings with brand campaigns.',
+        ),
       ],
     );
   }
@@ -222,6 +231,8 @@ class _PhoneWalletMockup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
+    final onCard = vc.onPrimary;
     return Stack(
       clipBehavior: Clip.none,
       alignment: Alignment.center,
@@ -230,11 +241,11 @@ class _PhoneWalletMockup extends StatelessWidget {
           width: 260,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: ViralCutTokenColors.deepSurfaceLight,
+            color: vc.deepSurface,
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.18),
+                color: vc.onSurface.withValues(alpha: 0.18),
                 blurRadius: 32,
                 offset: const Offset(0, 16),
               ),
@@ -248,7 +259,7 @@ class _PhoneWalletMockup extends StatelessWidget {
                   Text(
                     '9:41',
                     style: GoogleFonts.inter(
-                      color: Colors.white70,
+                      color: onCard.withValues(alpha: 0.7),
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -256,13 +267,13 @@ class _PhoneWalletMockup extends StatelessWidget {
                   Row(
                     children: [
                       Icon(Icons.signal_cellular_alt,
-                          size: 14, color: Colors.white.withValues(alpha: 0.7)),
+                          size: 14, color: onCard.withValues(alpha: 0.7)),
                       const SizedBox(width: 4),
                       Icon(Icons.wifi,
-                          size: 14, color: Colors.white.withValues(alpha: 0.7)),
+                          size: 14, color: onCard.withValues(alpha: 0.7)),
                       const SizedBox(width: 4),
                       Icon(Icons.battery_full,
-                          size: 14, color: Colors.white.withValues(alpha: 0.7)),
+                          size: 14, color: onCard.withValues(alpha: 0.7)),
                     ],
                   ),
                 ],
@@ -276,7 +287,7 @@ class _PhoneWalletMockup extends StatelessWidget {
                   ),
                   const Spacer(),
                   Icon(Icons.notifications_none,
-                      color: Colors.white.withValues(alpha: 0.8)),
+                      color: onCard.withValues(alpha: 0.8)),
                 ],
               ),
               const SizedBox(height: 16),
@@ -284,7 +295,7 @@ class _PhoneWalletMockup extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
+                  color: vc.surfaceVariant,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -293,7 +304,7 @@ class _PhoneWalletMockup extends StatelessWidget {
                     Text(
                       'CURRENT BALANCE',
                       style: GoogleFonts.inter(
-                        color: Colors.white54,
+                        color: onCard.withValues(alpha: 0.54),
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.8,
@@ -301,18 +312,18 @@ class _PhoneWalletMockup extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '₹35,170',
+                      'Rs 35,170',
                       style: GoogleFonts.plusJakartaSans(
-                        color: Colors.white,
+                        color: onCard,
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '↗ +12% vs last week',
+                      '+12% vs last week',
                       style: GoogleFonts.inter(
-                        color: ViralCutTokenColors.moneyBrightLight,
+                        color: vc.moneyBright,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -322,13 +333,13 @@ class _PhoneWalletMockup extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               _MockTxRow(
-                color: const Color(0xFFEF4444),
-                amount: '₹4,200',
+                color: vc.error,
+                amount: 'Rs 4,200',
               ),
               const SizedBox(height: 8),
               _MockTxRow(
                 color: Theme.of(context).colorScheme.primary,
-                amount: '₹8,550',
+                amount: 'Rs 8,550',
               ),
             ],
           ),
@@ -346,6 +357,7 @@ class _MockTxRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final onCard = ViralCutColors.of(context).onPrimary;
     return Row(
       children: [
         Container(
@@ -364,7 +376,7 @@ class _MockTxRow extends StatelessWidget {
               Container(
                 height: 6,
                 decoration: BoxDecoration(
-                  color: Colors.white12,
+                  color: onCard.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -374,7 +386,7 @@ class _MockTxRow extends StatelessWidget {
                 width: 80,
                 alignment: Alignment.centerLeft,
                 decoration: BoxDecoration(
-                  color: Colors.white12,
+                  color: onCard.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -384,7 +396,7 @@ class _MockTxRow extends StatelessWidget {
         Text(
           amount,
           style: GoogleFonts.inter(
-            color: Colors.white,
+            color: onCard,
             fontWeight: FontWeight.w700,
             fontSize: 13,
           ),
@@ -395,13 +407,7 @@ class _MockTxRow extends StatelessWidget {
 }
 
 class _MarketplaceOnboardingSlide extends StatefulWidget {
-  const _MarketplaceOnboardingSlide({
-    required this.displayStyle,
-    required this.bodyStyle,
-  });
-
-  final TextStyle displayStyle;
-  final TextStyle bodyStyle;
+  const _MarketplaceOnboardingSlide();
 
   @override
   State<_MarketplaceOnboardingSlide> createState() =>
@@ -429,69 +435,51 @@ class _MarketplaceOnboardingSlideState extends State<_MarketplaceOnboardingSlide
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
+    final primary = Theme.of(context).colorScheme.primary;
     final cards = [
       _CampaignPreviewData(
         brand: 'boAt',
         category: 'Electronics & Lifestyle',
         metricLabel: 'EARNING POTENTIAL',
-        metricValue: '₹5,000+',
-        metricColor: ViralCutTokenColors.moneyBrightLight,
+        metricValue: 'Rs 5,000+',
+        metricColor: vc.moneyBright,
         progress: 0.72,
-        progressColor: ViralCutTokenColors.moneyBrightLight,
-        accent: const Color(0xFF1E293B),
+        progressColor: vc.moneyBright,
+        accent: vc.deepSurface,
       ),
       _CampaignPreviewData(
         brand: 'Zepto',
         category: '10-minute delivery',
         metricLabel: 'URGENT TASKS',
         metricValue: '2 Slots Left',
-        metricColor: ViralCutTokenColors.warningLight,
+        metricColor: vc.warning,
         progress: 0.22,
-        progressColor: ViralCutTokenColors.warningLight,
-        accent: const Color(0xFF7C3AED),
+        progressColor: vc.warning,
+        accent: vc.primaryVariant,
       ),
       _CampaignPreviewData(
         brand: 'CRED',
         category: 'Fintech & Rewards',
         metricLabel: 'PREMIUM TIER',
         metricValue: 'Top 1% Only',
-        metricColor: ViralCutTokenColors.onSurfaceLight,
+        metricColor: vc.onSurface,
         progress: 0.95,
-        progressColor: Theme.of(context).colorScheme.primary,
-        accent: const Color(0xFF0F172A),
+        progressColor: primary,
+        accent: vc.deepSurface,
       ),
     ];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-          Text(
-            'Pick any brand campaign',
-            textAlign: TextAlign.center,
-            style: widget.displayStyle.copyWith(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Browse live campaigns from top Indian brands. Choose what fits your audience.',
-            textAlign: TextAlign.center,
-            style: widget.bodyStyle.copyWith(
-              color: ViralCutTokenColors.mutedLight,
-              fontSize: 14,
-              height: 1.45,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Expanded(
+    return Column(
+      children: [
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: ListView.separated(
               physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: AppSpacing.sm),
               itemCount: cards.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md - 4),
               itemBuilder: (context, index) {
                 final start = index * 0.15;
                 final anim = CurvedAnimation(
@@ -511,8 +499,13 @@ class _MarketplaceOnboardingSlideState extends State<_MarketplaceOnboardingSlide
               },
             ),
           ),
-        ],
-      ),
+        ),
+        const OnboardingTextBlock(
+          title: 'Pick any brand campaign',
+          subtitle:
+              'Browse live campaigns from top Indian brands. Choose what fits your audience.',
+        ),
+      ],
     );
   }
 }
@@ -546,16 +539,17 @@ class _CampaignPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: vc.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ViralCutTokenColors.borderLight),
+        border: Border.all(color: vc.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: vc.onSurface.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -574,8 +568,8 @@ class _CampaignPreviewCard extends StatelessWidget {
                       backgroundColor: data.accent,
                       child: Text(
                         data.brand[0],
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: vc.onPrimary,
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
                         ),
@@ -611,7 +605,7 @@ class _CampaignPreviewCard extends StatelessWidget {
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
-                    color: ViralCutTokenColors.mutedLight,
+                    color: vc.muted,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -629,7 +623,7 @@ class _CampaignPreviewCard extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: data.progress,
                     minHeight: 4,
-                    backgroundColor: ViralCutTokenColors.borderLight,
+                    backgroundColor: vc.border,
                     color: data.progressColor,
                   ),
                 ),

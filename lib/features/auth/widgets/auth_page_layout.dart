@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../../theme/token_colors.dart';
+import '../../../core/layout/app_spacing.dart';
+import '../../../theme/viralcut_colors.dart';
 import 'auth_app_icon.dart';
 import 'auth_switch_link.dart';
 import 'auth_ui.dart';
 
-/// Stitch auth layout: centered icon → title → white form card → footer link.
+/// Auth layout: back, hero, title, form card, and pinned footer link.
 class AuthPageLayout extends StatelessWidget {
   const AuthPageLayout({
     super.key,
@@ -26,62 +28,95 @@ class AuthPageLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
+    final viewInsets = MediaQuery.viewInsetsOf(context);
+    final bottomSafe = MediaQuery.paddingOf(context).bottom;
+
     return AuthGradientBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
+        resizeToAvoidBottomInset: true,
         body: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (showBack)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    color: ViralCutTokenColors.onSurfaceLight,
-                    onPressed: onBack,
-                  ),
-                )
-              else
-                const SizedBox(height: 8),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  padding: EdgeInsets.only(
+                    bottom: viewInsets.bottom + AppSpacing.md,
+                  ),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const AuthAppIcon(),
-                      const SizedBox(height: 20),
-                      Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        style: AuthUi.displayFont(context).copyWith(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          color: ViralCutTokenColors.onSurfaceLight,
-                        ),
-                      ),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          subtitle!,
-                          textAlign: TextAlign.center,
-                          style: AuthUi.bodyFont(context).copyWith(
-                            color: ViralCutTokenColors.mutedLight,
-                            fontSize: 15,
-                            height: 1.4,
+                      if (showBack)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: IconButton(
+                            icon: const Icon(Icons.arrow_back),
+                            color: vc.onSurface,
+                            onPressed: onBack,
+                            style: IconButton.styleFrom(
+                              minimumSize: const Size(
+                                AppSpacing.minTouchTarget,
+                                AppSpacing.minTouchTarget,
+                              ),
+                            ),
                           ),
+                        )
+                      else
+                        const SizedBox(height: AppSpacing.sm),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.screenHorizontal,
                         ),
-                      ],
-                      const SizedBox(height: 24),
-                      form,
+                        child: Column(
+                          children: [
+                            const AuthAppIcon(),
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              title,
+                              textAlign: TextAlign.center,
+                              style: AuthUi.displayFont(context).copyWith(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0,
+                                color: vc.onSurface,
+                                height: 1.2,
+                              ),
+                            ),
+                            if (subtitle != null) ...[
+                              const SizedBox(height: AppSpacing.sm),
+                              Text(
+                                subtitle!,
+                                textAlign: TextAlign.center,
+                                style: AuthUi.bodyFont(context).copyWith(
+                                  color: vc.muted,
+                                  fontSize: 15,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: AppSpacing.md),
+                            form,
+                          ],
+                        ).animate().fade(duration: 420.ms, curve: Curves.easeOut).slideY(
+                              begin: 0.06,
+                              duration: 420.ms,
+                              curve: Curves.easeOut,
+                            ),
+                      ),
                     ],
                   ),
                 ),
               ),
               if (footer != null)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.screenHorizontal,
+                    AppSpacing.sm,
+                    AppSpacing.screenHorizontal,
+                    bottomSafe > 0 ? bottomSafe : AppSpacing.screenBottom,
+                  ),
                   child: footer!,
                 ),
             ],

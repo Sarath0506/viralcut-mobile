@@ -1,30 +1,50 @@
 import 'package:flutter/material.dart';
 
-/// Round ViralCut app icon for auth screens (Stitch-style header).
+/// Branded Halchal app icon with size variants for splash, auth, and headers.
 class AuthAppIcon extends StatelessWidget {
-  const AuthAppIcon({super.key, this.size = 72});
+  const AuthAppIcon({
+    super.key,
+    this.size = 68,
+    this.radiusFactor = 0.28,
+    this.showShadow = true,
+  });
+
+  const AuthAppIcon.header({super.key})
+      : size = 36,
+        radiusFactor = 0.24,
+        showShadow = false;
+
+  const AuthAppIcon.splash({super.key})
+      : size = 128,
+        radiusFactor = 0.24,
+        showShadow = true;
 
   final double size;
+  final double radiusFactor;
+  final bool showShadow;
 
   @override
   Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(size * radiusFactor);
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(size * 0.28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        borderRadius: radius,
+        boxShadow: showShadow
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.14),
+                  blurRadius: size * 0.28,
+                  offset: Offset(0, size * 0.1),
+                ),
+              ]
+            : null,
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(size * 0.28),
+        borderRadius: radius,
         child: Image.asset(
-          'assets/images/viralcut_app_icon.png',
+          'assets/images/halchal_logo.png',
           fit: BoxFit.cover,
         ),
       ),

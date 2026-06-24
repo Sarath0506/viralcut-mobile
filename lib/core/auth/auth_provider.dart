@@ -3,18 +3,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
 import 'auth_storage.dart';
 
+enum AuthStatus { unknown, authed, unauthed }
+
 final authStorageProvider = Provider<AuthStorage>((ref) => AuthStorage());
 
 final apiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient(storage: ref.watch(authStorageProvider));
+  final storage = ref.watch(authStorageProvider);
+  final notifier = ref.read(authStateProvider.notifier);
+  return ApiClient(
+    storage: storage,
+    onSessionRefreshed: notifier.onSessionRefreshed,
+    onSessionExpired: notifier.onSessionExpired,
+  );
 });
 
-final authStateProvider = StateNotifierProvider<AuthNotifier, bool>((ref) {
+final authStateProvider = StateNotifierProvider<AuthNotifier, AuthStatus>((ref) {
   return AuthNotifier(ref);
 });
 
-class AuthNotifier extends StateNotifier<bool> {
-  AuthNotifier(this._ref) : super(false) {
+class AuthNotifier extends StateNotifier<AuthStatus> {
+  AuthNotifier(this._ref) : super(AuthStatus.unknown) {
     _init();
   }
 
@@ -22,15 +30,24 @@ class AuthNotifier extends StateNotifier<bool> {
 
   Future<void> _init() async {
     final token = await _ref.read(authStorageProvider).getAccessToken();
-    state = token != null;
+    state = token != null ? AuthStatus.authed : AuthStatus.unauthed;
   }
 
-  Future<void> login(AuthSession session) async {
+  Future<void> onSessionRefreshed(AuthSession session) async {
     await _ref.read(authStorageProvider).saveTokens(
           accessToken: session.accessToken,
           refreshToken: session.refreshToken,
         );
-    state = true;
+    state = AuthStatus.authed;
+  }
+
+  Future<void> onSessionExpired() async {
+    await _ref.read(authStorageProvider).clear();
+    state = AuthStatus.unauthed;
+  }
+
+  Future<void> login(AuthSession session) async {
+    await onSessionRefreshed(session);
   }
 
   Future<void> logout() async {
@@ -40,6 +57,6 @@ class AuthNotifier extends StateNotifier<bool> {
       // Clear local tokens even when API is down.
     }
     await _ref.read(authStorageProvider).clear();
-    state = false;
+    state = AuthStatus.unauthed;
   }
 }

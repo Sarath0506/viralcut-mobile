@@ -2,14 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/api/api_client.dart';
-import '../../core/auth/auth_provider.dart';
 import '../../core/format/money_format.dart';
-import '../../theme/token_colors.dart';
-
-final walletProvider = FutureProvider<WalletData>((ref) async {
-  return ref.read(apiClientProvider).fetchWallet();
-});
+import 'wallet_providers.dart';
+import '../../theme/viralcut_colors.dart';
 
 class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
@@ -17,9 +12,7 @@ class WalletScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final wallet = ref.watch(walletProvider);
-    final money = Theme.of(context).brightness == Brightness.dark
-        ? ViralCutTokenColors.moneyDark
-        : ViralCutTokenColors.moneyLight;
+    final vc = ViralCutColors.of(context);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Wallet')),
@@ -36,10 +29,10 @@ class WalletScreen extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.w800,
-                  color: money,
+                  color: vc.money,
                 ),
               ),
-              Text('Available balance'),
+              const Text('Available balance'),
               Text(
                 '+ ${formatPaise(w.pendingPaise)} pending',
                 style: Theme.of(context).textTheme.bodyMedium,
@@ -48,7 +41,7 @@ class WalletScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: ViralCutTokenColors.warningLight.withValues(alpha: 0.12),
+                  color: vc.warning.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
