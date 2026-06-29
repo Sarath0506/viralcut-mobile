@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
-import '../../core/campaign/media_url.dart';
 import 'submission_providers.dart';
 import '../../core/campaign/platform_labels.dart';
 import '../../core/participation/participation_status_labels.dart';
@@ -162,13 +160,8 @@ class _ParticipationDetailScreenState
         body: Center(child: Text('$e')),
       ),
       data: (p) {
-        final message = participationSummaryMessage(p.summary);
-        final showResubmit = p.deliverables.any(
-          (d) => d.isRejected || d.isDraftPending,
-        );
-
         return VcScaffold(
-          title: p.campaign.displayBrand,
+          title: 'Submission',
           showBack: true,
           body: RefreshIndicator(
             onRefresh: _refresh,
@@ -176,29 +169,13 @@ class _ParticipationDetailScreenState
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               children: [
-                _ParticipationHero(
+                _SubmissionWorkflowHeader(
                   participation: p,
-                  primary: primary,
                   vc: vc,
                 ),
-                const SizedBox(height: 16),
-                _StatusBanner(
-                  summary: p.summary,
-                  message: message,
-                  vc: vc,
-                ),
-                if (showResubmit) ...[
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () =>
-                        context.push('/campaigns/${p.campaignId}/submit'),
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: const Text('Edit / resubmit drafts'),
-                  ),
-                ],
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 Text(
-                  'Formats',
+                  'Next actions',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
@@ -238,166 +215,92 @@ class _ParticipationDetailScreenState
   }
 }
 
-class _ParticipationHero extends StatelessWidget {
-  const _ParticipationHero({
+class _SubmissionWorkflowHeader extends StatelessWidget {
+  const _SubmissionWorkflowHeader({
     required this.participation,
-    required this.primary,
     required this.vc,
   });
 
   final Participation participation;
-  final Color primary;
   final ViralCutColors vc;
 
   @override
   Widget build(BuildContext context) {
-    final logoUrl = resolveCampaignMediaUrl(participation.campaign.brandLogoUrl);
-    final brand = participation.campaign.displayBrand;
+    final rejected =
+        participation.deliverables.where((d) => d.isRejected).length;
+    final pending =
+        participation.deliverables.where((d) => d.isDraftPending).length;
+    final review =
+        participation.deliverables.where((d) => d.isUnderReview).length;
+    final approved =
+        participation.deliverables.where((d) => d.isApproved).length;
+    final live =
+        participation.deliverables.where((d) => d.isLiveSubmitted).length;
+    final activeStep = _workflowStep(participation.deliverables);
+    final headline = _workflowHeadline(
+      rejected: rejected,
+      pending: pending,
+      review: review,
+      approved: approved,
+      live: live,
+    );
+    final message = _workflowMessage(
+      rejected: rejected,
+      pending: pending,
+      review: review,
+      approved: approved,
+      live: live,
+    );
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: vc.surface,
+        color: vc.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: vc.border),
+        border: Border.all(color: vc.primary.withValues(alpha: 0.18)),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (logoUrl != null)
-            CircleAvatar(
-              radius: 22,
-              backgroundImage: NetworkImage(logoUrl),
-            )
-          else
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: primary.withValues(alpha: 0.12),
-              child: Text(
-                brand.isNotEmpty ? brand[0].toUpperCase() : '?',
-                style: TextStyle(
-                  color: primary,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  participation.campaign.title,
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: vc.onSurface,
-                  ),
-                ),
-                if (participation.campaign.ratePer1kDisplay != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    participation.campaign.ratePer1kDisplay!,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: vc.money,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                StatusPill(status: participation.summary),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusBanner extends StatelessWidget {
-  const _StatusBanner({
-    required this.summary,
-    required this.message,
-    required this.vc,
-  });
-
-  final String summary;
-  final String message;
-  final ViralCutColors vc;
-
-  @override
-  Widget build(BuildContext context) {
-    if (message.isEmpty) return const SizedBox.shrink();
-
-    final color = _bannerColor(summary, vc);
-    final icon = _bannerIcon(summary);
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  participationSummaryLabel(summary),
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  message,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  participation.campaign.displayBrand,
                   style: GoogleFonts.inter(
                     fontSize: 13,
-                    height: 1.4,
-                    color: vc.onSurface.withValues(alpha: 0.85),
+                    fontWeight: FontWeight.w700,
+                    color: vc.muted,
                   ),
                 ),
-              ],
+              ),
+              StatusPill(status: participation.summary),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            headline,
+            style: GoogleFonts.inter(
+              fontSize: 20,
+              height: 1.18,
+              fontWeight: FontWeight.w800,
+              color: vc.onSurface,
             ),
           ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              height: 1.4,
+              color: vc.onSurface.withValues(alpha: 0.78),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _WorkflowSteps(activeStep: activeStep, vc: vc),
         ],
       ),
     );
-  }
-
-  Color _bannerColor(String summary, ViralCutColors vc) {
-    switch (summary) {
-      case 'proof_complete':
-        return vc.money;
-      case 'action_required':
-        return vc.primary;
-      case 'closed':
-        return vc.muted;
-      default:
-        return vc.warning;
-    }
-  }
-
-  IconData _bannerIcon(String summary) {
-    switch (summary) {
-      case 'proof_complete':
-        return Icons.check_circle_outline;
-      case 'action_required':
-        return Icons.campaign_outlined;
-      case 'closed':
-        return Icons.lock_outline;
-      default:
-        return Icons.hourglass_top_outlined;
-    }
   }
 }
 
@@ -433,6 +336,13 @@ class _DeliverableCard extends StatelessWidget {
     final priorEvents = priorRejectionEvents(deliverable);
     final showHistoryReadOnly =
         deliverable.rejectionHistory.isNotEmpty && !deliverable.isRejected;
+    final accent = deliverable.isRejected
+        ? vc.error
+        : deliverable.isApproved || deliverable.isLiveSubmitted
+            ? vc.money
+            : deliverable.isUnderReview
+                ? vc.warning
+                : primary;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -440,14 +350,18 @@ class _DeliverableCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: vc.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: vc.border),
+        border: Border.all(
+          color: deliverable.isRejected
+              ? vc.error.withValues(alpha: 0.32)
+              : vc.border,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Icon(Icons.movie_creation_outlined, size: 18, color: primary),
+              Icon(_statusIcon(deliverable), size: 18, color: accent),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -478,7 +392,7 @@ class _DeliverableCard extends StatelessWidget {
           if (latestReason != null && deliverable.isRejected) ...[
             const SizedBox(height: 10),
             Text(
-              'Latest feedback',
+              'Brand feedback',
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
@@ -494,10 +408,7 @@ class _DeliverableCard extends StatelessWidget {
               ),
               child: Text(
                 latestReason,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: vc.error,
-                ),
+                style: GoogleFonts.inter(fontSize: 13, color: vc.error),
               ),
             ),
           ],
@@ -511,9 +422,7 @@ class _DeliverableCard extends StatelessWidget {
                 child: Row(
                   children: [
                     Icon(
-                      historyExpanded
-                          ? Icons.expand_less
-                          : Icons.expand_more,
+                      historyExpanded ? Icons.expand_less : Icons.expand_more,
                       size: 18,
                       color: vc.muted,
                     ),
@@ -577,7 +486,11 @@ class _DeliverableCard extends StatelessWidget {
                 mode: LaunchMode.externalApplication,
               ),
               icon: const Icon(Icons.folder_open_outlined, size: 18),
-              label: const Text('Open draft (Drive)'),
+              label: Text(
+                deliverable.isRejected
+                    ? 'Open rejected draft'
+                    : 'Open approved draft',
+              ),
             ),
           ],
           if (deliverable.isRejected) ...[
@@ -587,7 +500,7 @@ class _DeliverableCard extends StatelessWidget {
               keyboardType: TextInputType.url,
               autocorrect: false,
               decoration: InputDecoration(
-                labelText: 'New Google Drive link',
+                labelText: 'Updated Google Drive draft',
                 filled: true,
                 fillColor: vc.background,
                 errorText: driveUrlError(draftController.text),
@@ -604,9 +517,7 @@ class _DeliverableCard extends StatelessWidget {
                     )
                   : const Icon(Icons.refresh, size: 18),
               label: Text(
-                loading
-                    ? 'Submitting…'
-                    : 'Resubmit ${formatPlatformLabel(deliverable.platform)}',
+                loading ? 'Submitting...' : 'Send updated draft for review',
               ),
             ),
           ],
@@ -632,10 +543,11 @@ class _DeliverableCard extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.link, size: 18),
-              label: Text(loading ? 'Submitting…' : 'Submit live proof'),
+              label: Text(loading ? 'Submitting...' : 'Submit live proof'),
             ),
           ],
-          if (deliverable.isLiveSubmitted && deliverable.livePostUrl != null) ...[
+          if (deliverable.isLiveSubmitted &&
+              deliverable.livePostUrl != null) ...[
             const SizedBox(height: 8),
             TextButton.icon(
               onPressed: () => launchUrl(
@@ -650,4 +562,127 @@ class _DeliverableCard extends StatelessWidget {
       ),
     );
   }
+
+  IconData _statusIcon(FormatDeliverable deliverable) {
+    if (deliverable.isRejected) return Icons.report_problem_outlined;
+    if (deliverable.isApproved) return Icons.publish_outlined;
+    if (deliverable.isLiveSubmitted) return Icons.check_circle_outline;
+    if (deliverable.isUnderReview) return Icons.hourglass_top_outlined;
+    return Icons.upload_file_outlined;
+  }
+}
+
+class _WorkflowSteps extends StatelessWidget {
+  const _WorkflowSteps({required this.activeStep, required this.vc});
+
+  final int activeStep;
+  final ViralCutColors vc;
+
+  static const _steps = ['Draft', 'Review', 'Proof'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: List.generate(_steps.length * 2 - 1, (i) {
+        if (i.isOdd) {
+          return Expanded(
+            child: Container(
+              height: 2,
+              color: i ~/ 2 < activeStep
+                  ? vc.primary
+                  : vc.border.withValues(alpha: 0.7),
+            ),
+          );
+        }
+        final stepIndex = i ~/ 2;
+        final active = stepIndex <= activeStep;
+        return Column(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: active ? vc.primary : vc.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: active ? vc.primary : vc.border),
+              ),
+              child: Text(
+                '${stepIndex + 1}',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: active ? vc.onPrimary : vc.muted,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _steps[stepIndex],
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: active ? vc.onSurface : vc.muted,
+              ),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+}
+
+int _workflowStep(List<FormatDeliverable> deliverables) {
+  if (deliverables.any((d) => d.isApproved || d.isLiveSubmitted)) return 2;
+  if (deliverables.any((d) => d.isUnderReview)) return 1;
+  return 0;
+}
+
+String _workflowHeadline({
+  required int rejected,
+  required int pending,
+  required int review,
+  required int approved,
+  required int live,
+}) {
+  if (rejected > 0 && approved > 0) {
+    return '$rejected draft ${rejected == 1 ? 'needs' : 'need'} changes';
+  }
+  if (rejected > 0) {
+    return '$rejected draft ${rejected == 1 ? 'was' : 'were'} rejected';
+  }
+  if (approved > 0) {
+    return '$approved format${approved == 1 ? '' : 's'} ready for proof';
+  }
+  if (review > 0) return 'Drafts are under brand review';
+  if (live > 0) return 'Proof submitted';
+  return pending > 0 ? 'Upload your draft links' : 'Submission';
+}
+
+String _workflowMessage({
+  required int rejected,
+  required int pending,
+  required int review,
+  required int approved,
+  required int live,
+}) {
+  final parts = <String>[];
+  if (rejected > 0) {
+    parts.add('Update the rejected draft with a new Drive link.');
+  }
+  if (approved > 0) {
+    parts.add(
+      'Post the approved ${approved == 1 ? 'format' : 'formats'} and submit live links.',
+    );
+  }
+  if (review > 0) {
+    parts.add('Wait for the brand to finish reviewing drafts under review.');
+  }
+  if (pending > 0) {
+    parts.add('Add the missing draft ${pending == 1 ? 'link' : 'links'}.');
+  }
+  if (parts.isEmpty && live > 0) {
+    parts.add('All live proof currently on file is visible below.');
+  }
+  return parts.join(' ');
 }

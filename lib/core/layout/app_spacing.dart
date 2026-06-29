@@ -14,7 +14,8 @@ abstract final class AppSpacing {
 
   static const double minTouchTarget = 48;
   static const double buttonHeight = 52;
-  static const double bottomNavHeight = 68;
+  static const double shellTopBarHeight = 56;
+  static const double bottomNavHeight = 56;
 
   static EdgeInsets screenPadding(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;

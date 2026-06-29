@@ -176,6 +176,7 @@ class ParticipationListItem {
     required this.deliverables,
     this.brandCompanyName,
     this.brandLogoUrl,
+    this.coverImageUrl,
   });
 
   final String id;
@@ -184,6 +185,7 @@ class ParticipationListItem {
   final String campaignTitle;
   final String? brandCompanyName;
   final String? brandLogoUrl;
+  final String? coverImageUrl;
   final List<String> platforms;
   final String joinedAt;
   final List<FormatDeliverable> deliverables;
@@ -196,6 +198,7 @@ class ParticipationListItem {
         campaignTitle: json['campaignTitle'] as String,
         brandCompanyName: json['brandCompanyName'] as String?,
         brandLogoUrl: json['brandLogoUrl'] as String?,
+        coverImageUrl: json['coverImageUrl'] as String?,
         platforms: (json['platforms'] as List<dynamic>? ?? [])
             .map((e) => e as String)
             .toList(),

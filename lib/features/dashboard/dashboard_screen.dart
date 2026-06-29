@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/api/api_base_url.dart';
-import '../../core/api/api_client.dart';
-import '../../core/format/money_format.dart';
 import '../../core/layout/app_spacing.dart';
+import '../../core/layout/list_entrance.dart';
 import 'dashboard_providers.dart';
+import '../../features/profile/profile_providers.dart';
+import '../../core/campaign/campaign_schedule_label.dart';
 import '../../theme/viralcut_colors.dart';
-import '../auth/widgets/auth_app_icon.dart';
 import 'widgets/dashboard_earnings_card.dart';
 import 'widgets/social_connect_section.dart';
 import 'widgets/trending_campaigns_carousel.dart';
@@ -27,133 +26,80 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dashboardProvider);
+    final displayName = ref.watch(profileMeProvider).maybeWhen(
+          data: (user) => user['displayName'] as String?,
+          orElse: () => null,
+        );
 
     return state.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const ScreenLoader(),
       error: (e, _) => _DashboardError(
         error: e,
         onRetry: () => ref.invalidate(dashboardProvider),
-        onProfile: () => context.go('/profile'),
       ),
-      data: (data) => RefreshIndicator(
-        onRefresh: () async => ref.invalidate(dashboardProvider),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screenHorizontal,
-            AppSpacing.sm,
-            AppSpacing.screenHorizontal,
-            AppSpacing.xl,
+      data: (data) {
+        final animationKey = [
+          data.wallet.availablePaise,
+          data.wallet.pendingPaise,
+          data.clipsUnderReview,
+          ...data.trending.map((c) => c.id),
+        ].join('|');
+
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(dashboardProvider),
+          child: ScreenStaggeredColumn(
+            animationKey: animationKey,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenHorizontal,
+              AppSpacing.sm,
+              AppSpacing.screenHorizontal,
+              AppSpacing.xl,
+            ),
+            children: [
+              _DashboardHeader(displayName: displayName),
+              const SizedBox(height: 20),
+              DashboardEarningsCard(
+                wallet: data.wallet,
+                clipsUnderReview: data.clipsUnderReview,
+                onWithdraw: () => context.go('/wallet'),
+              ),
+              const SizedBox(height: 16),
+              SocialConnectSection(
+                links: data.socialLinks,
+                onInstagramTap: () =>
+                    _showSocialLinkSnackBar(context, 'Instagram'),
+                onYouTubeTap: () =>
+                    _showSocialLinkSnackBar(context, 'YouTube'),
+              ),
+              const SizedBox(height: 16),
+              TrendingCampaignsCarousel(
+                campaigns: data.trending,
+                onCampaignTap: (c) => context.push('/campaigns/${c.id}'),
+                onViewAll: () => context.go('/campaigns'),
+              ),
+            ],
           ),
-          children: <Widget>[
-            _DashboardTopBar(
-              wallet: data.wallet,
-              onProfileTap: () => context.go('/profile'),
-            ),
-            const SizedBox(height: 20),
-            const _DashboardHeader(),
-            const SizedBox(height: 20),
-            DashboardEarningsCard(
-              wallet: data.wallet,
-              clipsUnderReview: data.clipsUnderReview,
-              onWithdraw: () => context.go('/wallet'),
-            ),
-            const SizedBox(height: 20),
-            SocialConnectSection(
-              links: data.socialLinks,
-              onInstagramTap: () =>
-                  _showSocialLinkSnackBar(context, 'Instagram'),
-              onYouTubeTap: () => _showSocialLinkSnackBar(context, 'YouTube'),
-            ),
-            const SizedBox(height: 20),
-            TrendingCampaignsCarousel(
-              campaigns: data.trending,
-              onCampaignTap: (c) => context.push('/campaigns/${c.id}'),
-              onViewAll: () => context.go('/campaigns'),
-            ),
-          ].animate(interval: 50.ms).fade(duration: 400.ms, curve: Curves.easeOut).slideY(begin: 0.05, duration: 400.ms, curve: Curves.easeOut),
-        ),
-      ),
-    );
-  }
-}
-
-class _DashboardTopBar extends StatelessWidget {
-  const _DashboardTopBar({required this.wallet, required this.onProfileTap});
-
-  final WalletData wallet;
-  final VoidCallback onProfileTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            const AuthAppIcon.header(),
-            const SizedBox(width: 8),
-            Text(
-              'Halchal',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: vc.onSurface,
-              ),
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: vc.money.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                formatPaise(wallet.lifetimePaise),
-                style: GoogleFonts.inter(
-                  color: vc.money,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            GestureDetector(
-              onTap: onProfileTap,
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: vc.border),
-                ),
-                child: CircleAvatar(
-                  radius: 16,
-                  backgroundColor: vc.primary.withValues(alpha: 0.1),
-                  child: Icon(Icons.person, color: vc.primary, size: 20),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
+        );
+      },
     );
   }
 }
 
 class _DashboardHeader extends StatelessWidget {
-  const _DashboardHeader();
+  const _DashboardHeader({this.displayName});
+
+  final String? displayName;
 
   @override
   Widget build(BuildContext context) {
     final vc = ViralCutColors.of(context);
+    final name = dashboardGreetingName(displayName);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Hey Pragnatej',
+          'Hey $name',
           style: GoogleFonts.inter(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -188,12 +134,10 @@ class _DashboardError extends StatelessWidget {
   const _DashboardError({
     required this.error,
     required this.onRetry,
-    required this.onProfile,
   });
 
   final Object error;
   final VoidCallback onRetry;
-  final VoidCallback onProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -219,10 +163,6 @@ class _DashboardError extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             FilledButton(onPressed: onRetry, child: const Text('Retry')),
-            TextButton(
-              onPressed: onProfile,
-              child: const Text('Go to You / Log out'),
-            ),
           ],
         ),
       ),

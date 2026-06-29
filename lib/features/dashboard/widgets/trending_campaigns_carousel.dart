@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/campaign/campaign_schedule_label.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/format/money_format.dart';
 import '../../../theme/viralcut_colors.dart';
 import '../../campaigns/widgets/campaign_shared_widgets.dart';
 
@@ -51,7 +53,7 @@ class _TrendingCampaignsCarouselState extends State<TrendingCampaignsCarousel> {
         _SectionHeader(onViewAll: widget.onViewAll, primary: primary),
         const SizedBox(height: 12),
         SizedBox(
-          height: 180,
+          height: 168,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             clipBehavior: Clip.none,
@@ -145,7 +147,7 @@ class _TrendingCampaignCard extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               // Full background image
-              CampaignCoverImage(campaign: c, height: 180),
+              CampaignCoverImage(campaign: c, height: 168),
               // Gradient overlay
               Container(
                 decoration: const BoxDecoration(
@@ -191,11 +193,11 @@ class _TrendingCampaignCard extends StatelessWidget {
                   ),
                 ).animate(onPlay: (controller) => controller.repeat(reverse: true)).scale(begin: const Offset(1, 1), end: const Offset(1.04, 1.04), duration: 1400.ms),
               ),
-              // Text Content at bottom
+              // Text content at bottom
               Positioned(
-                bottom: 12,
-                left: 12,
-                right: 12,
+                bottom: 10,
+                left: 10,
+                right: 10,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -207,36 +209,36 @@ class _TrendingCampaignCard extends StatelessWidget {
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
+                        height: 1.2,
                       ),
                     ),
-                    Text(
-                      c.platformLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 9,
-                        color: Colors.white70,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         Expanded(
                           child: Text(
-                            c.ratePer1kDisplay,
+                            formatPaise(c.maxPayoutPaise),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.inter(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
                               color: const Color(0xFF00E676),
+                              height: 1.2,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'Ends in 3d', // Mockup matching text
-                          style: GoogleFonts.inter(fontSize: 9, color: Colors.white70),
+                          campaignEndingLabel(c),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white70,
+                            height: 1.2,
+                          ),
                         ),
                       ],
                     ),

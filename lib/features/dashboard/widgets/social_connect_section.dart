@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/api/api_client.dart';
-import '../../../core/layout/app_spacing.dart';
 import '../../../theme/viralcut_colors.dart';
 
 class SocialConnectSection extends StatelessWidget {
@@ -19,154 +18,108 @@ class SocialConnectSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
-    final VoidCallback? onTap = (!links.instagram && onInstagramTap != null)
-        ? onInstagramTap
-        : onYouTubeTap;
+    if (links.instagram && links.youtube) {
+      return const SizedBox.shrink();
+    }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: vc.primary.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: vc.primary.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SocialIconStack(),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Connect your socials',
-                        maxLines: 2,
-                        style: GoogleFonts.inter(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: vc.onSurface,
-                          height: 1.2,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    FilledButton(
-                      onPressed: onTap,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: vc.primary,
-                        minimumSize: const Size(92, AppSpacing.minTouchTarget),
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        'Connect',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Link Instagram and YouTube to unlock more campaigns.',
+    final vc = ViralCutColors.of(context);
+    final needsInstagram = !links.instagram;
+    final needsYouTube = !links.youtube;
+
+    return Material(
+      color: vc.primary.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: needsInstagram ? onInstagramTap : onYouTubeTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: vc.primary.withValues(alpha: 0.12)),
+          ),
+          child: Row(
+            children: [
+              _CompactSocialIcons(
+                showInstagram: needsInstagram,
+                showYouTube: needsYouTube,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  needsInstagram && needsYouTube
+                      ? 'Link Instagram & YouTube for more campaigns'
+                      : needsInstagram
+                          ? 'Link Instagram to unlock campaigns'
+                          : 'Link YouTube to unlock campaigns',
                   maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: vc.muted,
-                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                    color: vc.onSurface,
+                    height: 1.25,
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right, size: 20, color: vc.primary),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _SocialIconStack extends StatelessWidget {
-  const _SocialIconStack();
+class _CompactSocialIcons extends StatelessWidget {
+  const _CompactSocialIcons({
+    required this.showInstagram,
+    required this.showYouTube,
+  });
+
+  final bool showInstagram;
+  final bool showYouTube;
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
-
-    return SizedBox(
-      width: 52,
-      height: 52,
-      child: Stack(
-        children: [
-          Positioned(
-            left: 0,
-            top: 0,
-            child: _SocialBadge(
-              icon: Icons.camera_alt,
-              color: const Color(0xFFE1306C),
-              borderColor: vc.primary.withValues(alpha: 0.12),
-              shadowColor: vc.onSurface.withValues(alpha: 0.05),
-              surfaceColor: vc.surface,
-            ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (showInstagram) ...[
+          const _MiniSocialBadge(
+            icon: Icons.camera_alt,
+            color: Color(0xFFE1306C),
           ),
-          Positioned(
-            right: 0,
-            bottom: 0,
-            child: _SocialBadge(
-              icon: Icons.play_arrow,
-              color: const Color(0xFFEF4444),
-              borderColor: vc.primary.withValues(alpha: 0.12),
-              shadowColor: vc.onSurface.withValues(alpha: 0.05),
-              surfaceColor: vc.surface,
-            ),
-          ),
+          if (showYouTube) const SizedBox(width: 4),
         ],
-      ),
+        if (showYouTube)
+          const _MiniSocialBadge(
+            icon: Icons.play_arrow,
+            color: Color(0xFFEF4444),
+          ),
+      ],
     );
   }
 }
 
-class _SocialBadge extends StatelessWidget {
-  const _SocialBadge({
-    required this.icon,
-    required this.color,
-    required this.borderColor,
-    required this.shadowColor,
-    required this.surfaceColor,
-  });
+class _MiniSocialBadge extends StatelessWidget {
+  const _MiniSocialBadge({required this.icon, required this.color});
 
   final IconData icon;
   final Color color;
-  final Color borderColor;
-  final Color shadowColor;
-  final Color surfaceColor;
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return Container(
-      padding: const EdgeInsets.all(7),
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: vc.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: vc.border),
       ),
-      child: Icon(icon, color: color, size: 18),
+      child: Icon(icon, color: color, size: 14),
     );
   }
 }

@@ -63,6 +63,7 @@ class Campaign {
     this.brandCompanyName,
     this.brandLogoUrl,
     this.startDate,
+    this.createdAt,
   });
 
   final String id;
@@ -89,6 +90,7 @@ class Campaign {
   final String? brandCompanyName;
   final String? brandLogoUrl;
   final String? startDate;
+  final String? createdAt;
 
   String get displayBrand => brandCompanyName?.trim().isNotEmpty == true
       ? brandCompanyName!.trim()
@@ -148,5 +150,6 @@ class Campaign {
         brandCompanyName: json['brandCompanyName'] as String?,
         brandLogoUrl: json['brandLogoUrl'] as String?,
         startDate: json['startDate'] as String?,
+        createdAt: json['createdAt'] as String?,
       );
 }

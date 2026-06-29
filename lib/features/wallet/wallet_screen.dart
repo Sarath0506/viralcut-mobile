@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/format/money_format.dart';
+import '../../core/layout/app_spacing.dart';
+import '../../core/layout/list_entrance.dart';
 import 'wallet_providers.dart';
 import '../../theme/viralcut_colors.dart';
 
@@ -14,15 +16,22 @@ class WalletScreen extends ConsumerWidget {
     final wallet = ref.watch(walletProvider);
     final vc = ViralCutColors.of(context);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Wallet')),
-      body: wallet.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
-        data: (w) => RefreshIndicator(
+    return wallet.when(
+      loading: () => const ScreenLoader(),
+      error: (e, _) => Center(child: Text('$e')),
+      data: (w) {
+        final animationKey = [
+          w.availablePaise,
+          w.pendingPaise,
+          w.lifetimePaise,
+        ].join('|');
+
+        return RefreshIndicator(
           onRefresh: () async => ref.invalidate(walletProvider),
-          child: ListView(
-            padding: const EdgeInsets.all(20),
+          child: ScreenStaggeredColumn(
+            animationKey: animationKey,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
             children: [
               Text(
                 formatPaise(w.availablePaise),
@@ -62,8 +71,8 @@ class WalletScreen extends ConsumerWidget {
               ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

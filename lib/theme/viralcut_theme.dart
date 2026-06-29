@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../core/layout/app_spacing.dart';
 import 'token_colors.dart';
 import 'viralcut_colors.dart';
 
@@ -61,12 +62,29 @@ abstract final class ViralCutTheme {
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        height: 68,
-        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+        height: AppSpacing.bottomNavHeight,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
         indicatorColor: vc.primary.withValues(alpha: 0.12),
         backgroundColor: vc.surface,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return IconThemeData(
+            color: selected ? vc.primary : vc.muted,
+            size: 22,
+          );
+        }),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return GoogleFonts.inter(
+            fontSize: 12,
+            height: 1.2,
+            letterSpacing: 0.1,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            color: selected ? vc.primary : vc.muted,
+          );
+        }),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,

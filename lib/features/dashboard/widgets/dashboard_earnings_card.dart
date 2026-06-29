@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/format/money_format.dart';
-import '../../../core/layout/app_spacing.dart';
 import '../../../theme/viralcut_colors.dart';
 
 class DashboardEarningsCard extends StatelessWidget {
@@ -25,10 +24,10 @@ class DashboardEarningsCard extends StatelessWidget {
     final onDark = vc.onPrimary;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: vc.deepSurface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -53,7 +52,7 @@ class DashboardEarningsCard extends StatelessWidget {
                       formatPaise(wallet.lifetimePaise),
                       style: GoogleFonts.plusJakartaSans(
                         color: vc.moneyBright,
-                        fontSize: 30,
+                        fontSize: 28,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0,
                       ),
@@ -64,13 +63,11 @@ class DashboardEarningsCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              _AnalyticsChip(onDark: onDark),
             ],
           ),
-          const SizedBox(height: 22),
-          Divider(color: onDark.withValues(alpha: 0.12), height: 1),
           const SizedBox(height: 16),
+          Divider(color: onDark.withValues(alpha: 0.12), height: 1),
+          const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -95,40 +92,8 @@ class DashboardEarningsCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _WithdrawButton(onPressed: onWithdraw, onDark: onDark),
-        ],
-      ),
-    );
-  }
-}
-
-class _AnalyticsChip extends StatelessWidget {
-  const _AnalyticsChip({required this.onDark});
-
-  final Color onDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        border: Border.all(color: onDark.withValues(alpha: 0.15)),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.bar_chart, color: onDark, size: 14),
-          const SizedBox(width: 5),
-          Text(
-            'Analytics',
-            style: GoogleFonts.inter(
-              color: onDark,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
         ],
       ),
     );
@@ -218,8 +183,8 @@ class _WithdrawButton extends StatelessWidget {
         onTap: onPressed,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          constraints: const BoxConstraints(minHeight: AppSpacing.minTouchTarget),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
               Icon(Icons.account_balance_outlined, color: onDark, size: 18),

@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/campaign/media_url.dart';
-import '../../../core/format/money_format.dart';
 import '../../../theme/viralcut_colors.dart';
 
 class CampaignBrandAvatar extends StatelessWidget {
@@ -83,14 +82,176 @@ class CampaignCoverImage extends StatelessWidget {
   }
 }
 
+/// Square cover for campaign list rows.
+class CampaignListThumbnail extends StatelessWidget {
+  const CampaignListThumbnail({
+    super.key,
+    required this.campaign,
+    this.size = 96,
+    this.borderRadius = const BorderRadius.all(Radius.circular(12)),
+  });
+
+  final Campaign campaign;
+  final double size;
+  final BorderRadius borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
+    final primary = Theme.of(context).colorScheme.primary;
+    final coverUrl = resolveCampaignMediaUrl(campaign.coverImageUrl);
+
+    final Widget image;
+    if (coverUrl != null) {
+      image = Image.network(
+        coverUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _GradientCover(
+          height: size,
+          width: size,
+          vc: vc,
+          primary: primary,
+        ),
+      );
+    } else {
+      image = _GradientCover(
+        height: size,
+        width: size,
+        vc: vc,
+        primary: primary,
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: SizedBox(width: size, height: size, child: image),
+    );
+  }
+}
+
+/// Square thumbnail for list rows (cover with logo / letter fallback).
+class SquareMediaThumbnail extends StatelessWidget {
+  const SquareMediaThumbnail({
+    super.key,
+    required this.size,
+    this.imageUrl,
+    this.fallbackImageUrl,
+    this.fallbackLetter,
+    this.borderRadius = BorderRadius.zero,
+  });
+
+  final double size;
+  final String? imageUrl;
+  final String? fallbackImageUrl;
+  final String? fallbackLetter;
+  final BorderRadius borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
+    final primary = Theme.of(context).colorScheme.primary;
+    final cover = resolveCampaignMediaUrl(imageUrl);
+    final fallback = resolveCampaignMediaUrl(fallbackImageUrl);
+
+    Widget image;
+    if (cover != null) {
+      image = Image.network(
+        cover,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildFallback(
+          context,
+          vc: vc,
+          primary: primary,
+          networkUrl: fallback,
+        ),
+      );
+    } else if (fallback != null) {
+      image = Image.network(
+        fallback,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            _gradientFallback(vc, primary, fallbackLetter),
+      );
+    } else {
+      image = _gradientFallback(vc, primary, fallbackLetter);
+    }
+
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: SizedBox(width: size, height: size, child: image),
+    );
+  }
+
+  Widget _buildFallback(
+    BuildContext context, {
+    required ViralCutColors vc,
+    required Color primary,
+    required String? networkUrl,
+  }) {
+    if (networkUrl != null) {
+      return Image.network(
+        networkUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            _gradientFallback(vc, primary, fallbackLetter),
+      );
+    }
+    return _gradientFallback(vc, primary, fallbackLetter);
+  }
+
+  Widget _gradientFallback(
+    ViralCutColors vc,
+    Color primary,
+    String? letter,
+  ) {
+    final displayLetter = (letter != null && letter.isNotEmpty)
+        ? letter[0].toUpperCase()
+        : '?';
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            primary.withValues(alpha: 0.35),
+            vc.deepSurface.withValues(alpha: 0.85),
+          ],
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        displayLetter,
+        style: TextStyle(
+          fontSize: size * 0.3,
+          fontWeight: FontWeight.w800,
+          color: Colors.white.withValues(alpha: 0.9),
+        ),
+      ),
+    );
+  }
+}
+
 class _GradientCover extends StatelessWidget {
   const _GradientCover({
     required this.height,
     required this.vc,
     required this.primary,
+    this.width = double.infinity,
   });
 
   final double height;
+  final double width;
   final ViralCutColors vc;
   final Color primary;
 
@@ -98,6 +259,7 @@ class _GradientCover extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: height,
+      width: width,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -118,13 +280,11 @@ class CampaignPoolBar extends StatelessWidget {
     required this.poolPercent,
     this.minHeight = 5,
     this.showLabels = false,
-    this.remainingPaise,
   });
 
   final int poolPercent;
   final double minHeight;
   final bool showLabels;
-  final int? remainingPaise;
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +298,7 @@ class CampaignPoolBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Availability',
+                'Progress',
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -146,15 +306,14 @@ class CampaignPoolBar extends StatelessWidget {
                   color: vc.muted,
                 ),
               ),
-              if (remainingPaise != null)
-                Text(
-                  '${formatPaise(remainingPaise!)} left',
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: vc.money,
-                  ),
+              Text(
+                '$poolPercent% filled',
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: vc.muted,
                 ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -168,17 +327,6 @@ class CampaignPoolBar extends StatelessWidget {
             color: vc.moneyBright,
           ),
         ),
-        if (showLabels) ...[
-          const SizedBox(height: 4),
-          Text(
-            '$poolPercent% claimed',
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: vc.muted,
-            ),
-          ),
-        ],
       ],
     );
   }

@@ -101,10 +101,14 @@ class CampaignDetailScreen extends ConsumerWidget {
           child: Scaffold(
             backgroundColor: vc.background,
             appBar: AppBar(
-              title: Text(c.displayBrand),
+              title: Text(
+                c.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               leading: const BackButton(),
             ),
-            body: CampaignDetailBody(campaign: c),
+            body: CampaignDetailBody(campaign: c, participation: p),
             bottomNavigationBar: SafeArea(
               child: Padding(
                 padding: AppSpacing.bottomActionPadding(context),

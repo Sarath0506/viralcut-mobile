@@ -7,6 +7,8 @@ import '../../core/api/api_base_url.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/format/money_format.dart';
+import '../../core/layout/app_spacing.dart';
+import '../../core/layout/list_entrance.dart';
 import 'profile_providers.dart';
 import '../../theme/viralcut_colors.dart';
 import '../../theme/theme_provider.dart';
@@ -51,188 +53,150 @@ class ProfileScreen extends ConsumerWidget {
     final vc = ViralCutColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
 
-    return Scaffold(
-      backgroundColor: vc.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
-              child: Row(
+    return me.when(
+      loading: () => const ScreenLoader(),
+      error: (e, _) => _ProfileError(
+        error: e,
+        onRetry: () => ref.invalidate(profileMeProvider),
+        onLogout: () => _logout(context, ref),
+      ),
+      data: (user) {
+        final displayName = user['displayName'] as String? ?? 'Creator';
+        final username = user['username'] as String?;
+        final phone = user['phone'] as String? ?? '';
+        final kycStatus = user['kycStatus'] as String? ?? 'pending';
+        final lifetimePaise = dash.valueOrNull?.wallet.lifetimePaise ?? 0;
+        final activeSubmissions = activeCount.valueOrNull ?? 0;
+        final animationKey =
+            '${user['id']}:$lifetimePaise:$activeSubmissions:$kycStatus';
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(profileMeProvider);
+            ref.invalidate(profileDashboardProvider);
+            ref.invalidate(profileActiveSubmissionsProvider);
+          },
+          child: ScreenStaggeredColumn(
+            animationKey: animationKey,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenHorizontal,
+              8,
+              AppSpacing.screenHorizontal,
+              AppSpacing.lg,
+            ),
+            children: [
+              Column(
                 children: [
-                  const SizedBox(width: 48),
-                  Expanded(
-                    child: Text(
-                      'Profile',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: primary,
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      CircleAvatar(
+                        radius: 44,
+                        backgroundColor: primary.withValues(alpha: 0.15),
+                        child: Icon(Icons.person, size: 44, color: primary),
                       ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: CircleAvatar(
+                          radius: 14,
+                          backgroundColor: primary,
+                          child: Icon(
+                            Icons.edit,
+                            size: 14,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    displayName,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.more_vert),
-                    onPressed: () {},
-                  ),
+                  if (username != null && username.isNotEmpty)
+                    Text(
+                      '@$username',
+                      style: GoogleFonts.inter(color: vc.muted),
+                    )
+                  else if (phone.isNotEmpty)
+                    Text(
+                      phone,
+                      style: GoogleFonts.inter(color: vc.muted),
+                    ),
                 ],
               ),
-            ),
-            Expanded(
-              child: me.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
-                error: (e, _) => _ProfileError(
-                  error: e,
-                  onRetry: () => ref.invalidate(profileMeProvider),
-                  onLogout: () => _logout(context, ref),
+              const SizedBox(height: 20),
+              dash.when(
+                loading: () => const _EarningsCardSkeleton(),
+                error: (_, __) => const _EarningsCard(
+                  lifetimePaise: 0,
+                  error: true,
                 ),
-                data: (user) {
-                  final displayName =
-                      user['displayName'] as String? ?? 'Creator';
-                  final username = user['username'] as String?;
-                  final phone = user['phone'] as String? ?? '';
-                  final kycStatus =
-                      user['kycStatus'] as String? ?? 'pending';
-                  return RefreshIndicator(
-                    onRefresh: () async {
-                      ref.invalidate(profileMeProvider);
-                      ref.invalidate(profileDashboardProvider);
-                      ref.invalidate(profileActiveSubmissionsProvider);
-                    },
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                      children: [
-                        Column(
-                          children: [
-                            Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                CircleAvatar(
-                                  radius: 44,
-                                  backgroundColor:
-                                      primary.withValues(alpha: 0.15),
-                                  child: Icon(Icons.person,
-                                      size: 44, color: primary),
-                                ),
-                                Positioned(
-                                  right: 0,
-                                  bottom: 0,
-                                  child: CircleAvatar(
-                                    radius: 14,
-                                    backgroundColor: primary,
-                                    child: Icon(Icons.edit,
-                                        size: 14,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onPrimary),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              displayName,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            if (username != null && username.isNotEmpty)
-                              Text(
-                                '@$username',
-                                style: GoogleFonts.inter(
-                                  color: vc.muted,
-                                ),
-                              )
-                            else if (phone.isNotEmpty)
-                              Text(
-                                phone,
-                                style: GoogleFonts.inter(
-                                  color: vc.muted,
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        dash.when(
-                          loading: () => const _EarningsCardSkeleton(),
-                          error: (_, __) => const _EarningsCard(
-                            lifetimePaise: 0,
-                            error: true,
-                          ),
-                          data: (d) => _EarningsCard(
-                            lifetimePaise: d.wallet.lifetimePaise,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        activeCount.when(
-                          loading: () => const SizedBox(
-                            height: 72,
-                            child: Center(
-                                child: CircularProgressIndicator()),
-                          ),
-                          error: (_, __) => const SizedBox.shrink(),
-                          data: (count) => Row(
-                            children: [
-                              Expanded(
-                                child: _StatTile(
-                                  label: 'ACTIVE CLIPS',
-                                  value: '$count',
-                                  subtitle: count == 1
-                                      ? 'submission'
-                                      : 'submissions',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _SettingsTile(
-                          icon: Icons.link,
-                          label: 'Connected accounts',
-                          onTap: () {},
-                        ),
-                        _SettingsTile(
-                          icon: Icons.notifications_outlined,
-                          label: 'Notifications',
-                          onTap: () {},
-                        ),
-                        _SettingsTile(
-                          icon: Icons.verified_user_outlined,
-                          label: 'KYC status',
-                          badge: kycStatus.toUpperCase(),
-                          badgeColor: kycStatus == 'verified'
-                              ? vc.moneyBright
-                              : vc.warning,
-                          onTap: () {},
-                        ),
-                        _SettingsTile(
-                          icon: Icons.account_balance_outlined,
-                          label: 'Payout methods',
-                          onTap: () => context.go('/wallet'),
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Dark mode'),
-                          value: themeMode == ThemeMode.dark,
-                          onChanged: (_) =>
-                              ref.read(themeModeProvider.notifier).toggle(),
-                        ),
-                        const SizedBox(height: 24),
-                        _LogoutButton(
-                          onPressed: () => _logout(context, ref),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                data: (d) => _EarningsCard(
+                  lifetimePaise: d.wallet.lifetimePaise,
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
+              const SizedBox(height: 12),
+              activeCount.when(
+                loading: () => const _StatTileSkeleton(),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (count) => Row(
+                  children: [
+                    Expanded(
+                      child: _StatTile(
+                        label: 'ACTIVE CLIPS',
+                        value: '$count',
+                        subtitle: count == 1 ? 'submission' : 'submissions',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _SettingsTile(
+                icon: Icons.link,
+                label: 'Connected accounts',
+                onTap: () {},
+              ),
+              _SettingsTile(
+                icon: Icons.notifications_outlined,
+                label: 'Notifications',
+                onTap: () {},
+              ),
+              _SettingsTile(
+                icon: Icons.verified_user_outlined,
+                label: 'KYC status',
+                badge: kycStatus.toUpperCase(),
+                badgeColor:
+                    kycStatus == 'verified' ? vc.moneyBright : vc.warning,
+                onTap: () {},
+              ),
+              _SettingsTile(
+                icon: Icons.account_balance_outlined,
+                label: 'Payout methods',
+                onTap: () => context.go('/wallet'),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Dark mode'),
+                value: themeMode == ThemeMode.dark,
+                onChanged: (_) =>
+                    ref.read(themeModeProvider.notifier).toggle(),
+              ),
+              const SizedBox(height: 24),
+              _LogoutButton(
+                onPressed: () => _logout(context, ref),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -334,6 +298,33 @@ class _EarningsCardSkeleton extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: CircularProgressIndicator(color: vc.onPrimary.withValues(alpha: 0.54)),
+    );
+  }
+}
+
+class _StatTileSkeleton extends StatelessWidget {
+  const _StatTileSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
+    return Container(
+      height: 72,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: vc.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: vc.border),
+      ),
+      alignment: Alignment.centerLeft,
+      child: SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: vc.muted.withValues(alpha: 0.5),
+        ),
+      ),
     );
   }
 }
