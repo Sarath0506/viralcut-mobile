@@ -128,8 +128,18 @@ class _TrendingCampaignCard extends StatelessWidget {
     final vc = ViralCutColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
     final c = campaign;
-    final badgeLabel = c.isPoolAlmostFull ? 'FILLING FAST' : 'TRENDING';
-    final badgeColor = c.isPoolAlmostFull ? vc.warning : primary;
+    final isNew = c.createdAt != null &&
+        DateTime.now()
+                .difference(DateTime.tryParse(c.createdAt!) ?? DateTime(2000))
+                .inDays <=
+            3;
+    final badgeLabel =
+        c.isPoolAlmostFull ? 'Hot 🔥' : isNew ? 'New' : 'Trending 🔥';
+    final badgeColor = c.isPoolAlmostFull
+        ? vc.warning
+        : isNew
+            ? vc.money
+            : primary;
 
     return SizedBox(
       width: _TrendingCampaignsCarouselState._cardWidth,

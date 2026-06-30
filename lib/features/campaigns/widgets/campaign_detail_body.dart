@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -9,7 +10,7 @@ import '../../../core/format/money_format.dart';
 import '../../../theme/viralcut_colors.dart';
 import 'campaign_shared_widgets.dart';
 
-class CampaignDetailBody extends StatelessWidget {
+class CampaignDetailBody extends StatefulWidget {
   const CampaignDetailBody({
     super.key,
     required this.campaign,
@@ -18,6 +19,32 @@ class CampaignDetailBody extends StatelessWidget {
 
   final Campaign campaign;
   final Participation? participation;
+
+  @override
+  State<CampaignDetailBody> createState() => _CampaignDetailBodyState();
+}
+
+class _CampaignDetailBodyState extends State<CampaignDetailBody> {
+  Campaign get campaign => widget.campaign;
+  Participation? get participation => widget.participation;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    for (final asset in campaign.referenceAssets) {
+      if (asset.type == 'video') continue;
+      final url = resolveCampaignMediaUrl(asset.url);
+      if (url != null) precacheImage(NetworkImage(url), context);
+    }
+  }
+
+  void _openFullScreenImage(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (_) => _FullScreenImageViewer(url: url),
+    );
+  }
 
   Future<void> _openUrl(BuildContext context, String url) async {
     final uri = Uri.tryParse(url);
@@ -42,6 +69,8 @@ class CampaignDetailBody extends StatelessWidget {
           campaign: c,
           participation: participation,
         ),
+        const SizedBox(height: 10),
+        _DarkStatsBar(campaign: c),
         if (c.displayBrief != null && c.displayBrief!.trim().isNotEmpty) ...[
           const SizedBox(height: 14),
           const _SectionTitle('Brief'),
@@ -84,26 +113,50 @@ class CampaignDetailBody extends StatelessWidget {
           const _SectionTitle('Brand references'),
           const SizedBox(height: 8),
           SizedBox(
-            height: 80,
+            height: 120,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: c.referenceAssets.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (context, i) {
                 final asset = c.referenceAssets[i];
                 final url = resolveCampaignMediaUrl(asset.url);
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: url != null
-                      ? Image.network(
-                          url,
-                          width: 56,
-                          height: 80,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              _assetPlaceholder(vc, 56, 80),
-                        )
-                      : _assetPlaceholder(vc, 56, 80),
+                final isVideo = asset.type == 'video';
+                return GestureDetector(
+                  onTap: url != null
+                      ? () => isVideo
+                          ? _openUrl(context, url)
+                          : _openFullScreenImage(context, url)
+                      : null,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: isVideo
+                        ? _VideoThumbnail(vc: vc, label: asset.label)
+                        : url != null
+                            ? Image.network(
+                                url,
+                                width: 90,
+                                height: 120,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (_, child, progress) {
+                                  if (progress == null) return child;
+                                  return Container(
+                                    width: 90,
+                                    height: 120,
+                                    color: vc.surfaceVariant,
+                                  )
+                                      .animate(onPlay: (c) => c.repeat())
+                                      .shimmer(
+                                        duration: 1000.ms,
+                                        color:
+                                            vc.border.withValues(alpha: 0.6),
+                                      );
+                                },
+                                errorBuilder: (_, __, ___) =>
+                                    _assetPlaceholder(vc, 90, 120),
+                              )
+                            : _assetPlaceholder(vc, 90, 120),
+                  ),
                 );
               },
             ),
@@ -131,6 +184,8 @@ class CampaignDetailBody extends StatelessWidget {
             ),
           ),
         ],
+        const SizedBox(height: 24),
+        _HowToParticipate(campaign: c),
       ],
     );
   }
@@ -141,6 +196,47 @@ class CampaignDetailBody extends StatelessWidget {
       height: height,
       color: vc.surfaceVariant,
       child: Icon(Icons.image_outlined, color: vc.muted, size: 20),
+    );
+  }
+}
+
+class _VideoThumbnail extends StatelessWidget {
+  const _VideoThumbnail({required this.vc, this.label});
+  final ViralCutColors vc;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 90,
+      height: 120,
+      color: vc.surface,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: vc.primary.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.play_arrow_rounded, color: vc.primary, size: 22),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label?.isNotEmpty == true ? label! : 'Video',
+            style: TextStyle(
+              fontSize: 10,
+              color: vc.muted,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -483,6 +579,114 @@ class _StatusBanner extends StatelessWidget {
   }
 }
 
+class _DarkStatsBar extends StatelessWidget {
+  const _DarkStatsBar({required this.campaign});
+
+  final Campaign campaign;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = campaign;
+    final poolUsed = c.poolPercent;
+    final poolColor = poolUsed >= 80
+        ? const Color(0xFFF59E0B)
+        : poolUsed >= 50
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFF22C55E);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111111),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Expanded(
+              child: _DarkStatCell(
+                label: 'Max payout',
+                value: formatPaise(c.maxPayoutPaise),
+                valueColor: const Color(0xFF22C55E),
+              ),
+            ),
+            VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: Colors.white.withValues(alpha: 0.12),
+            ),
+            Expanded(
+              child: _DarkStatCell(
+                label: 'Pool used',
+                value: '$poolUsed%',
+                valueColor: poolColor,
+              ),
+            ),
+            if (c.category != null && c.category!.isNotEmpty) ...[
+              VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: Colors.white.withValues(alpha: 0.12),
+              ),
+              Expanded(
+                child: _DarkStatCell(
+                  label: 'Category',
+                  value: c.category!,
+                  valueColor: Colors.white,
+                  bold: true,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DarkStatCell extends StatelessWidget {
+  const _DarkStatCell({
+    required this.label,
+    required this.value,
+    required this.valueColor,
+    this.bold = false,
+  });
+
+  final String label;
+  final String value;
+  final Color valueColor;
+  final bool bold;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          value,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 16,
+            fontWeight: bold ? FontWeight.w800 : FontWeight.w700,
+            color: valueColor,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            color: Colors.white.withValues(alpha: 0.5),
+            height: 1.1,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.text, {this.color});
 
@@ -638,6 +842,186 @@ class _LinkRow extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _FullScreenImageViewer extends StatelessWidget {
+  const _FullScreenImageViewer({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  loadingBuilder: (_, child, progress) => progress == null
+                      ? child
+                      : const Center(child: CircularProgressIndicator()),
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.broken_image_outlined,
+                    color: Colors.white54,
+                    size: 64,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              right: 12,
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HowToParticipate extends StatelessWidget {
+  const _HowToParticipate({required this.campaign});
+  final Campaign campaign;
+
+  List<({String title, String subtitle})> _steps() {
+    final platform = campaign.platform.toLowerCase();
+    final isVideo = platform.contains('reel') ||
+        platform.contains('short') ||
+        platform.contains('tiktok') ||
+        platform.contains('video');
+    return [
+      (
+        title: 'Create your clip',
+        subtitle:
+            'Film content for ${campaign.brandCompanyName ?? 'the brand'} following the brief above',
+      ),
+      (
+        title: isVideo
+            ? 'Post on ${_platformLabel(platform)}'
+            : 'Post your content',
+        subtitle: isVideo
+            ? 'Publish your ${_formatLabel(platform)} to your account'
+            : 'Share the post on your account',
+      ),
+      (
+        title: 'Submit the link',
+        subtitle: 'Paste your post URL below to start earning',
+      ),
+    ];
+  }
+
+  String _platformLabel(String p) {
+    if (p.contains('instagram')) return 'Instagram';
+    if (p.contains('youtube')) return 'YouTube';
+    if (p.contains('tiktok')) return 'TikTok';
+    return 'Social media';
+  }
+
+  String _formatLabel(String p) {
+    if (p.contains('reel')) return 'reel/short';
+    if (p.contains('short')) return 'short';
+    return 'video';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = _steps();
+    final vc = Theme.of(context).extension<ViralCutColors>()!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('HOW TO PARTICIPATE',
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.1,
+                color: vc.muted)),
+        const SizedBox(height: 14),
+        ...List.generate(steps.length, (i) {
+          final step = steps[i];
+          final isLast = i == steps.length - 1;
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 36,
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: vc.primary,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(
+                          child: Text('${i + 1}',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700)),
+                        ),
+                      ),
+                      if (!isLast)
+                        Expanded(
+                          child: Container(
+                            width: 2,
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            color: vc.border,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: isLast ? 0 : 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(step.title,
+                            style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 2),
+                        Text(step.subtitle,
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: vc.muted,
+                                height: 1.4)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 }

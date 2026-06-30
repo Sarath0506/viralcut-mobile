@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class VcScaffold extends StatelessWidget {
   const VcScaffold({
@@ -20,7 +21,19 @@ class VcScaffold extends StatelessWidget {
       appBar: title != null
           ? AppBar(
               title: Text(title!),
-              automaticallyImplyLeading: showBack,
+              automaticallyImplyLeading: false,
+              leading: showBack
+                  ? IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                      onPressed: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/submissions');
+                        }
+                      },
+                    )
+                  : null,
               actions: actions,
             )
           : null,

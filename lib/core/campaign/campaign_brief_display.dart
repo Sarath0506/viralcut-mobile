@@ -4,15 +4,18 @@ String stripComposedBriefSections(String raw) {
   var remainder = raw.trim();
   if (remainder.isEmpty) return '';
 
-  final avoidIdx = RegExp(r'\n\nAVOID:\s*', caseSensitive: false)
+  // Strip inline AVOID: block (with or without leading newlines)
+  final avoidIdx = RegExp(r'(\n\n|\A)AVOID:\s*', caseSensitive: false)
       .firstMatch(remainder)
       ?.start;
   if (avoidIdx != null) {
     remainder = remainder.substring(0, avoidIdx).trim();
   }
 
-  final doIdx =
-      RegExp(r'\n\nDO:\s*', caseSensitive: false).firstMatch(remainder)?.start;
+  // Strip inline DO: block (with or without leading newlines)
+  final doIdx = RegExp(r'(\n\n|\A)DO:\s*', caseSensitive: false)
+      .firstMatch(remainder)
+      ?.start;
   if (doIdx != null) {
     remainder = remainder.substring(0, doIdx).trim();
   }

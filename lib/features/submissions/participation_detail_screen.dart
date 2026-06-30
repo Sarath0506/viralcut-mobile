@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -184,6 +185,28 @@ class _ParticipationDetailScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
+                // Show View Performance button if any deliverable is proof_approved
+                if (p.deliverables.any((d) => d.isProofApproved)) ...[
+                  FilledButton.icon(
+                    onPressed: () {
+                      final approved = p.deliverables.firstWhere(
+                        (d) => d.isProofApproved,
+                      );
+                      context.push(
+                        '/participations/${p.id}/performance/${approved.id}',
+                      );
+                    },
+                    icon: const Icon(Icons.bar_chart_rounded, size: 18),
+                    label: const Text('View Performance & Earnings'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 ...p.deliverables.map(
                   (d) => _DeliverableCard(
                     deliverable: d,
@@ -202,6 +225,8 @@ class _ParticipationDetailScreenState
                     },
                     onSubmitLiveProof: (url) => _submitLiveProof(d.id, url),
                     onResubmitDraft: () => _resubmitDraft(d),
+                    onRefreshed: () =>
+                        ref.invalidate(participationDetailProvider(widget.id)),
                     vc: vc,
                     primary: primary,
                   ),
@@ -235,7 +260,9 @@ class _SubmissionWorkflowHeader extends StatelessWidget {
     final approved =
         participation.deliverables.where((d) => d.isApproved).length;
     final live =
-        participation.deliverables.where((d) => d.isLiveSubmitted).length;
+        participation.deliverables.where((d) => d.hasSubmittedProof).length;
+    final proofApproved =
+        participation.deliverables.where((d) => d.isProofApproved).length;
     final activeStep = _workflowStep(participation.deliverables);
     final headline = _workflowHeadline(
       rejected: rejected,
@@ -243,6 +270,7 @@ class _SubmissionWorkflowHeader extends StatelessWidget {
       review: review,
       approved: approved,
       live: live,
+      proofApproved: proofApproved,
     );
     final message = _workflowMessage(
       rejected: rejected,
@@ -250,6 +278,7 @@ class _SubmissionWorkflowHeader extends StatelessWidget {
       review: review,
       approved: approved,
       live: live,
+      proofApproved: proofApproved,
     );
 
     return Container(
@@ -314,6 +343,7 @@ class _DeliverableCard extends StatelessWidget {
     required this.onToggleHistory,
     required this.onSubmitLiveProof,
     required this.onResubmitDraft,
+    required this.onRefreshed,
     required this.vc,
     required this.primary,
   });
@@ -326,6 +356,7 @@ class _DeliverableCard extends StatelessWidget {
   final VoidCallback onToggleHistory;
   final ValueChanged<String> onSubmitLiveProof;
   final VoidCallback onResubmitDraft;
+  final VoidCallback onRefreshed;
   final ViralCutColors vc;
   final Color primary;
 
@@ -338,7 +369,7 @@ class _DeliverableCard extends StatelessWidget {
         deliverable.rejectionHistory.isNotEmpty && !deliverable.isRejected;
     final accent = deliverable.isRejected
         ? vc.error
-        : deliverable.isApproved || deliverable.isLiveSubmitted
+        : deliverable.isApproved || deliverable.hasSubmittedProof
             ? vc.money
             : deliverable.isUnderReview
                 ? vc.warning
@@ -546,16 +577,18 @@ class _DeliverableCard extends StatelessWidget {
               label: Text(loading ? 'Submitting...' : 'Submit live proof'),
             ),
           ],
-          if (deliverable.isLiveSubmitted &&
+          if (deliverable.hasSubmittedProof &&
               deliverable.livePostUrl != null) ...[
-            const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: () => launchUrl(
-                Uri.parse(deliverable.livePostUrl!),
-                mode: LaunchMode.externalApplication,
-              ),
-              icon: const Icon(Icons.open_in_new, size: 18),
-              label: const Text('View live post'),
+            const SizedBox(height: 12),
+            _ProofSubmittedCard(
+              deliverableId: deliverable.id,
+              url: deliverable.livePostUrl!,
+              submittedAt: deliverable.liveSubmittedAt,
+              viewCount: deliverable.viewCount,
+              isProofApproved: deliverable.isProofApproved,
+              isProofUnderReview: deliverable.isProofUnderReview,
+              vc: vc,
+              onRefreshed: onRefreshed,
             ),
           ],
         ],
@@ -572,13 +605,205 @@ class _DeliverableCard extends StatelessWidget {
   }
 }
 
+class _ProofSubmittedCard extends ConsumerStatefulWidget {
+  const _ProofSubmittedCard({
+    required this.deliverableId,
+    required this.url,
+    required this.viewCount,
+    required this.vc,
+    required this.isProofUnderReview,
+    required this.isProofApproved,
+    required this.onRefreshed,
+    this.submittedAt,
+  });
+
+  final String deliverableId;
+  final String url;
+  final String? submittedAt;
+  final int viewCount;
+  final bool isProofUnderReview;
+  final bool isProofApproved;
+  final VoidCallback onRefreshed;
+  final ViralCutColors vc;
+
+  @override
+  ConsumerState<_ProofSubmittedCard> createState() =>
+      _ProofSubmittedCardState();
+}
+
+class _ProofSubmittedCardState extends ConsumerState<_ProofSubmittedCard> {
+  bool _refreshing = false;
+  int? _localViewCount;
+
+  Future<void> _refresh() async {
+    setState(() => _refreshing = true);
+    try {
+      final result = await ref
+          .read(apiClientProvider)
+          .refreshDeliverableViews(widget.deliverableId);
+      setState(() => _localViewCount = result['viewCount'] ?? 0);
+      widget.onRefreshed();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not refresh views: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vc = widget.vc;
+    final displayViews = _localViewCount ?? widget.viewCount;
+    final submittedDate = widget.submittedAt != null
+        ? DateFormat('dd MMM yyyy, hh:mm a')
+            .format(DateTime.parse(widget.submittedAt!).toLocal())
+        : null;
+
+    final statusColor =
+        widget.isProofApproved ? vc.money : vc.warning;
+    final statusLabel =
+        widget.isProofApproved ? 'Proof approved' : 'Under brand review';
+    final statusIcon = widget.isProofApproved
+        ? Icons.check_circle_outline_rounded
+        : Icons.hourglass_top_rounded;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: statusColor.withValues(alpha: 0.22)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+            child: Row(
+              children: [
+                Icon(statusIcon, size: 15, color: statusColor),
+                const SizedBox(width: 6),
+                Text(
+                  statusLabel,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: statusColor,
+                  ),
+                ),
+                if (submittedDate != null) ...[
+                  const Spacer(),
+                  Text(
+                    submittedDate,
+                    style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          // URL row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 8, 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.url,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: vc.onSurface.withValues(alpha: 0.75),
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () => launchUrl(
+                    Uri.parse(widget.url),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                  icon: Icon(Icons.open_in_new_rounded,
+                      size: 18, color: statusColor),
+                  tooltip: 'View live post',
+                  style: IconButton.styleFrom(
+                    backgroundColor: statusColor.withValues(alpha: 0.10),
+                    padding: const EdgeInsets.all(8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Views row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
+            child: Row(
+              children: [
+                Icon(Icons.visibility_outlined, size: 14, color: vc.muted),
+                const SizedBox(width: 5),
+                Text(
+                  displayViews > 0
+                      ? '${_formatViews(displayViews)} views'
+                      : 'Views not yet fetched',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: displayViews > 0 ? vc.onSurface : vc.muted,
+                    fontWeight: displayViews > 0
+                        ? FontWeight.w600
+                        : FontWeight.w400,
+                  ),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: _refreshing ? null : _refresh,
+                  icon: _refreshing
+                      ? SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            color: vc.muted,
+                          ),
+                        )
+                      : Icon(Icons.refresh_rounded, size: 14, color: vc.muted),
+                  label: Text(
+                    _refreshing ? 'Fetching...' : 'Refresh views',
+                    style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    minimumSize: Size.zero,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatViews(int v) {
+    if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}K';
+    return '$v';
+  }
+}
+
 class _WorkflowSteps extends StatelessWidget {
   const _WorkflowSteps({required this.activeStep, required this.vc});
 
   final int activeStep;
   final ViralCutColors vc;
 
-  static const _steps = ['Draft', 'Review', 'Proof'];
+  static const _steps = ['Draft', 'Review', 'Proof', 'Verified'];
 
   @override
   Widget build(BuildContext context) {
@@ -633,7 +858,9 @@ class _WorkflowSteps extends StatelessWidget {
 }
 
 int _workflowStep(List<FormatDeliverable> deliverables) {
-  if (deliverables.any((d) => d.isApproved || d.isLiveSubmitted)) return 2;
+  if (deliverables.any((d) => d.isProofApproved)) return 3;
+  if (deliverables.any((d) => d.isProofUnderReview || d.isLiveSubmitted)) return 2;
+  if (deliverables.any((d) => d.isApproved)) return 2;
   if (deliverables.any((d) => d.isUnderReview)) return 1;
   return 0;
 }
@@ -644,7 +871,11 @@ String _workflowHeadline({
   required int review,
   required int approved,
   required int live,
+  required int proofApproved,
 }) {
+  if (proofApproved > 0 && rejected == 0 && approved == 0 && live == proofApproved) {
+    return 'Proof approved — awaiting payout';
+  }
   if (rejected > 0 && approved > 0) {
     return '$rejected draft ${rejected == 1 ? 'needs' : 'need'} changes';
   }
@@ -655,7 +886,7 @@ String _workflowHeadline({
     return '$approved format${approved == 1 ? '' : 's'} ready for proof';
   }
   if (review > 0) return 'Drafts are under brand review';
-  if (live > 0) return 'Proof submitted';
+  if (live > 0) return 'Proof under brand review';
   return pending > 0 ? 'Upload your draft links' : 'Submission';
 }
 
@@ -665,7 +896,11 @@ String _workflowMessage({
   required int review,
   required int approved,
   required int live,
+  required int proofApproved,
 }) {
+  if (proofApproved > 0 && live == proofApproved) {
+    return 'The brand has verified your live post. Payout will be processed shortly.';
+  }
   final parts = <String>[];
   if (rejected > 0) {
     parts.add('Update the rejected draft with a new Drive link.');
@@ -682,7 +917,7 @@ String _workflowMessage({
     parts.add('Add the missing draft ${pending == 1 ? 'link' : 'links'}.');
   }
   if (parts.isEmpty && live > 0) {
-    parts.add('All live proof currently on file is visible below.');
+    parts.add('Your live proof is being reviewed by the brand.');
   }
   return parts.join(' ');
 }

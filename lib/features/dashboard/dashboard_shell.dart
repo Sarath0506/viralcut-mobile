@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/layout/app_spacing.dart';
 import '../../theme/viralcut_colors.dart';
 import '../submissions/submission_providers.dart';
 import 'widgets/shell_top_bar.dart';
@@ -17,39 +16,16 @@ class DashboardShell extends ConsumerWidget {
     '/campaigns',
     '/submissions',
     '/wallet',
-    '/profile',
   ];
 
   static const _destinations = [
-    (
-      label: 'Home',
-      icon: Icons.home_outlined,
-      selectedIcon: Icons.home_rounded,
-    ),
-    (
-      label: 'Campaigns',
-      icon: Icons.campaign_outlined,
-      selectedIcon: Icons.campaign,
-    ),
-    (
-      label: 'Submissions',
-      icon: Icons.inbox_outlined,
-      selectedIcon: Icons.inbox,
-    ),
-    (
-      label: 'Wallet',
-      icon: Icons.account_balance_wallet_outlined,
-      selectedIcon: Icons.account_balance_wallet,
-    ),
-    (
-      label: 'Profile',
-      icon: Icons.person_outline,
-      selectedIcon: Icons.person,
-    ),
+    (label: 'Dashboard',    icon: Icons.grid_view_outlined,                  selectedIcon: Icons.grid_view_rounded),
+    (label: 'Campaigns',    icon: Icons.campaign_outlined,                   selectedIcon: Icons.campaign_rounded),
+    (label: 'Submissions',  icon: Icons.near_me_outlined,                    selectedIcon: Icons.near_me_rounded),
+    (label: 'Wallet',       icon: Icons.account_balance_wallet_outlined,     selectedIcon: Icons.account_balance_wallet_rounded),
   ];
 
   int _indexForPath(String path) {
-    if (path.startsWith('/profile')) return 4;
     if (path.startsWith('/wallet')) return 3;
     if (path.startsWith('/submissions')) return 2;
     if (path.startsWith('/campaigns')) return 1;
@@ -82,36 +58,95 @@ class DashboardShell extends ConsumerWidget {
           Expanded(child: child),
         ],
       ),
-      bottomNavigationBar: DecoratedBox(
+      extendBody: true,
+      bottomNavigationBar: _BottomNav(
+        selectedIndex: index,
+        onTap: (i) => _onTabSelected(ref, i, context),
+      ),
+    );
+  }
+}
+
+class _BottomNav extends StatelessWidget {
+  const _BottomNav({required this.selectedIndex, required this.onTap});
+
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
+    final primary = Theme.of(context).colorScheme.primary;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPadding + 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: vc.surface,
-          border: Border(
-            top: BorderSide(color: vc.border.withValues(alpha: 0.75)),
-          ),
+          borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: vc.onSurface.withValues(alpha: 0.06),
-              blurRadius: 18,
-              offset: const Offset(0, -8),
+              color: Colors.black.withValues(alpha: 0.14),
+              blurRadius: 30,
+              spreadRadius: 0,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: SafeArea(
-          top: false,
-          child: NavigationBar(
-            selectedIndex: index,
-            onDestinationSelected: (i) => _onTabSelected(ref, i, context),
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
-            height: AppSpacing.bottomNavHeight,
-            destinations: [
-              for (final d in _destinations)
-                NavigationDestination(
-                  icon: Icon(d.icon),
-                  selectedIcon: Icon(d.selectedIcon),
-                  label: d.label,
-                  tooltip: d.label,
+        child: Row(
+          children: List.generate(
+            DashboardShell._destinations.length,
+            (i) {
+              final d = DashboardShell._destinations[i];
+              final selected = i == selectedIndex;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onTap(i),
+                  behavior: HitTestBehavior.opaque,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? primary.withValues(alpha: 0.10)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          selected ? d.selectedIcon : d.icon,
+                          size: 22,
+                          color: selected ? primary : vc.muted,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          d.label,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: selected ? primary : vc.muted,
+                            height: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-            ],
+              );
+            },
           ),
         ),
       ),

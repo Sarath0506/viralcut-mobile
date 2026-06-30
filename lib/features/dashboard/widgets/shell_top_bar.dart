@@ -6,8 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/format/money_format.dart';
 import '../../../core/layout/app_spacing.dart';
 import '../../../theme/viralcut_colors.dart';
-import '../../auth/widgets/auth_app_icon.dart';
 import '../dashboard_providers.dart';
+import '../../auth/widgets/auth_app_icon.dart';
+import '../../profile/profile_providers.dart';
 
 enum ShellTopBarVariant { home, campaigns, submissions, wallet, profile }
 
@@ -29,7 +30,6 @@ ShellTopBarVariant shellTopBarVariantForPath(String path) {
   return ShellTopBarVariant.home;
 }
 
-/// Shared top bar for main tab routes (Instagram-style: section chrome, not profile).
 class ShellTopBar extends ConsumerWidget {
   const ShellTopBar({super.key, required this.currentPath});
 
@@ -62,6 +62,7 @@ class _BrandLeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vc = ViralCutColors.of(context);
+    final primary = Theme.of(context).colorScheme.primary;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -73,7 +74,7 @@ class _BrandLeading extends StatelessWidget {
           style: GoogleFonts.plusJakartaSans(
             fontSize: 20,
             fontWeight: FontWeight.w800,
-            color: vc.onSurface,
+            color: variant == ShellTopBarVariant.home ? primary : vc.onSurface,
           ),
         ),
       ],
@@ -86,22 +87,10 @@ class _Trailing extends ConsumerWidget {
 
   final ShellTopBarVariant variant;
 
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature coming soon'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final vc = ViralCutColors.of(context);
-
     if (variant == ShellTopBarVariant.home) {
       final dashboard = ref.watch(dashboardProvider);
-
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -120,41 +109,57 @@ class _Trailing extends ConsumerWidget {
             ),
             error: (_, __) => const SizedBox.shrink(),
           ),
-          IconButton(
-            icon: Icon(Icons.notifications_outlined, color: vc.onSurface),
-            tooltip: 'Notifications',
-            onPressed: () => _showComingSoon(context, 'Notifications'),
-          ),
+          const SizedBox(width: 4),
+          _ProfileAvatar(onTap: () => context.go('/profile')),
         ],
       );
     }
 
-    if (variant == ShellTopBarVariant.wallet) {
-      return IconButton(
-        icon: Icon(Icons.history, color: vc.onSurface),
-        tooltip: 'Transaction history',
-        onPressed: () => _showComingSoon(context, 'Transaction history'),
-      );
-    }
+    return _ProfileAvatar(onTap: () => context.go('/profile'));
+  }
+}
 
-    if (variant == ShellTopBarVariant.campaigns ||
-        variant == ShellTopBarVariant.submissions) {
-      return IconButton(
-        icon: Icon(Icons.tune_rounded, color: vc.onSurface),
-        tooltip: 'Filter',
-        onPressed: () => _showComingSoon(context, 'Filters'),
-      );
-    }
+class _ProfileAvatar extends ConsumerWidget {
+  const _ProfileAvatar({required this.onTap});
 
-    if (variant == ShellTopBarVariant.profile) {
-      return IconButton(
-        icon: Icon(Icons.more_vert, color: vc.onSurface),
-        tooltip: 'More',
-        onPressed: () => _showComingSoon(context, 'Profile menu'),
-      );
-    }
+  final VoidCallback onTap;
 
-    return const SizedBox.shrink();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final me = ref.watch(profileMeProvider);
+
+    final initials = me.valueOrNull != null
+        ? _initials(me.valueOrNull!['displayName'] as String? ?? '')
+        : '?';
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: primary.withValues(alpha: 0.12),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          initials,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: primary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 }
 
@@ -177,6 +182,7 @@ class _EarningsChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: vc.money.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: vc.money.withValues(alpha: 0.25)),
           ),
           child: Text(
             formatPaise(lifetimePaise),

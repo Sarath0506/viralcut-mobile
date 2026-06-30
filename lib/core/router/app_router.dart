@@ -14,6 +14,7 @@ import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/submissions/participation_detail_screen.dart';
+import '../../features/submissions/performance_screen.dart';
 import '../../features/submissions/submissions_screen.dart';
 import '../../features/wallet/wallet_screen.dart';
 import '../../features/wallet/withdraw_screen.dart';
@@ -106,6 +107,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/submissions/:id',
         redirect: (_, state) => '/participations/${state.pathParameters['id']}',
+      ),
+      GoRoute(
+        path: '/participations/:participationId/performance/:deliverableId',
+        builder: (_, state) => PerformanceScreen(
+          participationId: state.pathParameters['participationId']!,
+          deliverableId: state.pathParameters['deliverableId']!,
+        ),
       ),
       GoRoute(path: '/withdraw', builder: (_, __) => const WithdrawScreen()),
     ],

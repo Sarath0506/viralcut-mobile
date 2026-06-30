@@ -50,11 +50,11 @@ class DashboardScreen extends ConsumerWidget {
           child: ScreenStaggeredColumn(
             animationKey: animationKey,
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               AppSpacing.screenHorizontal,
               AppSpacing.sm,
               AppSpacing.screenHorizontal,
-              AppSpacing.xl,
+              AppSpacing.floatingNavBottom(context),
             ),
             children: [
               _DashboardHeader(displayName: displayName),
@@ -71,6 +71,8 @@ class DashboardScreen extends ConsumerWidget {
                     _showSocialLinkSnackBar(context, 'Instagram'),
                 onYouTubeTap: () =>
                     _showSocialLinkSnackBar(context, 'YouTube'),
+                onXTap: () =>
+                    _showSocialLinkSnackBar(context, 'X'),
               ),
               const SizedBox(height: 16),
               TrendingCampaignsCarousel(
@@ -99,7 +101,7 @@ class _DashboardHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Hey $name',
+          'Hey $name 👋',
           style: GoogleFonts.inter(
             fontSize: 12,
             fontWeight: FontWeight.w600,
