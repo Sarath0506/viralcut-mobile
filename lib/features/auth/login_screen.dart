@@ -74,7 +74,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _sendOtpAndContinue() async {
     final phone = _phoneE164;
-    if (phone == null) return;
+    if (phone == null) {
+      _showError('Please enter a valid 10-digit phone number.');
+      return;
+    }
 
     setState(() => _busy = true);
     try {
@@ -100,30 +103,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthPageLayout(
+      showBack: true,
+      onBack: () => context.go('/'),
+      headerTitle: 'Welcome back',
       title: 'Log in',
+      titleHighlight: 'in',
       subtitle: 'Continue earning from your clips.',
-      footer: const AuthSwitchLink(
+      footer: AuthSwitchLink(
         leadText: 'New to Halchal? ',
         linkText: 'Sign up',
         route: '/signup',
       ),
-      form: AuthFormCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AuthLabeledField(
-              label: 'Phone',
-              child: AuthPhoneRow(
-                countryController: _countryController,
-                phoneController: _phoneController,
-              ),
+      form: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AuthLabeledField(
+            label: 'Phone or email',
+            child: AuthPhoneRow(
+              countryController: _countryController,
+              phoneController: _phoneController,
             ),
-            if (_busy) ...[
-              const SizedBox(height: 20),
-              const Center(child: CircularProgressIndicator()),
-            ],
-          ],
-        ),
+          ),
+          const SizedBox(height: 28),
+          AuthPrimaryButton(
+            label: 'Log in',
+            loading: _busy,
+            onPressed: _busy ? null : _sendOtpAndContinue,
+          ),
+        ],
       ),
     );
   }

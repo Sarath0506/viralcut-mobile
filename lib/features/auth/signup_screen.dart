@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/format/phone_format.dart';
+import '../../theme/viralcut_colors.dart';
 import 'widgets/auth_page_layout.dart';
 import 'widgets/auth_switch_link.dart';
 import 'widgets/auth_ui.dart';
@@ -82,6 +84,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   }
 
   Future<void> _sendOtpAndContinue() async {
+    if (!_isFormComplete) {
+      _showError('Please fill in all fields correctly.');
+      return;
+    }
     final phone = _phoneE164;
     if (phone == null) return;
 
@@ -126,52 +132,67 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
     return AuthPageLayout(
-      title: 'Create account',
+      showBack: true,
+      onBack: () => context.go('/'),
+      headerTitle: 'Create account',
+      title: 'Welcome to Halchal',
+      titleHighlight: 'Halchal',
       subtitle: 'Join the elite network of digital entrepreneurs.',
-      footer: const AuthSwitchLink(
+      footer: AuthSwitchLink(
         leadText: 'Already have an account? ',
         linkText: 'Log in',
         route: '/login',
       ),
-      form: AuthFormCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AuthLabeledField(
-              label: 'Full name',
-              child: AuthTextFormField(
-                controller: _nameController,
-                hint: 'Enter your full name',
-                textInputAction: TextInputAction.next,
-                prefixIcon: Icons.person_outline,
-              ),
+      form: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AuthLabeledField(
+            label: 'Full name',
+            child: AuthTextFormField(
+              controller: _nameController,
+              hint: 'Enter your full name',
+              textInputAction: TextInputAction.next,
+              prefixIcon: Icons.person_outline,
             ),
-            const SizedBox(height: 16),
-            AuthLabeledField(
-              label: 'Phone',
-              child: AuthPhoneRow(
-                countryController: _countryController,
-                phoneController: _phoneController,
-              ),
+          ),
+          const SizedBox(height: 16),
+          AuthLabeledField(
+            label: 'Phone',
+            child: AuthPhoneRow(
+              countryController: _countryController,
+              phoneController: _phoneController,
             ),
-            const SizedBox(height: 16),
-            AuthLabeledField(
-              label: 'Email',
-              child: AuthTextFormField(
-                controller: _emailController,
-                hint: 'name@company.com',
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.done,
-                prefixIcon: Icons.mail_outline,
-              ),
+          ),
+          const SizedBox(height: 16),
+          AuthLabeledField(
+            label: 'Email',
+            child: AuthTextFormField(
+              controller: _emailController,
+              hint: 'name@company.com',
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.done,
+              prefixIcon: Icons.mail_outline,
             ),
-            if (_busy) ...[
-              const SizedBox(height: 20),
-              const Center(child: CircularProgressIndicator()),
-            ],
-          ],
-        ),
+          ),
+          const SizedBox(height: 24),
+          AuthPrimaryButton(
+            label: 'Create account',
+            loading: _busy,
+            onPressed: _busy ? null : _sendOtpAndContinue,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'By creating an account you agree to our Terms of Service and Privacy Policy.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: vc.muted,
+              height: 1.5,
+            ),
+          ),
+        ],
       ),
     );
   }

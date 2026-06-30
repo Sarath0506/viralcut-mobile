@@ -17,6 +17,11 @@ abstract final class AppSpacing {
   static const double shellTopBarHeight = 56;
   static const double bottomNavHeight = 56;
 
+  // Extra clearance so scroll content ends above the floating nav bar.
+  // Nav bar container ~55px + outer gap 12px + safe area = 67 + safe area.
+  static double floatingNavBottom(BuildContext context) =>
+      MediaQuery.paddingOf(context).bottom + 83.0;
+
   static EdgeInsets screenPadding(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;
     return EdgeInsets.fromLTRB(

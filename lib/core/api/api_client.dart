@@ -416,6 +416,26 @@ class ApiClient {
         (_) {},
       );
 
+  Future<String> uploadDraftFile({
+    required String deliverableId,
+    required String filePath,
+    required String fileName,
+    required String mimeType,
+  }) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        filePath,
+        filename: fileName,
+        contentType: DioMediaType.parse(mimeType),
+      ),
+    });
+    final resp = await _dio.post<Map<String, dynamic>>(
+      '/creator/deliverables/$deliverableId/upload-draft',
+      data: formData,
+    );
+    return (resp.data?['data']?['url'] as String?) ?? '';
+  }
+
   Future<void> submitDeliverableLiveProof({
     required String deliverableId,
     required String livePostUrl,
@@ -425,6 +445,21 @@ class ApiClient {
         {'livePostUrl': livePostUrl},
         (_) {},
       );
+
+  Future<Map<String, int>> refreshDeliverableViews(String deliverableId) async {
+    final resp = await _dio.post<Map<String, dynamic>>(
+      '/creator/deliverables/$deliverableId/refresh-views',
+    );
+    final body = resp.data ?? {};
+    final data = (body['data'] as Map<String, dynamic>?) ?? body;
+    return {
+      'viewCount':    data['viewCount']    as int? ?? 0,
+      'reach':        data['reach']        as int? ?? 0,
+      'likeCount':    data['likeCount']    as int? ?? 0,
+      'commentCount': data['commentCount'] as int? ?? 0,
+      'shareCount':   data['shareCount']   as int? ?? 0,
+    };
+  }
 
   Future<WalletData> fetchWallet() => get(
         '/wallet',
@@ -486,14 +521,20 @@ class AuthSession {
 }
 
 class SocialLinks {
-  const SocialLinks({required this.instagram, required this.youtube});
+  const SocialLinks({
+    required this.instagram,
+    required this.youtube,
+    required this.twitter,
+  });
 
   final bool instagram;
   final bool youtube;
+  final bool twitter;
 
   factory SocialLinks.fromJson(Map<String, dynamic>? json) => SocialLinks(
         instagram: json?['instagram'] as bool? ?? false,
         youtube: json?['youtube'] as bool? ?? false,
+        twitter: json?['twitter'] as bool? ?? false,
       );
 }
 

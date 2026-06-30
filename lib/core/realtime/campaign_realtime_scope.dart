@@ -39,8 +39,14 @@ class _CampaignRealtimeScopeState extends ConsumerState<CampaignRealtimeScope> {
 
   @override
   void dispose() {
-    ref.read(realtimeServiceProvider).leaveCampaignRoom(widget.campaignId);
+    final campaignId = widget.campaignId;
     super.dispose();
+    // Read service directly from container to avoid "ref after dispose" error
+    try {
+      ProviderScope.containerOf(context, listen: false)
+          .read(realtimeServiceProvider)
+          .leaveCampaignRoom(campaignId);
+    } catch (_) {}
   }
 
   @override

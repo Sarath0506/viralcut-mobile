@@ -16,6 +16,13 @@ import '../../theme/theme_provider.dart';
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
+  String _initialsFor(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -94,7 +101,14 @@ class ProfileScreen extends ConsumerWidget {
                       CircleAvatar(
                         radius: 44,
                         backgroundColor: primary.withValues(alpha: 0.15),
-                        child: Icon(Icons.person, size: 44, color: primary),
+                        child: Text(
+                          _initialsFor(displayName),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            color: primary,
+                          ),
+                        ),
                       ),
                       Positioned(
                         right: 0,

@@ -3,12 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/layout/app_spacing.dart';
-import '../../core/layout/bottom_action_bar.dart';
-import '../../core/layout/onboarding_text_block.dart';
 import '../../theme/viralcut_colors.dart';
 import '../../theme/viralcut_text_styles.dart';
 import '../auth/widgets/auth_app_icon.dart';
-import '../auth/widgets/auth_ui.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -39,128 +36,135 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     super.dispose();
   }
 
+  void _advance() {
+    if (_page == 0) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      context.go('/signup');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final vc = ViralCutColors.of(context);
-    final primary = Theme.of(context).colorScheme.primary;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            vc.authGradientStart,
-            vc.authGradientMid,
-            vc.money.withValues(alpha: 0.08),
-          ],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        resizeToAvoidBottomInset: false,
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenHorizontal,
-                  AppSpacing.sm,
-                  AppSpacing.sm,
-                  0,
-                ),
-                child: SizedBox(
-                  height: AppSpacing.minTouchTarget,
-                  child: Row(
-                    children: [
-                      const AuthAppIcon.header(),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(
-                        'Halchal',
-                        style: ViralCutTextStyles.sectionTitle(context).copyWith(
-                          color: primary,
+    return Scaffold(
+      backgroundColor: vc.background,
+      resizeToAvoidBottomInset: false,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screenHorizontal,
+                AppSpacing.sm,
+                AppSpacing.sm,
+                0,
+              ),
+              child: SizedBox(
+                height: AppSpacing.minTouchTarget,
+                child: Row(
+                  children: [
+                    const AuthAppIcon.header(),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Halchal',
+                      style: ViralCutTextStyles.meta(context).copyWith(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: vc.onSurface,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => context.go('/signup'),
+                      child: Text(
+                        'Skip',
+                        style: ViralCutTextStyles.meta(context).copyWith(
+                          color: vc.muted,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => context.go('/signup'),
-                        style: TextButton.styleFrom(
-                          minimumSize: const Size(
-                            AppSpacing.minTouchTarget,
-                            AppSpacing.minTouchTarget,
-                          ),
-                        ),
-                        child: Text(
-                          'Skip',
-                          style: ViralCutTextStyles.meta(context).copyWith(
-                            color: vc.muted,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              Expanded(
+            ),
+            Expanded(
+              child: GestureDetector(
+                onTap: _advance,
+                behavior: HitTestBehavior.opaque,
                 child: PageView(
                   controller: _pageController,
                   onPageChanged: (i) => setState(() => _page = i),
                   children: [
-                    _WalletOnboardingSlide(
-                      floatAnimation: _floatController,
-                    ),
+                    _WalletOnboardingSlide(floatAnimation: _floatController),
                     const _MarketplaceOnboardingSlide(),
                   ],
                 ),
               ),
-              BottomActionBar(
-                indicator: _PageDots(activeIndex: _page, count: 2),
-                primary: AuthPrimaryButton(
-                  label: _page == 0 ? 'Get Started' : 'Continue',
-                  onPressed: () {
-                    if (_page == 0) {
-                      _pageController.nextPage(
-                        duration: const Duration(milliseconds: 400),
-                        curve: Curves.easeOutCubic,
-                      );
-                    } else {
-                      context.go('/signup');
-                    }
-                  },
-                ),
-                secondary: TextButton(
-                  onPressed: () => context.go('/login'),
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(
-                      AppSpacing.minTouchTarget,
-                      AppSpacing.minTouchTarget,
-                    ),
-                  ),
-                  child: RichText(
-                    text: TextSpan(
-                      style: ViralCutTextStyles.meta(context).copyWith(
-                        color: vc.muted,
-                        fontSize: 14,
-                      ),
-                      children: [
-                        const TextSpan(text: 'Already have an account? '),
-                        TextSpan(
-                          text: 'Log in',
-                          style: TextStyle(
-                            color: primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+            _OnboardingBottom(
+              page: _page,
+              onLogin: () => context.go('/login'),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class _OnboardingBottom extends StatelessWidget {
+  const _OnboardingBottom({required this.page, required this.onLogin});
+
+  final int page;
+  final VoidCallback onLogin;
+
+  @override
+  Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
+    final primary = Theme.of(context).colorScheme.primary;
+    final bottomSafe = MediaQuery.paddingOf(context).bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.screenHorizontal,
+        AppSpacing.md,
+        AppSpacing.screenHorizontal,
+        bottomSafe > 0 ? bottomSafe : AppSpacing.screenBottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _PageDots(activeIndex: page, count: 2),
+          const SizedBox(height: AppSpacing.lg),
+          TextButton(
+            onPressed: onLogin,
+            child: RichText(
+              text: TextSpan(
+                style: ViralCutTextStyles.meta(context).copyWith(
+                  color: vc.muted,
+                  fontSize: 14,
+                ),
+                children: [
+                  const TextSpan(text: 'Already have an account? '),
+                  TextSpan(
+                    text: 'Log in',
+                    style: TextStyle(
+                      color: primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -195,6 +199,8 @@ class _PageDots extends StatelessWidget {
   }
 }
 
+// ─── Slide 1: Wallet / earnings ─────────────────────────────────────────────
+
 class _WalletOnboardingSlide extends StatelessWidget {
   const _WalletOnboardingSlide({required this.floatAnimation});
 
@@ -202,6 +208,8 @@ class _WalletOnboardingSlide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+
     return Column(
       children: [
         Expanded(
@@ -212,199 +220,77 @@ class _WalletOnboardingSlide extends StatelessWidget {
                 final dy = (floatAnimation.value - 0.5) * 12;
                 return Transform.translate(offset: Offset(0, dy), child: child);
               },
-              child: const _PhoneWalletMockup(),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 220,
+                    height: 220,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: primary.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  _PurpleCardMockup(),
+                ],
+              ),
             ),
           ),
         ),
-        const OnboardingTextBlock(
-          title: 'Post clips. Get paid.',
+        _OnboardingTextBlock(
+          title: 'Post clips.\nGet paid.',
+          titleHighlight: 'Get paid.',
           subtitle:
-              'Turn your short-form content into real earnings with brand campaigns.',
+              'Regional-first clipping platform. No camera.\nNo face. Just views and earnings.',
         ),
       ],
     );
   }
 }
 
-class _PhoneWalletMockup extends StatelessWidget {
-  const _PhoneWalletMockup();
-
+class _PurpleCardMockup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vc = ViralCutColors.of(context);
-    final onCard = vc.onPrimary;
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        Container(
-          width: 260,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: vc.deepSurface,
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color: vc.onSurface.withValues(alpha: 0.18),
-                blurRadius: 32,
-                offset: const Offset(0, 16),
-              ),
-            ],
+    return Container(
+      width: 160,
+      height: 200,
+      decoration: BoxDecoration(
+        color: vc.primary,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.black, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: vc.primary.withValues(alpha: 0.35),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
           ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '9:41',
-                    style: GoogleFonts.inter(
-                      color: onCard.withValues(alpha: 0.7),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Icon(Icons.signal_cellular_alt,
-                          size: 14, color: onCard.withValues(alpha: 0.7)),
-                      const SizedBox(width: 4),
-                      Icon(Icons.wifi,
-                          size: 14, color: onCard.withValues(alpha: 0.7)),
-                      const SizedBox(width: 4),
-                      Icon(Icons.battery_full,
-                          size: 14, color: onCard.withValues(alpha: 0.7)),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                  ),
-                  const Spacer(),
-                  Icon(Icons.notifications_none,
-                      color: onCard.withValues(alpha: 0.8)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: vc.surfaceVariant,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'CURRENT BALANCE',
-                      style: GoogleFonts.inter(
-                        color: onCard.withValues(alpha: 0.54),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Rs 35,170',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: onCard,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '+12% vs last week',
-                      style: GoogleFonts.inter(
-                        color: vc.moneyBright,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              _MockTxRow(
-                color: vc.error,
-                amount: 'Rs 4,200',
-              ),
-              const SizedBox(height: 8),
-              _MockTxRow(
-                color: Theme.of(context).colorScheme.primary,
-                amount: 'Rs 8,550',
-              ),
-            ],
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset(
+            'assets/images/halchal_logo.png',
+            width: 110,
+            color: Colors.white,
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          Text(
+            '₹35,170',
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _MockTxRow extends StatelessWidget {
-  const _MockTxRow({required this.color, required this.amount});
-
-  final Color color;
-  final String amount;
-
-  @override
-  Widget build(BuildContext context) {
-    final onCard = ViralCutColors.of(context).onPrimary;
-    return Row(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(Icons.play_arrow, color: color, size: 20),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            children: [
-              Container(
-                height: 6,
-                decoration: BoxDecoration(
-                  color: onCard.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                height: 6,
-                width: 80,
-                alignment: Alignment.centerLeft,
-                decoration: BoxDecoration(
-                  color: onCard.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Text(
-          amount,
-          style: GoogleFonts.inter(
-            color: onCard,
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-          ),
-        ),
-      ],
-    );
-  }
-}
+// ─── Slide 2: Campaign marketplace ──────────────────────────────────────────
 
 class _MarketplaceOnboardingSlide extends StatefulWidget {
   const _MarketplaceOnboardingSlide();
@@ -414,7 +300,8 @@ class _MarketplaceOnboardingSlide extends StatefulWidget {
       _MarketplaceOnboardingSlideState();
 }
 
-class _MarketplaceOnboardingSlideState extends State<_MarketplaceOnboardingSlide>
+class _MarketplaceOnboardingSlideState
+    extends State<_MarketplaceOnboardingSlide>
     with SingleTickerProviderStateMixin {
   late final AnimationController _stagger;
 
@@ -435,211 +322,232 @@ class _MarketplaceOnboardingSlideState extends State<_MarketplaceOnboardingSlide
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
-    final primary = Theme.of(context).colorScheme.primary;
-    final cards = [
-      _CampaignPreviewData(
-        brand: 'boAt',
-        category: 'Electronics & Lifestyle',
-        metricLabel: 'EARNING POTENTIAL',
-        metricValue: 'Rs 5,000+',
-        metricColor: vc.moneyBright,
-        progress: 0.72,
-        progressColor: vc.moneyBright,
-        accent: vc.deepSurface,
-      ),
-      _CampaignPreviewData(
-        brand: 'Zepto',
-        category: '10-minute delivery',
-        metricLabel: 'URGENT TASKS',
-        metricValue: '2 Slots Left',
-        metricColor: vc.warning,
-        progress: 0.22,
-        progressColor: vc.warning,
-        accent: vc.primaryVariant,
-      ),
-      _CampaignPreviewData(
-        brand: 'CRED',
-        category: 'Fintech & Rewards',
-        metricLabel: 'PREMIUM TIER',
-        metricValue: 'Top 1% Only',
-        metricColor: vc.onSurface,
-        progress: 0.95,
-        progressColor: primary,
-        accent: vc.deepSurface,
-      ),
-    ];
-
     return Column(
       children: [
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: ListView.separated(
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(top: AppSpacing.sm),
-              itemCount: cards.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md - 4),
-              itemBuilder: (context, index) {
-                final start = index * 0.15;
-                final anim = CurvedAnimation(
-                  parent: _stagger,
-                  curve: Interval(start, start + 0.55, curve: Curves.easeOut),
-                );
-                return FadeTransition(
-                  opacity: anim,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 0.12),
-                      end: Offset.zero,
-                    ).animate(anim),
-                    child: _CampaignPreviewCard(data: cards[index]),
-                  ),
-                );
-              },
-            ),
+          child: Center(
+            child: _StackedCampaignCards(stagger: _stagger),
           ),
         ),
-        const OnboardingTextBlock(
-          title: 'Pick any brand campaign',
+        const _OnboardingTextBlock(
+          title: 'Pick any\nbrand campaign',
           subtitle:
-              'Browse live campaigns from top Indian brands. Choose what fits your audience.',
+              'Browse live campaigns from top Indian brands.\nChoose what fits your audience.',
         ),
       ],
     );
   }
 }
 
-class _CampaignPreviewData {
-  const _CampaignPreviewData({
-    required this.brand,
-    required this.category,
-    required this.metricLabel,
-    required this.metricValue,
-    required this.metricColor,
-    required this.progress,
-    required this.progressColor,
-    required this.accent,
-  });
+class _StackedCampaignCards extends StatelessWidget {
+  const _StackedCampaignCards({required this.stagger});
 
-  final String brand;
-  final String category;
-  final String metricLabel;
-  final String metricValue;
-  final Color metricColor;
-  final double progress;
-  final Color progressColor;
-  final Color accent;
-}
+  final Animation<double> stagger;
 
-class _CampaignPreviewCard extends StatelessWidget {
-  const _CampaignPreviewCard({required this.data});
-
-  final _CampaignPreviewData data;
+  static final _cards = [
+    (brand: 'boAt',  label: 'Live campaign', amount: '₹50', icon: Icons.headphones,  iconColor: const Color(0xFF6B7280), iconBg: const Color(0xFFF3F4F6)),
+    (brand: 'Zepto', label: 'Live campaign', amount: '₹60', icon: Icons.bolt,         iconColor: const Color(0xFFF59E0B), iconBg: const Color(0xFFFEF3C7)),
+    (brand: 'CRED',  label: 'Live campaign', amount: '₹45', icon: Icons.credit_card, iconColor: const Color(0xFF6B7280), iconBg: const Color(0xFFF3F4F6)),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
-    final primary = Theme.of(context).colorScheme.primary;
+    return SizedBox(
+      width: 300,
+      height: 200,
+      child: Stack(
+        alignment: Alignment.center,
+        children: List.generate(_cards.length, (i) {
+          final card = _cards[i];
+          final angle = (i - 1) * 0.10;
+          final dy = (i - 1) * 18.0;
+          final scale = 0.84 + (i == 1 ? 0.16 : i == 0 ? 0.08 : 0.04);
+
+          final anim = CurvedAnimation(
+            parent: stagger,
+            curve: Interval(i * 0.15, i * 0.15 + 0.55, curve: Curves.easeOut),
+          );
+
+          return FadeTransition(
+            opacity: anim,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: Offset(0, 0.12 * (i + 1)),
+                end: Offset.zero,
+              ).animate(anim),
+              child: Transform.translate(
+                offset: Offset(0, dy),
+                child: Transform.rotate(
+                  angle: angle,
+                  child: Transform.scale(
+                    scale: scale,
+                    child: _CampaignPreviewCard(
+                      brand: card.brand,
+                      label: card.label,
+                      amount: card.amount,
+                      icon: card.icon,
+                      iconColor: card.iconColor,
+                      iconBg: card.iconBg,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _CampaignPreviewCard extends StatelessWidget {
+  const _CampaignPreviewCard({
+    required this.brand,
+    required this.label,
+    required this.amount,
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+  });
+
+  final String brand;
+  final String label;
+  final String amount;
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      width: 272,
+      height: 68,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: vc.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: vc.border),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(100),
         boxShadow: [
           BoxShadow(
-            color: vc.onSurface.withValues(alpha: 0.04),
-            blurRadius: 12,
+            color: Colors.black.withValues(alpha: 0.10),
+            blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
         children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: iconBg,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 22, color: iconColor),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: data.accent,
-                      child: Text(
-                        data.brand[0],
-                        style: TextStyle(
-                          color: vc.onPrimary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          data.brand,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                          ),
-                        ),
-                        Text(
-                          data.category,
-                          style: GoogleFonts.inter(
-                            color: primary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
                 Text(
-                  data.metricLabel,
-                  style: GoogleFonts.inter(
-                    fontSize: 9,
+                  brand,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    color: vc.muted,
+                    color: const Color(0xFF111827),
                   ),
                 ),
-                const SizedBox(height: 2),
                 Text(
-                  data.metricValue,
+                  label,
                   style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: data.metricColor,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: data.progress,
-                    minHeight: 4,
-                    backgroundColor: vc.border,
-                    color: data.progressColor,
+                    fontSize: 11,
+                    color: const Color(0xFF9CA3AF),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: data.accent.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+          Text(
+            amount,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF16A34A),
             ),
-            child: Icon(Icons.image_outlined, color: data.accent),
           ),
+          const SizedBox(width: 8),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Shared text block ───────────────────────────────────────────────────────
+
+class _OnboardingTextBlock extends StatelessWidget {
+  const _OnboardingTextBlock({
+    required this.title,
+    this.titleHighlight,
+    this.subtitle,
+  });
+
+  final String title;
+  final String? titleHighlight;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 20, 28, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (titleHighlight != null)
+            RichText(
+              text: TextSpan(
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  color: vc.onSurface,
+                  height: 1.15,
+                ),
+                children: title.split('\n').expand((line) {
+                  final isHighlight = line.trim() == titleHighlight!.trim();
+                  return [
+                    TextSpan(
+                      text: '$line\n',
+                      style: isHighlight ? TextStyle(color: primary) : null,
+                    ),
+                  ];
+                }).toList(),
+              ),
+            )
+          else
+            Text(
+              title,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                color: vc.onSurface,
+                height: 1.15,
+              ),
+            ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              subtitle!,
+              style: GoogleFonts.inter(
+                fontSize: 15,
+                color: vc.muted,
+                height: 1.5,
+              ),
+            ),
+          ],
         ],
       ),
     );

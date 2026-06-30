@@ -106,11 +106,11 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen>
                 },
                 child: ListView.separated(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(
+                  padding: EdgeInsets.fromLTRB(
                     AppSpacing.screenHorizontal,
                     AppSpacing.sm,
                     AppSpacing.screenHorizontal,
-                    AppSpacing.lg,
+                    AppSpacing.floatingNavBottom(context),
                   ),
                   itemCount: list.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),

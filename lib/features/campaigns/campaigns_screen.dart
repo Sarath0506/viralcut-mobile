@@ -61,11 +61,11 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen>
             ref.invalidate(campaignsProvider);
           },
           child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               AppSpacing.screenHorizontal,
               AppSpacing.md,
               AppSpacing.screenHorizontal,
-              AppSpacing.lg,
+              AppSpacing.floatingNavBottom(context),
             ),
             itemCount: list.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),

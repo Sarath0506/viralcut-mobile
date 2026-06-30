@@ -106,7 +106,11 @@ class CampaignDetailScreen extends ConsumerWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              leading: const BackButton(),
+              automaticallyImplyLeading: false,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                onPressed: () => context.canPop() ? context.pop() : context.go('/campaigns'),
+              ),
             ),
             body: CampaignDetailBody(campaign: c, participation: p),
             bottomNavigationBar: SafeArea(

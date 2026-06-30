@@ -36,6 +36,13 @@ class FormatDeliverable {
     this.liveSubmittedAt,
     this.rejectionHistory = const [],
     this.priorRejectionCount = 0,
+    this.viewCount = 0,
+    this.reach = 0,
+    this.likeCount = 0,
+    this.commentCount = 0,
+    this.shareCount = 0,
+    this.estimatedPaise = 0,
+    this.ratePer1kPaise = 0,
   });
 
   final String id;
@@ -49,6 +56,13 @@ class FormatDeliverable {
   final String? liveSubmittedAt;
   final List<RejectionHistoryEvent> rejectionHistory;
   final int priorRejectionCount;
+  final int viewCount;
+  final int reach;
+  final int likeCount;
+  final int commentCount;
+  final int shareCount;
+  final int estimatedPaise;
+  final int ratePer1kPaise;
 
   factory FormatDeliverable.fromJson(Map<String, dynamic> json) =>
       FormatDeliverable(
@@ -67,6 +81,13 @@ class FormatDeliverable {
             )
             .toList(),
         priorRejectionCount: json['priorRejectionCount'] as int? ?? 0,
+        viewCount:    json['viewCount']    as int? ?? 0,
+        reach:        json['reach']        as int? ?? 0,
+        likeCount:    json['likeCount']    as int? ?? 0,
+        commentCount: json['commentCount'] as int? ?? 0,
+        shareCount:   json['shareCount']   as int? ?? 0,
+        estimatedPaise: json['estimatedPaise'] as int? ?? 0,
+        ratePer1kPaise: json['ratePer1kPaise'] as int? ?? 0,
       );
 
   bool get isRejected => status == 'draft_rejected';
@@ -74,6 +95,11 @@ class FormatDeliverable {
   bool get isLiveSubmitted => status == 'live_submitted';
   bool get isUnderReview => status == 'under_review';
   bool get isDraftPending => status == 'draft_pending';
+  bool get isProofUnderReview => status == 'proof_under_review';
+  bool get isProofApproved => status == 'proof_approved';
+  bool get isProofRejected => status == 'proof_rejected';
+  bool get hasSubmittedProof =>
+      isLiveSubmitted || isProofUnderReview || isProofApproved || isProofRejected;
 
   String? get latestRejectionReason =>
       rejectionReason ??
@@ -94,6 +120,7 @@ class ParticipationCampaign {
     required this.platforms,
     this.brandCompanyName,
     this.brandLogoUrl,
+    this.coverImageUrl,
     this.ratePer1kDisplay,
     this.maxPayoutPaise,
   });
@@ -104,6 +131,7 @@ class ParticipationCampaign {
   final List<String> platforms;
   final String? brandCompanyName;
   final String? brandLogoUrl;
+  final String? coverImageUrl;
   final String? ratePer1kDisplay;
   final int? maxPayoutPaise;
 
@@ -117,6 +145,7 @@ class ParticipationCampaign {
             .toList(),
         brandCompanyName: json['brandCompanyName'] as String?,
         brandLogoUrl: json['brandLogoUrl'] as String?,
+        coverImageUrl: json['coverImageUrl'] as String?,
         ratePer1kDisplay: json['ratePer1kDisplay'] as String?,
         maxPayoutPaise: json['maxPayoutPaise'] as int?,
       );
