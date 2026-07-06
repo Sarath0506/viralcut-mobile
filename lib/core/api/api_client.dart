@@ -523,9 +523,18 @@ class ApiClient {
         (_) {},
       );
 
+  Future<Map<String, dynamic>> fetchSocialStats(String platform, String handle) {
+    return post<Map<String, dynamic>>(
+      '/users/me/social-stats/$platform',
+      {'handle': handle},
+      (d) => (d as Map<String, dynamic>?) ?? {},
+    );
+  }
+
   Future<Map<String, int>> refreshDeliverableViews(String deliverableId) async {
     final resp = await _dio.post<Map<String, dynamic>>(
       '/creator/deliverables/$deliverableId/refresh-views',
+      options: Options(receiveTimeout: const Duration(seconds: 150)),
     );
     final body = resp.data ?? {};
     final data = (body['data'] as Map<String, dynamic>?) ?? body;
