@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -45,57 +43,60 @@ class SocialConnectSection extends StatelessWidget {
     final vc = ViralCutColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
 
-    final missingIcons = <_SocialType>[];
-    if (!links.instagram) missingIcons.add(_SocialType.instagram);
-    if (!links.youtube) missingIcons.add(_SocialType.youtube);
-    if (!links.twitter) missingIcons.add(_SocialType.x);
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: primary.withValues(alpha: 0.06),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            primary.withValues(alpha: 0.08),
+            primary.withValues(alpha: 0.03),
+          ],
+        ),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: primary.withValues(alpha: 0.12)),
+        border: Border.all(color: primary.withValues(alpha: 0.14)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Social icons — horizontal row to keep card compact
-          _SocialIconsRow(types: missingIcons),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Connect your socials',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: vc.onSurface,
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  _subtitle,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: vc.muted,
-                    height: 1.35,
-                  ),
-                ),
-              ],
+          Row(
+            children: [
+              _SocialBadge(type: _SocialType.instagram, connected: links.instagram),
+              const SizedBox(width: 10),
+              _SocialBadge(type: _SocialType.youtube, connected: links.youtube),
+              const SizedBox(width: 10),
+              _SocialBadge(type: _SocialType.x, connected: links.twitter),
+              const Spacer(),
+              Icon(Icons.link_rounded, size: 18, color: primary.withValues(alpha: 0.4)),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Connect your socials',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: vc.onSurface,
+              height: 1.2,
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(height: 4),
+          Text(
+            _subtitle,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: vc.muted,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
           SizedBox(
-            width: 90,
+            width: double.infinity,
             child: FilledButton(
               onPressed: _primaryAction,
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 11),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -105,7 +106,7 @@ class SocialConnectSection extends StatelessWidget {
                 'Connect  →',
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.w600,
-                  fontSize: 12,
+                  fontSize: 13,
                 ),
               ),
             ),
@@ -118,48 +119,61 @@ class SocialConnectSection extends StatelessWidget {
 
 enum _SocialType { instagram, youtube, x }
 
-class _SocialIconsRow extends StatelessWidget {
-  const _SocialIconsRow({required this.types});
-  final List<_SocialType> types;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (int i = 0; i < types.length; i++) ...[
-          _SocialBadge(type: types[i]),
-          if (i < types.length - 1) const SizedBox(height: 5),
-        ],
-      ],
-    );
-  }
-}
-
 class _SocialBadge extends StatelessWidget {
-  const _SocialBadge({required this.type});
+  const _SocialBadge({required this.type, required this.connected});
+
   final _SocialType type;
+  final bool connected;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.10),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+    final vc = ViralCutColors.of(context);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(11),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.10),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: _iconForType(type),
-      ),
+          foregroundDecoration: connected
+              ? BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(11),
+                )
+              : null,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: _iconForType(type),
+          ),
+        ),
+        if (connected)
+          Positioned(
+            right: -3,
+            bottom: -3,
+            child: Container(
+              padding: const EdgeInsets.all(1.5),
+              decoration: BoxDecoration(
+                color: vc.background,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.check_circle_rounded,
+                size: 15,
+                color: vc.moneyBright,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -168,12 +182,12 @@ class _SocialBadge extends StatelessWidget {
       case _SocialType.instagram:
         return CustomPaint(
           painter: _InstagramPainter(),
-          child: const SizedBox(width: 36, height: 36),
+          child: const SizedBox(width: 40, height: 40),
         );
       case _SocialType.youtube:
         return CustomPaint(
           painter: _YouTubePainter(),
-          child: const SizedBox(width: 36, height: 36),
+          child: const SizedBox(width: 40, height: 40),
         );
       case _SocialType.x:
         return Container(
@@ -183,7 +197,7 @@ class _SocialBadge extends StatelessWidget {
             '𝕏',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: FontWeight.w900,
               height: 1,
             ),
@@ -221,18 +235,18 @@ class _InstagramPainter extends CustomPainter {
 
     // Outer rounded square
     final rrect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(cx, cy), width: 16, height: 16),
-      const Radius.circular(4),
+      Rect.fromCenter(center: Offset(cx, cy), width: 17, height: 17),
+      const Radius.circular(5),
     );
     canvas.drawRRect(rrect, iconPaint);
 
     // Circle
-    canvas.drawCircle(Offset(cx, cy), 4.8, iconPaint);
+    canvas.drawCircle(Offset(cx, cy), 5.2, iconPaint);
 
     // Dot top-right
     canvas.drawCircle(
-      Offset(cx + 6, cy - 6),
-      1.2,
+      Offset(cx + 6.5, cy - 6.5),
+      1.3,
       iconPaint..style = PaintingStyle.fill,
     );
   }
@@ -254,7 +268,7 @@ class _YouTubePainter extends CustomPainter {
     final rrectPaint = Paint()..color = Colors.white;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(cx, cy), width: 22, height: 15),
+        Rect.fromCenter(center: Offset(cx, cy), width: 24, height: 16),
         const Radius.circular(4),
       ),
       rrectPaint,
@@ -265,9 +279,9 @@ class _YouTubePainter extends CustomPainter {
       ..color = const Color(0xFFFF0000)
       ..style = PaintingStyle.fill;
     final path = Path()
-      ..moveTo(cx - 4, cy - 5)
-      ..lineTo(cx + 6, cy)
-      ..lineTo(cx - 4, cy + 5)
+      ..moveTo(cx - 4.5, cy - 5.5)
+      ..lineTo(cx + 6.5, cy)
+      ..lineTo(cx - 4.5, cy + 5.5)
       ..close();
     canvas.drawPath(path, triPaint);
   }

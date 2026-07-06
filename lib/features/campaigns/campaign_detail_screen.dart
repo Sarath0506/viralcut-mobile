@@ -4,11 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
+import '../../core/creator_profile/creator_profile_providers.dart';
 import '../../core/realtime/campaign_realtime_scope.dart';
 import '../../core/layout/app_spacing.dart';
 import 'campaign_providers.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/viralcut_colors.dart';
+import '../profile/widgets/profile_switcher_sheet.dart';
 import 'widgets/campaign_detail_body.dart';
 
 class CampaignDetailScreen extends ConsumerWidget {
@@ -38,8 +40,14 @@ class CampaignDetailScreen extends ConsumerWidget {
     Participation? participation,
   ) async {
     if (participation == null) {
+      final activeProfile = ref.read(activeCreatorProfileProvider);
+      if (activeProfile == null) {
+        await showProfileSwitcherSheet(context);
+        return;
+      }
+
       try {
-        await ref.read(apiClientProvider).joinCampaign(id);
+        await ref.read(apiClientProvider).joinCampaign(id, activeProfile.id);
         ref.invalidate(campaignParticipationProvider(id));
         if (!context.mounted) return;
         context.push('/campaigns/$id/submit');
@@ -48,7 +56,7 @@ class CampaignDetailScreen extends ConsumerWidget {
           try {
             final existing = await ref
                 .read(apiClientProvider)
-                .fetchParticipationByCampaign(id);
+                .fetchParticipationByCampaign(id, activeProfile.id);
             ref.invalidate(campaignParticipationProvider(id));
             if (!context.mounted) return;
             context.push('/campaigns/${existing.campaignId}/submit');

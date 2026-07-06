@@ -21,7 +21,7 @@ abstract final class ViralCutTokenColors {
   static const onSurfaceLight = Color(0xFF0B1C30);
   static const onSurfaceDark = Color(0xFFE2E8F0);
   static const deepSurfaceLight = Color(0xFF0F172A);
-  static const deepSurfaceDark = Color(0xFF020617);
+  static const deepSurfaceDark = Color(0xFF1B2942);
   static const borderLight = Color(0xFFE2E8F0);
   static const borderDark = Color(0xFF334155);
   static const mutedLight = Color(0xFF64748B);

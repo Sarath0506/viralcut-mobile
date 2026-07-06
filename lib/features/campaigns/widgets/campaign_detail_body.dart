@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -71,6 +72,12 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
         ),
         const SizedBox(height: 10),
         _DarkStatsBar(campaign: c),
+        const SizedBox(height: 12),
+        _LinkRow(
+          label: 'View leaderboard',
+          icon: Icons.leaderboard_outlined,
+          onTap: () => context.push('/campaigns/${c.id}/leaderboard'),
+        ),
         if (c.displayBrief != null && c.displayBrief!.trim().isNotEmpty) ...[
           const SizedBox(height: 14),
           const _SectionTitle('Brief'),
@@ -86,17 +93,37 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
             ),
           ),
         ],
-        if (c.doRuleLines.isNotEmpty) ...[
+        if (c.doRuleLines.isNotEmpty || c.avoidRuleLines.isNotEmpty) ...[
           const SizedBox(height: 12),
-          _SectionTitle('Do', color: vc.money),
-          const SizedBox(height: 6),
-          _BulletBlock(lines: c.doRuleLines, bulletColor: vc.money),
+          Text(
+            'CONTENT RULES',
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+              color: vc.muted,
+            ),
+          ),
+        ],
+        if (c.doRuleLines.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          _RuleCard(
+            title: 'DO THIS',
+            icon: Icons.check_circle_outline_rounded,
+            markIcon: Icons.check_rounded,
+            color: vc.money,
+            lines: c.doRuleLines,
+          ),
         ],
         if (c.avoidRuleLines.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          _SectionTitle('Avoid', color: vc.error),
-          const SizedBox(height: 6),
-          _BulletBlock(lines: c.avoidRuleLines, bulletColor: vc.error),
+          const SizedBox(height: 10),
+          _RuleCard(
+            title: 'AVOID THIS',
+            icon: Icons.cancel_outlined,
+            markIcon: Icons.close_rounded,
+            color: vc.error,
+            lines: c.avoidRuleLines,
+          ),
         ],
         if (c.productUrl != null && c.productUrl!.trim().isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -110,7 +137,7 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
         ],
         if (c.referenceAssets.isNotEmpty) ...[
           const SizedBox(height: 12),
-          const _SectionTitle('Brand references'),
+          const _SectionTitle('Sample content'),
           const SizedBox(height: 8),
           SizedBox(
             height: 120,
@@ -463,6 +490,7 @@ class _StatStrip extends StatelessWidget {
           children: [
             Expanded(
               child: _StatCell(
+                icon: Icons.trending_up_rounded,
                 label: 'Rate / 1K',
                 value: c.ratePer1kDisplay,
                 valueColor: vc.money,
@@ -471,6 +499,7 @@ class _StatStrip extends StatelessWidget {
             VerticalDivider(width: 1, color: vc.border.withValues(alpha: 0.6)),
             Expanded(
               child: _StatCell(
+                icon: Icons.payments_rounded,
                 label: 'Max payout',
                 value: formatPaise(c.maxPayoutPaise),
                 valueColor: vc.money,
@@ -486,12 +515,14 @@ class _StatStrip extends StatelessWidget {
 
 class _StatCell extends StatelessWidget {
   const _StatCell({
+    required this.icon,
     required this.label,
     required this.value,
     required this.valueColor,
     this.alignEnd = false,
   });
 
+  final IconData icon;
   final String label;
   final String value;
   final Color valueColor;
@@ -508,16 +539,39 @@ class _StatCell extends StatelessWidget {
       child: Column(
         crossAxisAlignment: alignment,
         children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: vc.muted,
-              height: 1.1,
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (alignEnd) ...[
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: vc.muted,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(icon, size: 11, color: vc.muted),
+              ] else ...[
+                Icon(icon, size: 11, color: vc.muted),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: vc.muted,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 3),
           Text(
@@ -597,7 +651,7 @@ class _DarkStatsBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF111111),
+        color: ViralCutColors.of(context).deepSurface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: IntrinsicHeight(
@@ -605,6 +659,7 @@ class _DarkStatsBar extends StatelessWidget {
           children: [
             Expanded(
               child: _DarkStatCell(
+                icon: Icons.payments_rounded,
                 label: 'Max payout',
                 value: formatPaise(c.maxPayoutPaise),
                 valueColor: const Color(0xFF22C55E),
@@ -617,6 +672,7 @@ class _DarkStatsBar extends StatelessWidget {
             ),
             Expanded(
               child: _DarkStatCell(
+                icon: Icons.donut_small_rounded,
                 label: 'Pool used',
                 value: '$poolUsed%',
                 valueColor: poolColor,
@@ -630,6 +686,7 @@ class _DarkStatsBar extends StatelessWidget {
               ),
               Expanded(
                 child: _DarkStatCell(
+                  icon: Icons.category_rounded,
                   label: 'Category',
                   value: c.category!,
                   valueColor: Colors.white,
@@ -646,12 +703,14 @@ class _DarkStatsBar extends StatelessWidget {
 
 class _DarkStatCell extends StatelessWidget {
   const _DarkStatCell({
+    required this.icon,
     required this.label,
     required this.value,
     required this.valueColor,
     this.bold = false,
   });
 
+  final IconData icon;
   final String label;
   final String value;
   final Color valueColor;
@@ -673,14 +732,21 @@ class _DarkStatCell extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            color: Colors.white.withValues(alpha: 0.5),
-            height: 1.1,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 11, color: Colors.white.withValues(alpha: 0.5)),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                color: Colors.white.withValues(alpha: 0.5),
+                height: 1.1,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -688,10 +754,9 @@ class _DarkStatCell extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text, {this.color});
+  const _SectionTitle(this.text);
 
   final String text;
-  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -701,7 +766,7 @@ class _SectionTitle extends StatelessWidget {
         fontSize: 13,
         fontWeight: FontWeight.w700,
         height: 1.2,
-        color: color ?? ViralCutColors.of(context).onSurface,
+        color: ViralCutColors.of(context).onSurface,
       ),
     );
   }
@@ -728,41 +793,77 @@ class _SurfaceBlock extends StatelessWidget {
   }
 }
 
-class _BulletBlock extends StatelessWidget {
-  const _BulletBlock({required this.lines, required this.bulletColor});
+class _RuleCard extends StatelessWidget {
+  const _RuleCard({
+    required this.title,
+    required this.icon,
+    required this.markIcon,
+    required this.color,
+    required this.lines,
+  });
 
+  final String title;
+  final IconData icon;
+  final IconData markIcon;
+  final Color color;
   final List<String> lines;
-  final Color bulletColor;
 
   @override
   Widget build(BuildContext context) {
     final vc = ViralCutColors.of(context);
-    return _SurfaceBlock(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: color),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.3,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           for (var i = 0; i < lines.length; i++)
             Padding(
-              padding: EdgeInsets.only(bottom: i < lines.length - 1 ? 6 : 0),
+              padding: EdgeInsets.only(bottom: i < lines.length - 1 ? 8 : 0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 5,
-                    height: 5,
-                    margin: const EdgeInsets.only(top: 5, right: 8),
+                    width: 18,
+                    height: 18,
+                    margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
-                      color: bulletColor,
+                      color: color.withValues(alpha: 0.16),
                       shape: BoxShape.circle,
                     ),
+                    child: Icon(markIcon, size: 12, color: color),
                   ),
                   Expanded(
-                    child: Text(
-                      lines[i],
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        height: 1.35,
-                        color: vc.onSurface,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 1),
+                      child: Text(
+                        lines[i],
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          height: 1.35,
+                          color: vc.onSurface,
+                        ),
                       ),
                     ),
                   ),
@@ -903,44 +1004,13 @@ class _HowToParticipate extends StatelessWidget {
   const _HowToParticipate({required this.campaign});
   final Campaign campaign;
 
-  List<({String title, String subtitle})> _steps() {
-    final platform = campaign.platform.toLowerCase();
-    final isVideo = platform.contains('reel') ||
-        platform.contains('short') ||
-        platform.contains('tiktok') ||
-        platform.contains('video');
-    return [
-      (
-        title: 'Create your clip',
-        subtitle:
-            'Film content for ${campaign.brandCompanyName ?? 'the brand'} following the brief above',
-      ),
-      (
-        title: isVideo
-            ? 'Post on ${_platformLabel(platform)}'
-            : 'Post your content',
-        subtitle: isVideo
-            ? 'Publish your ${_formatLabel(platform)} to your account'
-            : 'Share the post on your account',
-      ),
-      (
-        title: 'Submit the link',
-        subtitle: 'Paste your post URL below to start earning',
-      ),
+  List<({String title, IconData icon})> _steps() {
+    return const [
+      (icon: Icons.videocam_rounded, title: 'Create your clip'),
+      (icon: Icons.upload_file_rounded, title: 'Submit work'),
+      (icon: Icons.send_rounded, title: 'Post on social media'),
+      (icon: Icons.payments_rounded, title: 'Get paid for views'),
     ];
-  }
-
-  String _platformLabel(String p) {
-    if (p.contains('instagram')) return 'Instagram';
-    if (p.contains('youtube')) return 'YouTube';
-    if (p.contains('tiktok')) return 'TikTok';
-    return 'Social media';
-  }
-
-  String _formatLabel(String p) {
-    if (p.contains('reel')) return 'reel/short';
-    if (p.contains('short')) return 'short';
-    return 'video';
   }
 
   @override
@@ -957,39 +1027,56 @@ class _HowToParticipate extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.1,
                 color: vc.muted)),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         ...List.generate(steps.length, (i) {
           final step = steps[i];
           final isLast = i == steps.length - 1;
           return IntrinsicHeight(
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(
-                  width: 36,
+                  width: 38,
                   child: Column(
                     children: [
                       Container(
-                        width: 32,
-                        height: 32,
+                        width: 34,
+                        height: 34,
                         decoration: BoxDecoration(
-                          color: vc.primary,
-                          borderRadius: BorderRadius.circular(10),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              vc.primary,
+                              vc.primaryVariant,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(11),
+                          boxShadow: [
+                            BoxShadow(
+                              color: vc.primary.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
                         ),
-                        child: Center(
-                          child: Text('${i + 1}',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700)),
-                        ),
+                        child: Icon(step.icon, color: Colors.white, size: 16),
                       ),
                       if (!isLast)
                         Expanded(
                           child: Container(
                             width: 2,
-                            margin: const EdgeInsets.symmetric(vertical: 4),
-                            color: vc.border,
+                            margin: const EdgeInsets.symmetric(vertical: 3),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  vc.primary.withValues(alpha: 0.35),
+                                  vc.border,
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                     ],
@@ -998,23 +1085,10 @@ class _HowToParticipate extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Padding(
-                    padding: EdgeInsets.only(bottom: isLast ? 0 : 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text(step.title,
-                            style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 2),
-                        Text(step.subtitle,
-                            style: TextStyle(
-                                fontSize: 13,
-                                color: vc.muted,
-                                height: 1.4)),
-                      ],
-                    ),
+                    padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+                    child: Text(step.title,
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w700)),
                   ),
                 ),
               ],

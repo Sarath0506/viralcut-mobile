@@ -7,15 +7,22 @@ import '../../features/auth/otp_screen.dart';
 import '../../features/auth/signup_screen.dart';
 import '../../features/campaigns/campaign_detail_screen.dart';
 import '../../features/campaigns/campaigns_screen.dart';
+import '../../features/campaigns/leaderboard_screen.dart';
 import '../../features/campaigns/submit_work_screen.dart';
 import '../../features/dashboard/dashboard_shell.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/notifications/notifications_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
+import '../../features/profile/connected_accounts_screen.dart';
+import '../../features/profile/edit_profile_screen.dart';
+import '../../features/profile/kyc_status_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/submissions/participation_detail_screen.dart';
 import '../../features/submissions/performance_screen.dart';
 import '../../features/submissions/submissions_screen.dart';
+import '../../features/support/support_screen.dart';
+import '../../features/wallet/payout_methods_screen.dart';
 import '../../features/wallet/wallet_screen.dart';
 import '../../features/wallet/withdraw_screen.dart';
 import '../auth/auth_provider.dart';
@@ -100,6 +107,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             SubmitWorkScreen(campaignId: state.pathParameters['id']!),
       ),
       GoRoute(
+        path: '/campaigns/:id/leaderboard',
+        builder: (_, state) =>
+            LeaderboardScreen(campaignId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/leaderboard',
+        builder: (_, __) => const LeaderboardScreen(),
+      ),
+      GoRoute(
         path: '/participations/:id',
         builder: (_, state) =>
             ParticipationDetailScreen(id: state.pathParameters['id']!),
@@ -116,6 +132,30 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/withdraw', builder: (_, __) => const WithdrawScreen()),
+      GoRoute(
+        path: '/wallet/payout-methods',
+        builder: (_, __) => const PayoutMethodsScreen(),
+      ),
+      GoRoute(
+        path: '/profile/edit',
+        builder: (_, __) => const EditProfileScreen(),
+      ),
+      GoRoute(
+        path: '/profile/connected-accounts',
+        builder: (_, __) => const ConnectedAccountsScreen(),
+      ),
+      GoRoute(
+        path: '/profile/kyc',
+        builder: (_, __) => const KycStatusScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (_, __) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/support',
+        builder: (_, __) => const SupportScreen(),
+      ),
     ],
   );
 

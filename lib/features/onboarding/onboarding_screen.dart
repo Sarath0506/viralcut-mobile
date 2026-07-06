@@ -237,7 +237,7 @@ class _WalletOnboardingSlide extends StatelessWidget {
             ),
           ),
         ),
-        _OnboardingTextBlock(
+        const _OnboardingTextBlock(
           title: 'Post clips.\nGet paid.',
           titleHighlight: 'Get paid.',
           subtitle:

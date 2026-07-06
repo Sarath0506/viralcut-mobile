@@ -1,14 +1,15 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/format/money_format.dart';
+import '../../../core/creator_profile/creator_profile_providers.dart';
 import '../../../core/layout/app_spacing.dart';
 import '../../../theme/viralcut_colors.dart';
-import '../dashboard_providers.dart';
 import '../../auth/widgets/auth_app_icon.dart';
 import '../../profile/profile_providers.dart';
+import '../../profile/widgets/profile_switcher_sheet.dart';
 
 enum ShellTopBarVariant { home, campaigns, submissions, wallet, profile }
 
@@ -89,33 +90,110 @@ class _Trailing extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (variant == ShellTopBarVariant.home) {
-      final dashboard = ref.watch(dashboardProvider);
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          dashboard.when(
-            data: (data) => _EarningsChip(lifetimePaise: data.wallet.lifetimePaise),
-            loading: () => const SizedBox(
-              width: 72,
-              height: 32,
-              child: Center(
-                child: SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _ProfileSwitcherChip(),
+        const SizedBox(width: 6),
+        const _NotificationBell(),
+        const SizedBox(width: 4),
+        _ProfileAvatar(onTap: () => context.go('/profile')),
+      ],
+    );
+  }
+}
+
+class _ProfileSwitcherChip extends ConsumerWidget {
+  const _ProfileSwitcherChip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vc = ViralCutColors.of(context);
+    final profiles = ref.watch(creatorProfilesProvider).valueOrNull ?? [];
+    final active = ref.watch(activeCreatorProfileProvider);
+
+    if (profiles.length < 2) return const SizedBox.shrink();
+
+    return GestureDetector(
+      onTap: () => showProfileSwitcherSheet(context),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 96),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: vc.surfaceVariant,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: vc.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                active?.displayName ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: vc.onSurface,
                 ),
               ),
             ),
-            error: (_, __) => const SizedBox.shrink(),
-          ),
-          const SizedBox(width: 4),
-          _ProfileAvatar(onTap: () => context.go('/profile')),
-        ],
-      );
-    }
+            const SizedBox(width: 2),
+            Icon(Icons.expand_more_rounded, size: 14, color: vc.muted),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-    return _ProfileAvatar(onTap: () => context.go('/profile'));
+class _NotificationBell extends ConsumerWidget {
+  const _NotificationBell();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vc = ViralCutColors.of(context);
+    final unreadCount = ref.watch(unreadNotificationCountProvider).valueOrNull ?? 0;
+
+    return GestureDetector(
+      onTap: () => context.push('/notifications'),
+      child: Container(
+        width: 36,
+        height: 36,
+        alignment: Alignment.center,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(Icons.notifications_outlined, color: vc.onSurface, size: 24),
+            if (unreadCount > 0)
+              Positioned(
+                right: -2,
+                top: -2,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                  decoration: BoxDecoration(
+                    color: vc.error,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: vc.background, width: 1.5),
+                  ),
+                  child: Text(
+                    unreadCount > 9 ? '9+' : '$unreadCount',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -132,6 +210,7 @@ class _ProfileAvatar extends ConsumerWidget {
     final initials = me.valueOrNull != null
         ? _initials(me.valueOrNull!['displayName'] as String? ?? '')
         : '?';
+    final avatarUrl = me.valueOrNull?['avatarUrl'] as String?;
 
     return GestureDetector(
       onTap: onTap,
@@ -141,16 +220,24 @@ class _ProfileAvatar extends ConsumerWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: primary.withValues(alpha: 0.12),
+          image: avatarUrl != null
+              ? DecorationImage(
+                  image: CachedNetworkImageProvider(avatarUrl),
+                  fit: BoxFit.cover,
+                )
+              : null,
         ),
         alignment: Alignment.center,
-        child: Text(
-          initials,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: primary,
-          ),
-        ),
+        child: avatarUrl == null
+            ? Text(
+                initials,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: primary,
+                ),
+              )
+            : null,
       ),
     );
   }
@@ -163,37 +250,3 @@ class _ProfileAvatar extends ConsumerWidget {
   }
 }
 
-class _EarningsChip extends StatelessWidget {
-  const _EarningsChip({required this.lifetimePaise});
-
-  final int lifetimePaise;
-
-  @override
-  Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => context.go('/wallet'),
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: vc.money.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: vc.money.withValues(alpha: 0.25)),
-          ),
-          child: Text(
-            formatPaise(lifetimePaise),
-            style: GoogleFonts.inter(
-              color: vc.money,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

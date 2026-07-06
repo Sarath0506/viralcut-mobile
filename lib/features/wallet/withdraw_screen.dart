@@ -11,6 +11,7 @@ import '../../core/layout/app_spacing.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/viralcut_colors.dart';
 import 'wallet_providers.dart';
+import 'widgets/payout_method_form.dart';
 
 final payoutMethodsProvider = FutureProvider<List<PayoutMethod>>((ref) async {
   return ref.read(apiClientProvider).fetchPayoutMethods();
@@ -53,23 +54,21 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
             payoutMethodId: _methodId!,
             idempotencyKey: 'wd-${DateTime.now().millisecondsSinceEpoch}',
           );
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'You receive ${formatPaise(result.netPaise)} (fee ${formatPaise(result.feePaise)})',
-            ),
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'You receive ${formatPaise(result.netPaise)} (fee ${formatPaise(result.feePaise)})',
           ),
-        );
-        ref.invalidate(walletProvider);
-        context.pop();
-      }
+        ),
+      );
+      ref.invalidate(walletProvider);
+      context.pop();
     } on ApiException catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -215,14 +214,32 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
                 const SizedBox(height: 24),
 
                 if (list.isNotEmpty) ...[
-                  Text(
-                    'WITHDRAW TO',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8,
-                      color: vc.muted,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'WITHDRAW TO',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                          color: vc.muted,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => context
+                            .push('/wallet/payout-methods')
+                            .then((_) => ref.invalidate(payoutMethodsProvider)),
+                        child: Text(
+                          'Manage',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: primary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
                   ...list.map((m) => _PayoutMethodTile(
@@ -232,19 +249,18 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
                       )),
                 ] else ...[
                   Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: vc.surface,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: vc.border),
                     ),
-                    child: Text(
-                      'No payout methods added yet. Contact support to add your bank or UPI.',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: vc.muted,
-                        height: 1.4,
-                      ),
+                    child: PayoutMethodForm(
+                      title: 'Add a payout method to withdraw',
+                      onSaved: (method) {
+                        ref.invalidate(payoutMethodsProvider);
+                        setState(() => _methodId = method.id);
+                      },
                     ),
                   ),
                 ],

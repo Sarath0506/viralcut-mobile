@@ -1,3 +1,30 @@
+class ParticipationCreatorProfile {
+  ParticipationCreatorProfile({
+    required this.id,
+    required this.platform,
+    required this.handle,
+    this.label,
+    this.avatarUrl,
+  });
+
+  final String id;
+  final String platform;
+  final String handle;
+  final String? label;
+  final String? avatarUrl;
+
+  factory ParticipationCreatorProfile.fromJson(Map<String, dynamic> json) =>
+      ParticipationCreatorProfile(
+        id: json['id'] as String,
+        platform: json['platform'] as String,
+        handle: json['handle'] as String,
+        label: json['label'] as String?,
+        avatarUrl: json['avatarUrl'] as String?,
+      );
+
+  String get displayHandle => label ?? '@$handle';
+}
+
 class RejectionHistoryEvent {
   RejectionHistoryEvent({
     required this.id,
@@ -122,6 +149,7 @@ class ParticipationCampaign {
     this.brandLogoUrl,
     this.coverImageUrl,
     this.ratePer1kDisplay,
+    this.ratePer1kPaise,
     this.maxPayoutPaise,
   });
 
@@ -133,6 +161,7 @@ class ParticipationCampaign {
   final String? brandLogoUrl;
   final String? coverImageUrl;
   final String? ratePer1kDisplay;
+  final int? ratePer1kPaise;
   final int? maxPayoutPaise;
 
   factory ParticipationCampaign.fromJson(Map<String, dynamic> json) =>
@@ -147,6 +176,7 @@ class ParticipationCampaign {
         brandLogoUrl: json['brandLogoUrl'] as String?,
         coverImageUrl: json['coverImageUrl'] as String?,
         ratePer1kDisplay: json['ratePer1kDisplay'] as String?,
+        ratePer1kPaise: json['ratePer1kPaise'] as int?,
         maxPayoutPaise: json['maxPayoutPaise'] as int?,
       );
 
@@ -162,6 +192,7 @@ class Participation {
     required this.summary,
     required this.campaign,
     required this.deliverables,
+    this.creatorProfile,
   });
 
   final String id;
@@ -171,6 +202,7 @@ class Participation {
   final String summary;
   final ParticipationCampaign campaign;
   final List<FormatDeliverable> deliverables;
+  final ParticipationCreatorProfile? creatorProfile;
 
   factory Participation.fromJson(Map<String, dynamic> json) => Participation(
         id: json['id'] as String,
@@ -186,6 +218,10 @@ class Participation {
         deliverables: (json['deliverables'] as List<dynamic>? ?? [])
             .map((e) => FormatDeliverable.fromJson(e as Map<String, dynamic>))
             .toList(),
+        creatorProfile: json['creatorProfile'] != null
+            ? ParticipationCreatorProfile.fromJson(
+                json['creatorProfile'] as Map<String, dynamic>)
+            : null,
       );
 
   bool get needsAction =>
@@ -206,6 +242,7 @@ class ParticipationListItem {
     this.brandCompanyName,
     this.brandLogoUrl,
     this.coverImageUrl,
+    this.creatorProfile,
   });
 
   final String id;
@@ -218,6 +255,7 @@ class ParticipationListItem {
   final List<String> platforms;
   final String joinedAt;
   final List<FormatDeliverable> deliverables;
+  final ParticipationCreatorProfile? creatorProfile;
 
   factory ParticipationListItem.fromJson(Map<String, dynamic> json) =>
       ParticipationListItem(
@@ -235,6 +273,10 @@ class ParticipationListItem {
         deliverables: (json['deliverables'] as List<dynamic>? ?? [])
             .map((e) => FormatDeliverable.fromJson(e as Map<String, dynamic>))
             .toList(),
+        creatorProfile: json['creatorProfile'] != null
+            ? ParticipationCreatorProfile.fromJson(
+                json['creatorProfile'] as Map<String, dynamic>)
+            : null,
       );
 
   String get displayBrand => brandCompanyName ?? campaignTitle;

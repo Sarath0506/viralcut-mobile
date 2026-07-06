@@ -58,7 +58,7 @@ class CampaignListCard extends StatelessWidget {
     required this.onTap,
   });
 
-  static const _thumbSize = 96.0;
+  static const _thumbSize = 76.0;
 
   final Campaign campaign;
   final VoidCallback onTap;
@@ -68,11 +68,13 @@ class CampaignListCard extends StatelessWidget {
     final vc = ViralCutColors.of(context);
     final c = campaign;
     final badge = _resolveBadge(c);
+    final urgent = badge == _Badge.urgent;
 
     return Semantics(
       button: true,
       label:
-          '${c.title}, ${formatPaise(c.maxPayoutPaise)}, ${campaignEndingLabel(c)}, ${c.poolPercent}% filled',
+          '${c.title}, ${c.ratePer1kDisplay}, up to ${formatPaise(c.maxPayoutPaise)} max, '
+          '${campaignEndingLabel(c)}, ${c.poolPercent}% filled',
       child: Material(
         color: vc.surface,
         elevation: 0,
@@ -83,66 +85,94 @@ class CampaignListCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: SizedBox(
-            height: _thumbSize,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Thumbnail(campaign: c),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Title row + badge
-                        Row(
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: _Thumbnail(campaign: c),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          right: badge != _Badge.none ? 54 : 0,
+                        ),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Expanded(
-                              child: Text(
-                                c.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: vc.onSurface,
-                                  height: 1.12,
-                                ),
+                            Text(
+                              c.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: vc.onSurface,
+                                height: 1.2,
                               ),
                             ),
-                            if (badge != _Badge.none) ...[
-                              const SizedBox(width: 6),
-                              _BadgeChip(badge: badge),
-                            ],
-                          ],
-                        ),
-                        // Amount + days left + pool bar
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Row(
+                            const SizedBox(height: 4),
+                            Text(
+                              c.ratePer1kDisplay,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: vc.money,
+                                height: 1.1,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
-                                Expanded(
-                                  child: Text(
-                                    formatPaise(c.maxPayoutPaise),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: vc.money,
-                                      height: 1.1,
-                                    ),
+                                Icon(Icons.payments_outlined,
+                                    size: 11, color: vc.muted),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '${formatPaise(c.maxPayoutPaise)} cap',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: vc.muted,
+                                    height: 1.1,
                                   ),
                                 ),
-                                const SizedBox(width: 6),
-                                _DaysLeftPill(label: _scheduleLabel(c), badge: badge),
+                                Text(
+                                  '  ·  ',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    color: vc.muted,
+                                  ),
+                                ),
+                                Icon(
+                                  urgent
+                                      ? Icons.local_fire_department_rounded
+                                      : Icons.schedule_rounded,
+                                  size: 11,
+                                  color: urgent ? vc.warning : vc.muted,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  _scheduleLabel(c),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: urgent
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: urgent ? vc.warning : vc.muted,
+                                    height: 1.1,
+                                  ),
+                                ),
                               ],
                             ),
-                            const SizedBox(height: 5),
                             Row(
                               children: [
                                 Expanded(
@@ -152,12 +182,12 @@ class CampaignListCard extends StatelessWidget {
                                     showLabels: false,
                                   ),
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 8),
                                 Text(
                                   '${c.poolPercent}% filled',
                                   style: GoogleFonts.inter(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
                                     color: vc.muted,
                                     height: 1,
                                   ),
@@ -166,23 +196,27 @@ class CampaignListCard extends StatelessWidget {
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-                Align(
-                  alignment: Alignment.center,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: Icon(
-                      Icons.chevron_right_rounded,
-                      size: 20,
-                      color: vc.muted.withValues(alpha: 0.65),
+                    const SizedBox(width: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                        color: vc.muted.withValues(alpha: 0.65),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              if (badge != _Badge.none)
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: _BadgeChip(badge: badge),
+                ),
+            ],
           ),
         ),
       ),
@@ -197,14 +231,18 @@ class _BadgeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, bg, fg) = switch (badge) {
-      _Badge.urgent      => ('URGENT',    const Color(0xFFFFEDED), const Color(0xFFDC2626)),
-      _Badge.trending    => ('TRENDING',  const Color(0xFFEDE9FE), const Color(0xFF7C3AED)),
-      _Badge.newCampaign => ('NEW',       const Color(0xFFDCFCE7), const Color(0xFF16A34A)),
-      _Badge.upcoming    => ('UPCOMING',  const Color(0xFFE0F2FE), const Color(0xFF0284C7)),
-      _Badge.none        => ('',          Colors.transparent,       Colors.transparent),
+    final vc = ViralCutColors.of(context);
+    final primary = Theme.of(context).colorScheme.primary;
+    final (label, bg) = switch (badge) {
+      _Badge.urgent => ('URGENT', vc.error),
+      _Badge.trending => ('TRENDING', primary),
+      _Badge.newCampaign => ('NEW', vc.money),
+      _Badge.upcoming => ('UPCOMING', const Color(0xFF0284C7)),
+      _Badge.none => ('', Colors.transparent),
     };
 
+    // Solid fill so the tag stays legible over any thumbnail image,
+    // matching the badge treatment on the dashboard's trending carousel.
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
@@ -216,56 +254,10 @@ class _BadgeChip extends StatelessWidget {
         style: GoogleFonts.inter(
           fontSize: 8,
           fontWeight: FontWeight.w800,
-          color: fg,
+          color: Colors.white,
           letterSpacing: 0.4,
           height: 1,
         ),
-      ),
-    );
-  }
-}
-
-class _DaysLeftPill extends StatelessWidget {
-  const _DaysLeftPill({required this.label, required this.badge});
-
-  final String label;
-  final _Badge badge;
-
-  @override
-  Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
-    final (pillBg, pillFg) = switch (badge) {
-      _Badge.urgent   => (vc.warning.withValues(alpha: 0.12), vc.warning),
-      _Badge.upcoming => (const Color(0xFFE0F2FE),             const Color(0xFF0284C7)),
-      _           => (vc.surfaceVariant,                   vc.muted),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: pillBg,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            badge == _Badge.upcoming
-                ? Icons.schedule_rounded
-                : Icons.access_time_rounded,
-            size: 9,
-            color: pillFg,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-              color: pillFg,
-              height: 1,
-            ),
-          ),
-        ],
       ),
     );
   }
