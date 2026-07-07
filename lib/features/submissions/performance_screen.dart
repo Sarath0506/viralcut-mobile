@@ -9,7 +9,7 @@ import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/participation/participation_models.dart';
 import '../../core/widgets/vc_scaffold.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import 'submission_providers.dart';
 
 class PerformanceScreen extends ConsumerWidget {
@@ -112,7 +112,7 @@ class _PerformanceBodyState extends ConsumerState<_PerformanceBody> {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final d = widget.deliverable;
     final c = widget.participation.campaign;
 
@@ -639,7 +639,7 @@ class _StatColumn extends StatelessWidget {
   final String label;
   final String value;
   final Color valueColor;
-  final ViralCutColors vc;
+  final HalchalColors vc;
 
   @override
   Widget build(BuildContext context) {
@@ -670,7 +670,7 @@ class _StatColumn extends StatelessWidget {
 
 class _Divider extends StatelessWidget {
   const _Divider({required this.vc});
-  final ViralCutColors vc;
+  final HalchalColors vc;
 
   @override
   Widget build(BuildContext context) =>
@@ -688,7 +688,7 @@ class _EngagementTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  final ViralCutColors vc;
+  final HalchalColors vc;
 
   @override
   Widget build(BuildContext context) {
@@ -719,7 +719,7 @@ class _EngagementTile extends StatelessWidget {
 
 class _PlaceholderBox extends StatelessWidget {
   const _PlaceholderBox({required this.vc});
-  final ViralCutColors vc;
+  final HalchalColors vc;
 
   @override
   Widget build(BuildContext context) => Container(

@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/auth/auth_provider.dart';
-import '../../../theme/viralcut_colors.dart';
+import '../../../theme/halchal_colors.dart';
 
 final _ifscPattern = RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$');
 
@@ -68,7 +68,7 @@ class _PayoutMethodFormState extends ConsumerState<PayoutMethodForm> {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Form(
       key: _formKey,
       child: Column(

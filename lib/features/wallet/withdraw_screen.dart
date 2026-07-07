@@ -9,7 +9,7 @@ import '../../core/auth/auth_provider.dart';
 import '../../core/format/money_format.dart';
 import '../../core/layout/app_spacing.dart';
 import '../../core/widgets/vc_scaffold.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import 'wallet_providers.dart';
 import 'widgets/payout_method_form.dart';
 
@@ -78,7 +78,7 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
   Widget build(BuildContext context) {
     final wallet = ref.watch(walletProvider);
     final methods = ref.watch(payoutMethodsProvider);
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
 
     return VcScaffold(
@@ -328,7 +328,7 @@ class _PayoutMethodTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
 
     return GestureDetector(
@@ -398,7 +398,7 @@ class _SummaryTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -444,7 +444,7 @@ class _Row extends StatelessWidget {
 
   final String label;
   final String value;
-  final ViralCutColors vc;
+  final HalchalColors vc;
   final bool bold;
   final Color? valueColor;
 

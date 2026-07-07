@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/layout/app_spacing.dart';
 import '../../core/layout/list_entrance.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import 'submission_providers.dart';
 import 'widgets/submission_list_card.dart';
 import 'widgets/submission_tab_selector.dart';
@@ -54,7 +54,7 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen>
     final participations = ref.watch(participationsProvider(_tab));
     final activeList = ref.watch(participationsProvider('active'));
     final completedList = ref.watch(participationsProvider('completed'));
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final activeCount = activeList.valueOrNull?.length ?? 0;
     final completedCount = completedList.valueOrNull?.length ?? 0;
 
@@ -80,6 +80,7 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen>
         ),
         Expanded(
           child: participations.when(
+            skipLoadingOnRefresh: true,
             loading: () => const ScreenLoader(),
             error: (e, _) => Center(child: Text('$e')),
             data: (list) {

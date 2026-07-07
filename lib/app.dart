@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/realtime/realtime_sync.dart';
 import 'core/router/app_router.dart';
 import 'theme/theme_provider.dart';
-import 'theme/viralcut_theme.dart';
+import 'theme/halchal_theme.dart';
 
-class ViralCutApp extends ConsumerWidget {
-  const ViralCutApp({super.key});
+class HalchalApp extends ConsumerWidget {
+  const HalchalApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -18,8 +18,8 @@ class ViralCutApp extends ConsumerWidget {
       child: MaterialApp.router(
         title: 'Halchal',
         debugShowCheckedModeBanner: false,
-        theme: ViralCutTheme.light,
-        darkTheme: ViralCutTheme.dark,
+        theme: HalchalTheme.light,
+        darkTheme: HalchalTheme.dark,
         themeMode: themeMode,
         routerConfig: router,
       ),

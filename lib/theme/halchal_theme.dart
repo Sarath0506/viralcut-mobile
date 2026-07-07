@@ -3,14 +3,14 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../core/layout/app_spacing.dart';
 import 'token_colors.dart';
-import 'viralcut_colors.dart';
+import 'halchal_colors.dart';
 
-abstract final class ViralCutTheme {
+abstract final class HalchalTheme {
   static ThemeData get light => _build(Brightness.light);
   static ThemeData get dark => _build(Brightness.dark);
 
   static ThemeData _build(Brightness brightness) {
-    final vc = ViralCutColors.forBrightness(brightness);
+    final vc = HalchalColors.forBrightness(brightness);
     final isDark = brightness == Brightness.dark;
 
     final textTheme = GoogleFonts.interTextTheme(

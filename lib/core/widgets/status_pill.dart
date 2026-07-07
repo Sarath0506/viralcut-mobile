@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import '../participation/participation_status_labels.dart';
 
 class StatusPill extends StatelessWidget {
@@ -17,7 +17,7 @@ class StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final displayLabel = label ??
         (useDeliverableLabels
             ? deliverableStatusLabel(status)
@@ -47,7 +47,7 @@ class StatusPill extends StatelessWidget {
     );
   }
 
-  Color _colorFor(String status, ViralCutColors vc) {
+  Color _colorFor(String status, HalchalColors vc) {
     switch (status) {
       case 'live':
       case 'paid':

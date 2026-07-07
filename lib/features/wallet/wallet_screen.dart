@@ -7,7 +7,7 @@ import '../../core/api/api_client.dart';
 import '../../core/format/money_format.dart';
 import '../../core/layout/app_spacing.dart';
 import '../../core/layout/list_entrance.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import '../profile/profile_providers.dart';
 import 'wallet_providers.dart';
 
@@ -21,11 +21,12 @@ class WalletScreen extends ConsumerWidget {
     final me = ref.watch(profileMeProvider);
 
     return wallet.when(
+      skipLoadingOnRefresh: true,
       loading: () => const ScreenLoader(),
       error: (e, _) => Center(child: Text('$e')),
       data: (w) {
         final kycStatus = me.valueOrNull?['kycStatus'] as String? ?? 'pending';
-        final animKey = '${w.availablePaise}|${w.pendingPaise}|${w.lifetimePaise}|${w.clipsUnderReview}';
+
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -33,7 +34,7 @@ class WalletScreen extends ConsumerWidget {
             ref.invalidate(walletTransactionsProvider);
           },
           child: ScreenStaggeredColumn(
-            animationKey: animKey,
+            animationKey: 'wallet',
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.fromLTRB(
               AppSpacing.screenHorizontal,
@@ -78,7 +79,7 @@ class _BalanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -282,7 +283,7 @@ class _KycWarningCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -319,7 +320,7 @@ class _EarningsOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -383,7 +384,7 @@ class _StatBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -426,7 +427,7 @@ class _TransactionSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -441,6 +442,7 @@ class _TransactionSection extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         transactions.when(
+          skipLoadingOnRefresh: true,
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Text('Could not load transactions', style: TextStyle(color: vc.muted)),
           data: (list) {
@@ -472,7 +474,7 @@ class _TransactionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final isCredit = tx.amountPaise > 0 || tx.type == 'earning';
     final label = switch (tx.type) {
       'earning' || 'earning_credit' => 'Campaign earning',

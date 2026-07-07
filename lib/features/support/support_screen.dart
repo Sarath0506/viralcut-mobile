@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/widgets/vc_scaffold.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 
 const _supportEmail = 'support@halchal.app';
 const _supportWhatsapp = '911234567890';
@@ -60,7 +60,7 @@ class SupportScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return VcScaffold(
       title: 'Support Center',
@@ -204,7 +204,7 @@ class _FaqTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(

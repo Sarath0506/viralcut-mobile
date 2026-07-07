@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import 'widgets/auth_page_layout.dart';
 import 'widgets/auth_switch_link.dart';
 import 'widgets/auth_ui.dart';
@@ -130,7 +130,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 'Dev: OTP is always 000000',
                 textAlign: TextAlign.center,
                 style: AuthUi.bodyFont(context).copyWith(
-                  color: ViralCutColors.of(context).muted,
+                  color: HalchalColors.of(context).muted,
                   fontSize: 13,
                 ),
               ),

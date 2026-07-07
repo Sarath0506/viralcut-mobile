@@ -6,7 +6,7 @@ import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/creator_profile/creator_profile_providers.dart';
 import '../../core/widgets/social_logo_painters.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import '../../core/widgets/vc_scaffold.dart';
 
 const _platforms = [
@@ -136,7 +136,7 @@ class _ConnectedAccountsScreenState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) {
-        final vc = ViralCutColors.of(ctx);
+        final vc = HalchalColors.of(ctx);
         return AlertDialog(
           backgroundColor: vc.surface,
           shape: RoundedRectangleBorder(
@@ -197,7 +197,7 @@ class _ConnectedAccountsScreenState
   Widget build(BuildContext context) {
     final profiles = ref.watch(creatorProfilesProvider);
     final activeProfile = ref.watch(activeCreatorProfileProvider);
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     // Reset everything when the active profile changes
     if (activeProfile?.id != _lastProfileId) {
@@ -313,7 +313,7 @@ class _PlatformCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -543,7 +543,7 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final handle = stats['handle'] as String? ?? '';
     final displayName = stats['displayName'] as String?;
 
@@ -597,7 +597,7 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(

@@ -6,7 +6,7 @@ import '../../core/campaign/platform_labels.dart';
 import '../../core/layout/app_spacing.dart';
 import '../../core/layout/list_entrance.dart';
 import 'campaign_providers.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import 'widgets/campaign_list_card.dart';
 
 class CampaignsScreen extends ConsumerStatefulWidget {
@@ -53,9 +53,10 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen>
   @override
   Widget build(BuildContext context) {
     final campaigns = ref.watch(campaignsProvider);
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return campaigns.when(
+      skipLoadingOnRefresh: true,
       loading: () => const ScreenLoader(),
       error: (e, _) => Center(
         child: Padding(
@@ -218,7 +219,7 @@ class _FilterChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  final ViralCutColors vc;
+  final HalchalColors vc;
   final IconData? icon;
 
   @override
@@ -265,7 +266,7 @@ class _FilterCornerButton extends StatelessWidget {
     required this.onTap,
   });
 
-  final ViralCutColors vc;
+  final HalchalColors vc;
   final int activeCount;
   final VoidCallback onTap;
 
@@ -339,7 +340,7 @@ class _FilterSheetState extends State<_FilterSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),

@@ -11,7 +11,7 @@ import '../../core/realtime/campaign_realtime_scope.dart';
 import '../../core/layout/app_spacing.dart';
 import 'campaign_providers.dart';
 import '../../core/widgets/vc_scaffold.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import '../profile/profile_providers.dart';
 import '../profile/widgets/profile_switcher_sheet.dart';
 import 'widgets/campaign_detail_body.dart';
@@ -98,7 +98,7 @@ class CampaignDetailScreen extends ConsumerWidget {
   }
 
   void _showLinkSocialsSheet(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: vc.surface,
@@ -194,7 +194,7 @@ class CampaignDetailScreen extends ConsumerWidget {
     final campaign = ref.watch(campaignDetailProvider(id));
     final participation = ref.watch(campaignParticipationProvider(id));
     ref.watch(profileMeProvider); // keep social links fresh
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return campaign.when(
       loading: () => const VcScaffold(

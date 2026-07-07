@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/format/phone_format.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import 'widgets/auth_page_layout.dart';
 import 'widgets/auth_switch_link.dart';
 import 'widgets/auth_ui.dart';
@@ -132,7 +132,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return AuthPageLayout(
       showBack: true,
       onBack: () => context.go('/onboarding'),

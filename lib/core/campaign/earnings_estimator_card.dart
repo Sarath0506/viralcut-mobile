@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import '../format/money_format.dart';
 
 const _presetViews = [10000, 50000, 100000];
@@ -13,7 +13,7 @@ class EarningsEstimatorCard extends StatelessWidget {
     this.maxPayoutPaise,
   });
 
-  final ViralCutColors vc;
+  final HalchalColors vc;
   final int? ratePer1kPaise;
   final int? maxPayoutPaise;
 
@@ -81,7 +81,7 @@ class _EstimateTile extends StatelessWidget {
 
   final int views;
   final int paise;
-  final ViralCutColors vc;
+  final HalchalColors vc;
 
   String get _viewsLabel =>
       views >= 1000 ? '${(views / 1000).round()}K views' : '$views views';

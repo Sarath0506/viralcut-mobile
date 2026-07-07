@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/widgets/vc_scaffold.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import '../profile/profile_providers.dart';
 
 class NotificationsScreen extends ConsumerWidget {
@@ -36,7 +36,7 @@ class NotificationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifications = ref.watch(notificationsProvider);
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return VcScaffold(
       title: 'Notifications',
@@ -97,7 +97,7 @@ class NotificationsScreen extends ConsumerWidget {
   }
 }
 
-(IconData, Color) _iconForType(String type, ViralCutColors vc) {
+(IconData, Color) _iconForType(String type, HalchalColors vc) {
   if (type.contains('rejected')) {
     return (Icons.report_problem_outlined, vc.error);
   }
@@ -121,7 +121,7 @@ class _NotificationTile extends StatelessWidget {
   });
 
   final AppNotification notification;
-  final ViralCutColors vc;
+  final HalchalColors vc;
   final VoidCallback onTap;
 
   @override

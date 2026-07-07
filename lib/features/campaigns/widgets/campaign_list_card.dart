@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/campaign/campaign_schedule_label.dart';
 import '../../../core/format/money_format.dart';
-import '../../../theme/viralcut_colors.dart';
+import '../../../theme/halchal_colors.dart';
 import 'campaign_shared_widgets.dart';
 
 enum _Badge { urgent, trending, newCampaign, upcoming, none }
@@ -65,7 +65,7 @@ class CampaignListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final c = campaign;
     final badge = _resolveBadge(c);
     final urgent = badge == _Badge.urgent;
@@ -231,7 +231,7 @@ class _BadgeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
     final (label, bg) = switch (badge) {
       _Badge.urgent => ('URGENT', vc.error),

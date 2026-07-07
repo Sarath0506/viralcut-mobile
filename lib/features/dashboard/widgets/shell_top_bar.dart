@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/creator_profile/creator_profile_providers.dart';
 import '../../../core/layout/app_spacing.dart';
-import '../../../theme/viralcut_colors.dart';
+import '../../../theme/halchal_colors.dart';
 import '../../auth/widgets/auth_app_icon.dart';
 import '../../profile/profile_providers.dart';
 import '../../profile/widgets/profile_switcher_sheet.dart';
@@ -62,7 +62,7 @@ class _BrandLeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
 
     return Row(
@@ -108,7 +108,7 @@ class _ProfileSwitcherChip extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final profiles = ref.watch(creatorProfilesProvider).valueOrNull ?? [];
     final active = ref.watch(activeCreatorProfileProvider);
 
@@ -153,7 +153,7 @@ class _NotificationBell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final unreadCount = ref.watch(unreadNotificationCountProvider).valueOrNull ?? 0;
 
     return GestureDetector(

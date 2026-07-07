@@ -7,7 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/widgets/vc_scaffold.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import 'profile_providers.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -113,7 +113,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final me = ref.watch(profileMeProvider);
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return VcScaffold(
       title: 'Edit Profile',

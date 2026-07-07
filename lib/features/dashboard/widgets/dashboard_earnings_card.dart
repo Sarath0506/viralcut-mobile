@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/format/money_format.dart';
-import '../../../theme/viralcut_colors.dart';
+import '../../../theme/halchal_colors.dart';
 
 class DashboardEarningsCard extends StatelessWidget {
   const DashboardEarningsCard({
@@ -20,7 +20,7 @@ class DashboardEarningsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final onDark = vc.onPrimary;
 
     return Container(
@@ -124,7 +124,7 @@ class _MetricTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onDark = ViralCutColors.of(context).onPrimary;
+    final onDark = HalchalColors.of(context).onPrimary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,7 +181,7 @@ class _WithdrawButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return Material(
       color: onDark.withValues(alpha: 0.08),

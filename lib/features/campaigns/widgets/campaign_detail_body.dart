@@ -8,7 +8,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/campaign/campaign_schedule_label.dart';
 import '../../../core/campaign/media_url.dart';
 import '../../../core/format/money_format.dart';
-import '../../../theme/viralcut_colors.dart';
+import '../../../theme/halchal_colors.dart';
 import 'campaign_shared_widgets.dart';
 
 class CampaignDetailBody extends StatefulWidget {
@@ -60,7 +60,7 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final c = campaign;
 
     return ListView(
@@ -218,7 +218,7 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
     );
   }
 
-  Widget _assetPlaceholder(ViralCutColors vc, double width, double height) {
+  Widget _assetPlaceholder(HalchalColors vc, double width, double height) {
     return Container(
       width: width,
       height: height,
@@ -230,7 +230,7 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
 
 class _VideoThumbnail extends StatelessWidget {
   const _VideoThumbnail({required this.vc, this.label});
-  final ViralCutColors vc;
+  final HalchalColors vc;
   final String? label;
 
   @override
@@ -282,7 +282,7 @@ class _CompactHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final c = campaign;
     final subtitle = campaignDetailSubtitle(c);
     final startLabel = campaignStartDetailLabel(c);
@@ -408,7 +408,7 @@ class _CompactHero extends StatelessWidget {
     );
   }
 
-  Widget? _campaignStatusBanner(String status, ViralCutColors vc) {
+  Widget? _campaignStatusBanner(String status, HalchalColors vc) {
     if (status == 'paused') {
       return _StatusBanner(
         message: 'Campaign paused — new submissions may be limited',
@@ -426,7 +426,7 @@ class _CompactHero extends StatelessWidget {
     return null;
   }
 
-  Widget? _participationBanner(Participation? p, ViralCutColors vc) {
+  Widget? _participationBanner(Participation? p, HalchalColors vc) {
     if (p == null) return null;
     final primary = vc.primary;
     final (message, color, icon) = switch (p.summary) {
@@ -477,7 +477,7 @@ class _StatStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final c = campaign;
 
     return Container(
@@ -531,7 +531,7 @@ class _StatCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final alignment =
         alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start;
 
@@ -652,7 +652,7 @@ class _DarkStatsBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
       decoration: BoxDecoration(
-        color: ViralCutColors.of(context).deepSurface,
+        color: HalchalColors.of(context).deepSurface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: IntrinsicHeight(
@@ -767,7 +767,7 @@ class _SectionTitle extends StatelessWidget {
         fontSize: 13,
         fontWeight: FontWeight.w700,
         height: 1.2,
-        color: ViralCutColors.of(context).onSurface,
+        color: HalchalColors.of(context).onSurface,
       ),
     );
   }
@@ -780,7 +780,7 @@ class _SurfaceBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(10),
@@ -811,7 +811,7 @@ class _RuleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -892,7 +892,7 @@ class _LinkRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
 
     return Material(
@@ -1042,7 +1042,7 @@ class _HowToParticipate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = Theme.of(context).extension<ViralCutColors>()!;
+    final vc = Theme.of(context).extension<HalchalColors>()!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1101,7 +1101,7 @@ class _StepCard extends StatelessWidget {
     Color accent,
     Color accentDim,
   }) step;
-  final ViralCutColors vc;
+  final HalchalColors vc;
   final int index;
 
   @override

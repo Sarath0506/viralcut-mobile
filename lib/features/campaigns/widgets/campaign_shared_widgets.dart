@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/campaign/media_url.dart';
-import '../../../theme/viralcut_colors.dart';
+import '../../../theme/halchal_colors.dart';
 
 class CampaignBrandAvatar extends StatelessWidget {
   const CampaignBrandAvatar({
@@ -23,7 +23,7 @@ class CampaignBrandAvatar extends StatelessWidget {
     if (logoUrl != null) {
       return CircleAvatar(
         radius: radius,
-        backgroundColor: ViralCutColors.of(context).surface,
+        backgroundColor: HalchalColors.of(context).surface,
         backgroundImage: NetworkImage(logoUrl),
       );
     }
@@ -60,7 +60,7 @@ class CampaignCoverImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
     final coverUrl = resolveCampaignMediaUrl(campaign.coverImageUrl);
 
@@ -97,7 +97,7 @@ class CampaignListThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
     final coverUrl = resolveCampaignMediaUrl(campaign.coverImageUrl);
 
@@ -150,7 +150,7 @@ class SquareMediaThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
     final cover = resolveCampaignMediaUrl(imageUrl);
     final fallback = resolveCampaignMediaUrl(fallbackImageUrl);
@@ -190,7 +190,7 @@ class SquareMediaThumbnail extends StatelessWidget {
 
   Widget _buildFallback(
     BuildContext context, {
-    required ViralCutColors vc,
+    required HalchalColors vc,
     required Color primary,
     required String? networkUrl,
   }) {
@@ -208,7 +208,7 @@ class SquareMediaThumbnail extends StatelessWidget {
   }
 
   Widget _gradientFallback(
-    ViralCutColors vc,
+    HalchalColors vc,
     Color primary,
     String? letter,
   ) {
@@ -252,7 +252,7 @@ class _GradientCover extends StatelessWidget {
 
   final double height;
   final double width;
-  final ViralCutColors vc;
+  final HalchalColors vc;
   final Color primary;
 
   @override
@@ -288,7 +288,7 @@ class CampaignPoolBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -339,7 +339,7 @@ class CampaignPlatformChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
 
     return Container(
