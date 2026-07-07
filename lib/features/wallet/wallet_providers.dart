@@ -13,9 +13,3 @@ final walletTransactionsProvider = FutureProvider<List<TransactionItem>>((ref) a
   watchAppRealtimeTick(ref);
   return ref.read(apiClientProvider).fetchTransactions();
 });
-
-final clipsUnderReviewCountProvider = FutureProvider<int>((ref) async {
-  watchAppRealtimeTick(ref);
-  final items = await ref.read(apiClientProvider).fetchParticipations(tab: 'active');
-  return items.where((p) => p.summary == 'in_review').length;
-});

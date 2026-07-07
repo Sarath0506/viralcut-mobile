@@ -531,6 +531,13 @@ class ApiClient {
     );
   }
 
+  Future<void> disconnectSocial(String platform) {
+    return delete<void>(
+      '/users/me/social-stats/$platform',
+      (_) {},
+    );
+  }
+
   Future<Map<String, int>> refreshDeliverableViews(String deliverableId) async {
     final resp = await _dio.post<Map<String, dynamic>>(
       '/creator/deliverables/$deliverableId/refresh-views',
@@ -784,16 +791,19 @@ class WalletData {
     required this.availablePaise,
     required this.pendingPaise,
     required this.lifetimePaise,
+    this.clipsUnderReview = 0,
   });
 
   final int availablePaise;
   final int pendingPaise;
   final int lifetimePaise;
+  final int clipsUnderReview;
 
   factory WalletData.fromJson(Map<String, dynamic> json) => WalletData(
         availablePaise: json['availablePaise'] as int? ?? 0,
         pendingPaise: json['pendingPaise'] as int? ?? 0,
         lifetimePaise: json['lifetimePaise'] as int? ?? 0,
+        clipsUnderReview: json['clipsUnderReview'] as int? ?? 0,
       );
 }
 

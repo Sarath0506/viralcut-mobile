@@ -1,18 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
+import '../../core/widgets/social_logo_painters.dart';
 import '../../theme/viralcut_colors.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import 'profile_providers.dart';
 
 const _platforms = [
-  (key: 'instagram', label: 'Instagram', icon: Icons.camera_alt_outlined),
-  (key: 'youtube', label: 'YouTube', icon: Icons.play_circle_outline_rounded),
-  (key: 'twitter', label: 'Twitter / X', icon: Icons.alternate_email_rounded),
+  _PlatformMeta(
+    key: 'instagram',
+    label: 'Instagram',
+    hint: '@username or profile URL',
+  ),
+  _PlatformMeta(
+    key: 'youtube',
+    label: 'YouTube',
+    hint: 'Channel name or URL',
+  ),
+  _PlatformMeta(
+    key: 'twitter',
+    label: 'Twitter / X',
+    hint: '@handle or profile URL',
+  ),
 ];
+
+class _PlatformMeta {
+  const _PlatformMeta({
+    required this.key,
+    required this.label,
+    required this.hint,
+  });
+  final String key;
+  final String label;
+  final String hint;
+}
 
 class ConnectedAccountsScreen extends ConsumerStatefulWidget {
   const ConnectedAccountsScreen({super.key});
@@ -25,14 +49,13 @@ class ConnectedAccountsScreen extends ConsumerStatefulWidget {
 class _ConnectedAccountsScreenState
     extends ConsumerState<ConnectedAccountsScreen> {
   final _controllers = <String, TextEditingController>{};
-  // stats per platform: null = not fetched yet
   final _stats = <String, Map<String, dynamic>?>{};
-  final _fetching = <String, bool>{};
-  // platforms where connect was triggered and stats are being scraped in background
+  final _connecting = <String, bool>{};
+  final _disconnecting = <String, bool>{};
   final _pending = <String>{};
   bool _initialized = false;
 
-  TextEditingController _controllerFor(String key) =>
+  TextEditingController _ctrl(String key) =>
       _controllers.putIfAbsent(key, () => TextEditingController());
 
   @override
@@ -46,7 +69,7 @@ class _ConnectedAccountsScreenState
     final links = (user['socialLinks'] as Map<String, dynamic>?) ?? {};
     final stats = (user['socialStats'] as Map<String, dynamic>?) ?? {};
     for (final p in _platforms) {
-      _controllerFor(p.key).text = links[p.key] as String? ?? '';
+      _ctrl(p.key).text = links[p.key] as String? ?? '';
       if (stats[p.key] != null) {
         _stats[p.key] = stats[p.key] as Map<String, dynamic>;
       }
@@ -54,33 +77,110 @@ class _ConnectedAccountsScreenState
     _initialized = true;
   }
 
+  bool _isConnected(String platform) =>
+      _ctrl(platform).text.trim().isNotEmpty;
+
   Future<void> _connect(String platform) async {
-    final handle = _controllerFor(platform).text.trim();
+    final handle = _ctrl(platform).text.trim();
     if (handle.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter your username or profile URL first')),
       );
       return;
     }
-    setState(() => _fetching[platform] = true);
+    setState(() => _connecting[platform] = true);
     try {
       await ref.read(apiClientProvider).fetchSocialStats(platform, handle);
+      // Allow _initFrom to re-run when profile reloads so stats update automatically
+      _initialized = false;
       setState(() => _pending.add(platform));
       ref.invalidate(profileMeProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$platform saved! Fetching your stats in the background — pull to refresh in ~2 minutes.'),
-          duration: const Duration(seconds: 5),
+          content: Text('$platform connected! Stats load in ~2 min.'),
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
         ),
       );
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
+        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Connection failed. Check your username and try again.'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } finally {
-      if (mounted) setState(() => _fetching[platform] = false);
+      if (mounted) setState(() => _connecting[platform] = false);
+    }
+  }
+
+  Future<void> _disconnect(String platform) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final vc = ViralCutColors.of(ctx);
+        return AlertDialog(
+          backgroundColor: vc.surface,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18)),
+          title: Text(
+            'Disconnect ${_platforms.firstWhere((p) => p.key == platform).label}?',
+            style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w700, color: vc.onSurface),
+          ),
+          content: Text(
+            'Your stats and handle will be removed. You can reconnect anytime.',
+            style: GoogleFonts.inter(fontSize: 13, color: vc.muted),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Cancel',
+                  style: TextStyle(color: vc.muted)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('Disconnect',
+                  style: TextStyle(
+                      color: vc.error, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _disconnecting[platform] = true);
+    try {
+      await ref.read(apiClientProvider).disconnectSocial(platform);
+      setState(() {
+        _ctrl(platform).text = '';
+        _stats.remove(platform);
+        _pending.remove(platform);
+        _initialized = false; // allow re-init on rebuild
+      });
+      ref.invalidate(profileMeProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$platform disconnected'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
+      );
+    } finally {
+      if (mounted) setState(() => _disconnecting[platform] = false);
     }
   }
 
@@ -98,25 +198,27 @@ class _ConnectedAccountsScreenState
         data: (user) {
           _initFrom(user);
           return ListView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
             children: [
               Text(
-                'Add your username or profile URL so brands can find your work.',
-                style: TextStyle(color: vc.muted, fontSize: 13),
+                'Link your accounts so brands can match you with the right campaigns.',
+                style: GoogleFonts.inter(
+                    fontSize: 13, color: vc.muted, height: 1.45),
               ),
               const SizedBox(height: 20),
               for (final p in _platforms) ...[
                 _PlatformCard(
-                  platform: p.key,
-                  label: p.label,
-                  icon: p.icon,
-                  controller: _controllerFor(p.key),
+                  meta: p,
+                  controller: _ctrl(p.key),
                   stats: _stats[p.key],
-                  fetching: _fetching[p.key] ?? false,
-                  pending: _pending.contains(p.key),
+                  isConnected: _isConnected(p.key),
+                  isConnecting: _connecting[p.key] ?? false,
+                  isDisconnecting: _disconnecting[p.key] ?? false,
+                  isPending: _pending.contains(p.key),
                   onConnect: () => _connect(p.key),
+                  onDisconnect: () => _disconnect(p.key),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
               ],
             ],
           );
@@ -128,154 +230,240 @@ class _ConnectedAccountsScreenState
 
 class _PlatformCard extends StatelessWidget {
   const _PlatformCard({
-    required this.platform,
-    required this.label,
-    required this.icon,
+    required this.meta,
     required this.controller,
     required this.stats,
-    required this.fetching,
-    required this.pending,
+    required this.isConnected,
+    required this.isConnecting,
+    required this.isDisconnecting,
+    required this.isPending,
     required this.onConnect,
+    required this.onDisconnect,
   });
 
-  final String platform;
-  final String label;
-  final IconData icon;
+  final _PlatformMeta meta;
   final TextEditingController controller;
   final Map<String, dynamic>? stats;
-  final bool fetching;
-  final bool pending;
+  final bool isConnected;
+  final bool isConnecting;
+  final bool isDisconnecting;
+  final bool isPending;
   final VoidCallback onConnect;
+  final VoidCallback onDisconnect;
+
+  bool get _hasStats => stats != null && stats!.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
     final vc = ViralCutColors.of(context);
-    final hasStats = stats != null && stats!.isNotEmpty;
 
     return Container(
       decoration: BoxDecoration(
         color: vc.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: hasStats ? const Color(0xFF7C3AED).withOpacity(0.4) : vc.border,
+          color: isConnected
+              ? const Color(0xFF22C55E).withValues(alpha: 0.35)
+              : vc.border,
         ),
       ),
-      padding: const EdgeInsets.all(16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 20, color: vc.muted),
-              const SizedBox(width: 8),
-              Text(label,
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: vc.onSurface,
-                      fontSize: 15)),
-              const Spacer(),
-              if (hasStats)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF7C3AED).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text('Connected',
-                      style: TextStyle(
-                          color: Color(0xFF7C3AED),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600)),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  keyboardType: TextInputType.url,
-                  autocorrect: false,
-                  style: TextStyle(fontSize: 14, color: vc.onSurface),
-                  decoration: InputDecoration(
-                    hintText: 'username or profile URL',
-                    hintStyle: TextStyle(color: vc.muted, fontSize: 13),
-                    filled: true,
-                    fillColor: vc.background,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: vc.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: vc.border),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              fetching
-                  ? const SizedBox(
-                      width: 80,
-                      height: 40,
-                      child: Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    )
-                  : SizedBox(
-                      height: 40,
-                      width: 90,
-                      child: FilledButton(
-                        onPressed: onConnect,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF7C3AED),
-                          padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: const Text('Connect',
-                            style: TextStyle(fontSize: 13)),
-                      ),
-                    ),
-            ],
-          ),
-          if (pending && !hasStats) ...[
-            const SizedBox(height: 10),
-            Row(
+          // ── Header row ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+            child: Row(
               children: [
-                SizedBox(
-                  width: 14, height: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: const Color(0xFF7C3AED).withOpacity(0.7),
-                  ),
-                ),
-                const SizedBox(width: 8),
+                // Real logo
+                SocialLogoBox(platform: meta.key, size: 42),
+                const SizedBox(width: 12),
+                // Platform name + status
                 Expanded(
-                  child: Text(
-                    'Fetching your stats… pull to refresh in ~2 min',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: const Color(0xFF7C3AED).withOpacity(0.8),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        meta.label,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: vc.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      if (isConnected)
+                        Row(
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF22C55E),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              isPending ? 'Syncing stats…' : 'Connected',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: isPending
+                                    ? vc.muted
+                                    : const Color(0xFF22C55E),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        Text(
+                          'Not connected',
+                          style: GoogleFonts.inter(
+                              fontSize: 11, color: vc.muted),
+                        ),
+                    ],
                   ),
                 ),
+                // Disconnect button (only when connected)
+                if (isConnected)
+                  isDisconnecting
+                      ? const SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: Center(
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFFEF4444)),
+                            ),
+                          ),
+                        )
+                      : IconButton(
+                          onPressed: onDisconnect,
+                          icon: const Icon(Icons.link_off_rounded,
+                              size: 20, color: Color(0xFFEF4444)),
+                          tooltip: 'Disconnect',
+                        ),
               ],
             ),
+          ),
+
+          // ── Stats (when connected + loaded) ──
+          if (_hasStats) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+              child: _StatsRow(stats: stats!, platform: meta.key),
+            ),
           ],
-          if (hasStats) ...[
-            const SizedBox(height: 14),
-            _StatsRow(stats: stats!, platform: platform),
-          ],
+
+          // ── Pending notice ──
+          if (isPending && !_hasStats)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: vc.background,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 13,
+                      height: 13,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 1.8, color: vc.muted),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Fetching your stats — pull to refresh in ~2 min',
+                      style: GoogleFonts.inter(
+                          fontSize: 11, color: vc.muted),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // ── Input row (always show when not connected) ──
+          if (!isConnected)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      keyboardType: TextInputType.url,
+                      autocorrect: false,
+                      style: GoogleFonts.inter(
+                          fontSize: 13, color: vc.onSurface),
+                      decoration: InputDecoration(
+                        hintText: meta.hint,
+                        hintStyle: GoogleFonts.inter(
+                            color: vc.muted, fontSize: 12),
+                        filled: true,
+                        fillColor: vc.background,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: vc.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: vc.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF7C3AED), width: 1.5),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  isConnecting
+                      ? const SizedBox(
+                          width: 80,
+                          height: 40,
+                          child: Center(
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFF7C3AED)),
+                            ),
+                          ),
+                        )
+                      : SizedBox(
+                          height: 40,
+                          width: 80,
+                          child: FilledButton(
+                            onPressed: onConnect,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF7C3AED),
+                              padding: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(10)),
+                            ),
+                            child: Text('Connect',
+                                style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ),
+                ],
+              ),
+            ),
+
+          const SizedBox(height: 14),
         ],
       ),
     );
@@ -300,29 +488,42 @@ class _StatsRow extends StatelessWidget {
     final vc = ViralCutColors.of(context);
     final handle = stats['handle'] as String? ?? '';
     final displayName = stats['displayName'] as String?;
-    final followers = _fmt(stats['followersCount']);
-    final posts = _fmt(stats['postsCount']);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Divider(height: 1),
-        const SizedBox(height: 10),
-        if (displayName != null)
-          Text(displayName,
-              style: TextStyle(
-                  fontWeight: FontWeight.w600, color: vc.onSurface, fontSize: 13)),
-        if (handle.isNotEmpty)
-          Text('@$handle',
-              style: TextStyle(color: vc.muted, fontSize: 12)),
-        const SizedBox(height: 8),
+        if (displayName != null || handle.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                if (displayName != null)
+                  Text(
+                    displayName,
+                    style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                        color: vc.onSurface,
+                        fontSize: 12),
+                  ),
+                if (displayName != null && handle.isNotEmpty)
+                  Text(' · ',
+                      style: TextStyle(color: vc.muted, fontSize: 12)),
+                if (handle.isNotEmpty)
+                  Text('@$handle',
+                      style:
+                          GoogleFonts.inter(color: vc.muted, fontSize: 12)),
+              ],
+            ),
+          ),
         Row(
           children: [
-            _StatChip(label: 'Followers', value: followers),
-            const SizedBox(width: 10),
+            _StatChip(
+                label: 'Followers',
+                value: _fmt(stats['followersCount'])),
+            const SizedBox(width: 8),
             _StatChip(
                 label: platform == 'youtube' ? 'Videos' : 'Posts',
-                value: posts),
+                value: _fmt(stats['postsCount'])),
           ],
         ),
       ],
@@ -340,7 +541,7 @@ class _StatChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final vc = ViralCutColors.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: vc.background,
         borderRadius: BorderRadius.circular(8),
@@ -348,13 +549,18 @@ class _StatChip extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(value,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: Color(0xFF7C3AED))),
-          Text(label,
-              style: TextStyle(fontSize: 10, color: vc.muted)),
+          Text(
+            value,
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              color: const Color(0xFF7C3AED),
+            ),
+          ),
+          Text(
+            label,
+            style: GoogleFonts.inter(fontSize: 10, color: vc.muted),
+          ),
         ],
       ),
     );

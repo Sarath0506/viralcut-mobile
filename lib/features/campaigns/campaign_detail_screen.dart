@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:google_fonts/google_fonts.dart';
+
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/creator_profile/creator_profile_providers.dart';
@@ -10,6 +12,7 @@ import '../../core/layout/app_spacing.dart';
 import 'campaign_providers.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/viralcut_colors.dart';
+import '../profile/profile_providers.dart';
 import '../profile/widgets/profile_switcher_sheet.dart';
 import 'widgets/campaign_detail_body.dart';
 
@@ -40,6 +43,19 @@ class CampaignDetailScreen extends ConsumerWidget {
     Participation? participation,
   ) async {
     if (participation == null) {
+      // Guard: require at least one linked social account
+      final user = ref.read(profileMeProvider).valueOrNull;
+      final socialLinksMap =
+          (user?['socialLinks'] as Map<String, dynamic>?) ?? {};
+      final hasAnyLinked = ['instagram', 'youtube', 'twitter'].any(
+        (k) => ((socialLinksMap[k] as String?) ?? '').isNotEmpty,
+      );
+      if (!hasAnyLinked) {
+        if (!context.mounted) return;
+        _showLinkSocialsSheet(context);
+        return;
+      }
+
       final activeProfile = ref.read(activeCreatorProfileProvider);
       if (activeProfile == null) {
         await showProfileSwitcherSheet(context);
@@ -82,10 +98,103 @@ class CampaignDetailScreen extends ConsumerWidget {
     context.push('/participations/${participation.id}');
   }
 
+  void _showLinkSocialsSheet(BuildContext context) {
+    final vc = ViralCutColors.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: vc.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: vc.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF7C3AED), Color(0xFFEC4899)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Icon(Icons.link_rounded,
+                  color: Colors.white, size: 30),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Link a social account first',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: vc.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'You need to connect at least one social account (Instagram, YouTube, or X) before joining a campaign.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: vc.muted,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  context.push('/profile/connected-accounts');
+                },
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Text(
+                  'Connect your socials',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(
+                  'Maybe later',
+                  style: GoogleFonts.inter(color: vc.muted),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final campaign = ref.watch(campaignDetailProvider(id));
     final participation = ref.watch(campaignParticipationProvider(id));
+    ref.watch(profileMeProvider); // keep social links fresh
     final vc = ViralCutColors.of(context);
 
     return campaign.when(
@@ -120,7 +229,14 @@ class CampaignDetailScreen extends ConsumerWidget {
                 onPressed: () => context.canPop() ? context.pop() : context.go('/campaigns'),
               ),
             ),
-            body: CampaignDetailBody(campaign: c, participation: p),
+            body: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(campaignDetailProvider(id));
+                ref.invalidate(campaignParticipationProvider(id));
+                await ref.read(campaignDetailProvider(id).future);
+              },
+              child: CampaignDetailBody(campaign: c, participation: p),
+            ),
             bottomNavigationBar: SafeArea(
               child: Padding(
                 padding: AppSpacing.bottomActionPadding(context),

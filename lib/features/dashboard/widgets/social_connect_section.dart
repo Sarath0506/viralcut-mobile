@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/widgets/social_logo_painters.dart';
 import '../../../theme/viralcut_colors.dart';
 
 class SocialConnectSection extends StatelessWidget {
@@ -20,15 +21,10 @@ class SocialConnectSection extends StatelessWidget {
 
   bool get _allConnected => links.instagram && links.youtube && links.twitter;
 
-  String get _subtitle {
-    final missing = <String>[];
-    if (!links.instagram) missing.add('Instagram');
-    if (!links.youtube) missing.add('YouTube');
-    if (!links.twitter) missing.add('X');
-    if (missing.length == 1) return 'Link ${missing[0]} to unlock more campaigns.';
-    final last = missing.removeLast();
-    return 'Link ${missing.join(', ')} & $last to unlock more campaigns and earn more.';
-  }
+  int get _missing =>
+      (!links.instagram ? 1 : 0) +
+      (!links.youtube ? 1 : 0) +
+      (!links.twitter ? 1 : 0);
 
   VoidCallback? get _primaryAction {
     if (!links.instagram) return onInstagramTap;
@@ -39,253 +35,173 @@ class SocialConnectSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (_allConnected) return const SizedBox.shrink();
-
     final vc = ViralCutColors.of(context);
-    final primary = Theme.of(context).colorScheme.primary;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            primary.withValues(alpha: 0.08),
-            primary.withValues(alpha: 0.03),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: primary.withValues(alpha: 0.14)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: _primaryAction,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: vc.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: vc.border),
+          ),
+          child: Row(
             children: [
-              _SocialBadge(type: _SocialType.instagram, connected: links.instagram),
+              // Overlapping real platform logos
+              _OverlappingLogos(links: links),
+              const SizedBox(width: 14),
+              // Text
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Connect your socials',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: vc.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$_missing platform${_missing > 1 ? 's' : ''} not linked',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: vc.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(width: 10),
-              _SocialBadge(type: _SocialType.youtube, connected: links.youtube),
-              const SizedBox(width: 10),
-              _SocialBadge(type: _SocialType.x, connected: links.twitter),
-              const Spacer(),
-              Icon(Icons.link_rounded, size: 18, color: primary.withValues(alpha: 0.4)),
+              // Connect pill
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF7C3AED), Color(0xFFEC4899)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Connect',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 14),
-          Text(
-            'Connect your socials',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: vc.onSurface,
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _subtitle,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: vc.muted,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _primaryAction,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 0,
+        ),
+      ),
+    );
+  }
+}
+
+// Three overlapping logo circles (real branding via shared painters)
+class _OverlappingLogos extends StatelessWidget {
+  const _OverlappingLogos({required this.links});
+
+  final SocialLinks links;
+
+  static const _size = 36.0;
+  static const _overlap = 12.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
+    final items = [
+      (platform: 'instagram', connected: links.instagram),
+      (platform: 'youtube', connected: links.youtube),
+      (platform: 'twitter', connected: links.twitter),
+    ];
+
+    return SizedBox(
+      width: _size + (_size - _overlap) * 2,
+      height: _size,
+      child: Stack(
+        children: [
+          for (var i = items.length - 1; i >= 0; i--)
+            Positioned(
+              left: i * (_size - _overlap),
+              child: _LogoCircle(
+                platform: items[i].platform,
+                connected: items[i].connected,
+                borderColor: vc.surface,
               ),
-              child: Text(
-                'Connect  →',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
             ),
-          ),
         ],
       ),
     );
   }
 }
 
-enum _SocialType { instagram, youtube, x }
+class _LogoCircle extends StatelessWidget {
+  const _LogoCircle({
+    required this.platform,
+    required this.connected,
+    required this.borderColor,
+  });
 
-class _SocialBadge extends StatelessWidget {
-  const _SocialBadge({required this.type, required this.connected});
-
-  final _SocialType type;
+  final String platform;
   final bool connected;
+  final Color borderColor;
+
+  static const _size = 36.0;
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
     return Stack(
       clipBehavior: Clip.none,
       children: [
         Container(
-          width: 40,
-          height: 40,
+          width: _size,
+          height: _size,
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(11),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.10),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            shape: BoxShape.circle,
+            border: Border.all(color: borderColor, width: 2),
           ),
-          foregroundDecoration: connected
-              ? BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.45),
-                  borderRadius: BorderRadius.circular(11),
-                )
-              : null,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(11),
-            child: _iconForType(type),
+          child: ClipOval(
+            child: ColorFiltered(
+              colorFilter: connected
+                  ? const ColorFilter.mode(Colors.transparent, BlendMode.saturation)
+                  : const ColorFilter.matrix([
+                      0.2126, 0.7152, 0.0722, 0, 0,
+                      0.2126, 0.7152, 0.0722, 0, 0,
+                      0.2126, 0.7152, 0.0722, 0, 0,
+                      0,      0,      0,      1, 0,
+                    ]),
+              child: SocialLogoBox(platform: platform, size: _size, radius: 0),
+            ),
           ),
         ),
         if (connected)
           Positioned(
-            right: -3,
-            bottom: -3,
+            right: 0,
+            bottom: 0,
             child: Container(
-              padding: const EdgeInsets.all(1.5),
+              width: 13,
+              height: 13,
               decoration: BoxDecoration(
-                color: vc.background,
+                color: const Color(0xFF22C55E),
                 shape: BoxShape.circle,
+                border: Border.all(color: borderColor, width: 1.5),
               ),
-              child: Icon(
-                Icons.check_circle_rounded,
-                size: 15,
-                color: vc.moneyBright,
-              ),
+              child: const Icon(Icons.check_rounded, size: 8, color: Colors.white),
             ),
           ),
       ],
     );
   }
-
-  Widget _iconForType(_SocialType type) {
-    switch (type) {
-      case _SocialType.instagram:
-        return CustomPaint(
-          painter: _InstagramPainter(),
-          child: const SizedBox(width: 40, height: 40),
-        );
-      case _SocialType.youtube:
-        return CustomPaint(
-          painter: _YouTubePainter(),
-          child: const SizedBox(width: 40, height: 40),
-        );
-      case _SocialType.x:
-        return Container(
-          color: Colors.black,
-          alignment: Alignment.center,
-          child: const Text(
-            '𝕏',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              height: 1,
-            ),
-          ),
-        );
-    }
-  }
-}
-
-// Instagram gradient background + camera outline
-class _InstagramPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-
-    // Gradient background
-    final bgPaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [
-          Color(0xFFF9CE34),
-          Color(0xFFEE2A7B),
-          Color(0xFF6228D7),
-        ],
-        begin: Alignment.bottomLeft,
-        end: Alignment.topRight,
-      ).createShader(rect);
-    canvas.drawRect(rect, bgPaint);
-
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final iconPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    // Outer rounded square
-    final rrect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(cx, cy), width: 17, height: 17),
-      const Radius.circular(5),
-    );
-    canvas.drawRRect(rrect, iconPaint);
-
-    // Circle
-    canvas.drawCircle(Offset(cx, cy), 5.2, iconPaint);
-
-    // Dot top-right
-    canvas.drawCircle(
-      Offset(cx + 6.5, cy - 6.5),
-      1.3,
-      iconPaint..style = PaintingStyle.fill,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_) => false;
-}
-
-// YouTube red background + white play triangle
-class _YouTubePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFFFF0000));
-
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-
-    // White rounded rectangle (YouTube logo shape)
-    final rrectPaint = Paint()..color = Colors.white;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(cx, cy), width: 24, height: 16),
-        const Radius.circular(4),
-      ),
-      rrectPaint,
-    );
-
-    // Red play triangle
-    final triPaint = Paint()
-      ..color = const Color(0xFFFF0000)
-      ..style = PaintingStyle.fill;
-    final path = Path()
-      ..moveTo(cx - 4.5, cy - 5.5)
-      ..lineTo(cx + 6.5, cy)
-      ..lineTo(cx - 4.5, cy + 5.5)
-      ..close();
-    canvas.drawPath(path, triPaint);
-  }
-
-  @override
-  bool shouldRepaint(_) => false;
 }

@@ -19,14 +19,13 @@ class WalletScreen extends ConsumerWidget {
     final wallet = ref.watch(walletProvider);
     final transactions = ref.watch(walletTransactionsProvider);
     final me = ref.watch(profileMeProvider);
-    final clipsUnderReview = ref.watch(clipsUnderReviewCountProvider);
 
     return wallet.when(
       loading: () => const ScreenLoader(),
       error: (e, _) => Center(child: Text('$e')),
       data: (w) {
         final kycStatus = me.valueOrNull?['kycStatus'] as String? ?? 'pending';
-        final animKey = '${w.availablePaise}|${w.pendingPaise}|${w.lifetimePaise}';
+        final animKey = '${w.availablePaise}|${w.pendingPaise}|${w.lifetimePaise}|${w.clipsUnderReview}';
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -45,7 +44,7 @@ class WalletScreen extends ConsumerWidget {
             children: [
               _BalanceCard(
                 wallet: w,
-                clipsUnderReview: clipsUnderReview.valueOrNull ?? 0,
+                clipsUnderReview: w.clipsUnderReview,
                 onWithdraw: () => context.push('/withdraw'),
                 onViewClips: () => context.go('/submissions'),
               ),

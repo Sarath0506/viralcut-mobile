@@ -64,6 +64,7 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
     final c = campaign;
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 104),
       children: [
         _CompactHero(
@@ -1004,98 +1005,164 @@ class _HowToParticipate extends StatelessWidget {
   const _HowToParticipate({required this.campaign});
   final Campaign campaign;
 
-  List<({String title, IconData icon})> _steps() {
-    return const [
-      (icon: Icons.videocam_rounded, title: 'Create your clip'),
-      (icon: Icons.upload_file_rounded, title: 'Submit work'),
-      (icon: Icons.send_rounded, title: 'Post on social media'),
-      (icon: Icons.payments_rounded, title: 'Get paid for views'),
-    ];
-  }
+  static const _steps = [
+    (
+      num: '01',
+      icon: Icons.videocam_rounded,
+      title: 'Create your clip',
+      subtitle: 'Film content that matches the campaign brief',
+      accent: Color(0xFF7C3AED),
+      accentDim: Color(0x267C3AED),
+    ),
+    (
+      num: '02',
+      icon: Icons.upload_file_rounded,
+      title: 'Submit for review',
+      subtitle: 'Upload your draft and wait for brand approval',
+      accent: Color(0xFF4F46E5),
+      accentDim: Color(0x264F46E5),
+    ),
+    (
+      num: '03',
+      icon: Icons.wifi_tethering_rounded,
+      title: 'Go live & post',
+      subtitle: 'Publish your clip on social media',
+      accent: Color(0xFF0EA5E9),
+      accentDim: Color(0x260EA5E9),
+    ),
+    (
+      num: '04',
+      icon: Icons.paid_rounded,
+      title: 'Earn per view',
+      subtitle: 'Get paid automatically as views roll in',
+      accent: Color(0xFF10B981),
+      accentDim: Color(0x2610B981),
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final steps = _steps();
     final vc = Theme.of(context).extension<ViralCutColors>()!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('HOW TO PARTICIPATE',
-            style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.1,
-                color: vc.muted)),
-        const SizedBox(height: 12),
-        ...List.generate(steps.length, (i) {
-          final step = steps[i];
-          final isLast = i == steps.length - 1;
-          return IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 38,
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              vc.primary,
-                              vc.primaryVariant,
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(11),
-                          boxShadow: [
-                            BoxShadow(
-                              color: vc.primary.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Icon(step.icon, color: Colors.white, size: 16),
-                      ),
-                      if (!isLast)
-                        Expanded(
-                          child: Container(
-                            width: 2,
-                            margin: const EdgeInsets.symmetric(vertical: 3),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  vc.primary.withValues(alpha: 0.35),
-                                  vc.border,
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
-                    child: Text(step.title,
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w700)),
-                  ),
-                ),
-              ],
+        Row(
+          children: [
+            Container(
+              width: 3,
+              height: 13,
+              decoration: BoxDecoration(
+                color: vc.primary,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          );
-        }),
+            const SizedBox(width: 8),
+            Text(
+              'HOW IT WORKS',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.4,
+                color: vc.onSurface,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _StepCard(step: _steps[0], vc: vc, index: 0)),
+            const SizedBox(width: 9),
+            Expanded(child: _StepCard(step: _steps[1], vc: vc, index: 1)),
+          ],
+        ),
+        const SizedBox(height: 9),
+        Row(
+          children: [
+            Expanded(child: _StepCard(step: _steps[2], vc: vc, index: 2)),
+            const SizedBox(width: 9),
+            Expanded(child: _StepCard(step: _steps[3], vc: vc, index: 3)),
+          ],
+        ),
       ],
     );
+  }
+}
+
+class _StepCard extends StatelessWidget {
+  const _StepCard({required this.step, required this.vc, required this.index});
+
+  final ({
+    String num,
+    IconData icon,
+    String title,
+    String subtitle,
+    Color accent,
+    Color accentDim,
+  }) step;
+  final ViralCutColors vc;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: vc.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: vc.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: step.accentDim,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(step.icon, color: step.accent, size: 18),
+              ),
+              Text(
+                step.num,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: step.accent.withValues(alpha: 0.15),
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            step.title,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: vc.onSurface,
+              height: 1.25,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            step.subtitle,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              color: vc.muted,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(
+          delay: Duration(milliseconds: 60 * index),
+          duration: const Duration(milliseconds: 300),
+        );
   }
 }

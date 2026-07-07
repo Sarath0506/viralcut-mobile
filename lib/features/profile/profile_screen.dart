@@ -317,9 +317,6 @@ class _ProfileHeroCard extends StatelessWidget {
     required this.onAvatarTap,
   });
 
-  static const _coverHeight = 96.0;
-  static const _avatarRadius = 44.0;
-
   final String displayName;
   final String? avatarUrl;
   final String? username;
@@ -338,6 +335,7 @@ class _ProfileHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final vc = ViralCutColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
+    final handle = (username != null && username!.isNotEmpty) ? '@$username' : phone;
 
     return Container(
       decoration: BoxDecoration(
@@ -348,61 +346,50 @@ class _ProfileHeroCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.topCenter,
-            children: [
-              Container(
-                height: _coverHeight,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      vc.authGradientStart,
-                      vc.authGradientMid,
-                      vc.authGradientEnd,
-                    ],
-                  ),
-                ),
+          // Gradient accent stripe
+          Container(
+            height: 4,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [vc.authGradientStart, vc.authGradientMid, vc.authGradientEnd],
               ),
-              Positioned(
-                top: _coverHeight - _avatarRadius,
-                child: GestureDetector(
+            ),
+          ),
+          // Avatar + info row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            child: Row(
+              children: [
+                // Avatar
+                GestureDetector(
                   onTap: onAvatarTap,
                   child: Stack(
                     clipBehavior: Clip.none,
-                    alignment: Alignment.center,
                     children: [
                       CircleAvatar(
-                        radius: _avatarRadius,
-                        backgroundColor: vc.surface,
-                        child: CircleAvatar(
-                          radius: _avatarRadius - 3,
-                          backgroundColor: primary.withValues(alpha: 0.15),
-                          backgroundImage: avatarUrl != null
-                              ? CachedNetworkImageProvider(avatarUrl!)
-                              : null,
-                          child: avatarUrl == null
-                              ? Text(
-                                  initials,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.w700,
-                                    color: primary,
-                                  ),
-                                )
-                              : null,
-                        ),
+                        radius: 36,
+                        backgroundColor: primary.withValues(alpha: 0.12),
+                        backgroundImage: avatarUrl != null
+                            ? CachedNetworkImageProvider(avatarUrl!)
+                            : null,
+                        child: avatarUrl == null
+                            ? Text(
+                                initials,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w700,
+                                  color: primary,
+                                ),
+                              )
+                            : null,
                       ),
                       if (isUploadingAvatar)
                         const CircleAvatar(
-                          radius: _avatarRadius - 3,
+                          radius: 36,
                           backgroundColor: Colors.black45,
                           child: SizedBox(
-                            width: 22,
-                            height: 22,
+                            width: 18,
+                            height: 18,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white),
                           ),
@@ -410,74 +397,95 @@ class _ProfileHeroCard extends StatelessWidget {
                       Positioned(
                         right: -2,
                         bottom: -2,
-                        child: CircleAvatar(
-                          radius: 14,
-                          backgroundColor: primary,
-                          child: const Icon(
-                            Icons.camera_alt_rounded,
-                            size: 14,
-                            color: Colors.white,
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: vc.surface, width: 2),
                           ),
+                          child: const Icon(Icons.camera_alt_rounded,
+                              size: 11, color: Colors.white),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: _avatarRadius + 12),
-          Text(
-            displayName,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: vc.onSurface,
+                const SizedBox(width: 14),
+                // Name + handle + badges
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: vc.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        handle,
+                        style: GoogleFonts.inter(
+                            fontSize: 12, color: vc.muted),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          if (isVerified)
+                            _Badge(
+                              label: 'Verified',
+                              icon: Icons.verified_rounded,
+                              color: vc.moneyBright,
+                            )
+                          else
+                            _Badge(
+                              label: 'Unverified',
+                              icon: Icons.shield_outlined,
+                              color: vc.muted,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 3),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                (username != null && username!.isNotEmpty)
-                    ? '@$username'
-                    : phone,
-                style: GoogleFonts.inter(fontSize: 13, color: vc.muted),
-              ),
-              if (isVerified) ...[
-                const SizedBox(width: 5),
-                Icon(Icons.verified_rounded, size: 14, color: vc.moneyBright),
-              ],
-            ],
-          ),
-          const SizedBox(height: 18),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          // Stats row
+          Container(
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: vc.border)),
+            ),
             child: IntrinsicHeight(
               child: Row(
                 children: [
                   Expanded(
-                    child: _HeroStat(
+                    child: _StatCell(
                       value: lifetimeLoading ? null : formatPaise(lifetimePaise),
-                      label: 'Earned',
+                      label: 'Total earned',
                       valueColor: vc.money,
                     ),
                   ),
                   VerticalDivider(color: vc.border, width: 1),
                   Expanded(
-                    child: _HeroStat(
+                    child: _StatCell(
                       value: activeLoading ? null : '$activeSubmissions',
-                      label: activeSubmissions == 1 ? 'Active clip' : 'Active clips',
+                      label: 'Active clips',
                       valueColor: vc.onSurface,
                     ),
                   ),
                   VerticalDivider(color: vc.border, width: 1),
                   Expanded(
-                    child: _HeroStat(
+                    child: _StatCell(
                       value: '$clipsUnderReview',
-                      label: 'Under review',
-                      valueColor: vc.primary,
+                      label: 'In review',
+                      valueColor: primary,
                     ),
                   ),
                 ],
@@ -490,8 +498,42 @@ class _ProfileHeroCard extends StatelessWidget {
   }
 }
 
-class _HeroStat extends StatelessWidget {
-  const _HeroStat({
+class _Badge extends StatelessWidget {
+  const _Badge({required this.label, required this.icon, required this.color});
+
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCell extends StatelessWidget {
+  const _StatCell({
     required this.value,
     required this.label,
     required this.valueColor,
@@ -504,37 +546,39 @@ class _HeroStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vc = ViralCutColors.of(context);
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        value == null
-            ? SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: valueColor.withValues(alpha: 0.5),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          value == null
+              ? SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: valueColor.withValues(alpha: 0.5),
+                  ),
+                )
+              : Text(
+                  value!,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: valueColor,
+                  ),
                 ),
-              )
-            : Text(
-                value!,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: valueColor,
-                ),
-              ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: vc.muted,
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: vc.muted,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

@@ -8,7 +8,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/realtime/campaign_realtime_scope.dart';
-import '../../core/campaign/earnings_estimator_card.dart';
 import '../../core/campaign/platform_labels.dart';
 import 'campaign_providers.dart';
 import '../../core/participation/rejection_history.dart';
@@ -215,14 +214,6 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
                 padding: EdgeInsets.fromLTRB(
                     16, 8, 16, AppSpacing.floatingNavBottom(context) + 80),
                 children: [
-                  if (hasRate) ...[
-                    EarningsEstimatorCard(
-                      vc: vc,
-                      ratePer1kPaise: p.campaign.ratePer1kPaise,
-                      maxPayoutPaise: p.campaign.maxPayoutPaise,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
                   if (pendingDeliverables.isNotEmpty) ...[
                     ...pendingDeliverables.asMap().entries.map((e) {
                       final d = e.value;
