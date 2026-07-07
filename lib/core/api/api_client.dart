@@ -461,6 +461,20 @@ class ApiClient {
         (_) {},
       );
 
+  Future<Map<String, dynamic>> connectProfileSocial(
+    String profileId,
+    String platform,
+    String handle,
+  ) =>
+      post(
+        '/creator/profiles/$profileId/social/$platform',
+        {'handle': handle},
+        (d) => d as Map<String, dynamic>,
+      );
+
+  Future<void> disconnectProfileSocial(String profileId, String platform) =>
+      delete<void>('/creator/profiles/$profileId/social/$platform', (_) {});
+
   Future<OverallLeaderboard> fetchOverallLeaderboard() => get(
         '/creator/leaderboard',
         (d) => OverallLeaderboard.fromJson(d as Map<String, dynamic>),

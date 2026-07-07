@@ -8,7 +8,6 @@ import '../../core/creator_profile/creator_profile_providers.dart';
 import '../../core/widgets/social_logo_painters.dart';
 import '../../theme/viralcut_colors.dart';
 import '../../core/widgets/vc_scaffold.dart';
-import 'profile_providers.dart';
 
 const _platforms = [
   _PlatformMeta(
@@ -65,14 +64,14 @@ class _ConnectedAccountsScreenState
     super.dispose();
   }
 
-  void _initFrom(Map<String, dynamic> user) {
+  String? _lastProfileId;
+
+  void _initFrom(Map<String, dynamic> socialLinks, Map<String, dynamic> socialStats) {
     if (_initialized) return;
-    final links = (user['socialLinks'] as Map<String, dynamic>?) ?? {};
-    final stats = (user['socialStats'] as Map<String, dynamic>?) ?? {};
     for (final p in _platforms) {
-      _ctrl(p.key).text = links[p.key] as String? ?? '';
-      if (stats[p.key] != null) {
-        _stats[p.key] = stats[p.key] as Map<String, dynamic>;
+      _ctrl(p.key).text = socialLinks[p.key] as String? ?? '';
+      if (socialStats[p.key] != null) {
+        _stats[p.key] = socialStats[p.key] as Map<String, dynamic>;
       }
     }
     _initialized = true;
@@ -81,7 +80,7 @@ class _ConnectedAccountsScreenState
   bool _isConnected(String platform) =>
       _ctrl(platform).text.trim().isNotEmpty;
 
-  Future<void> _connect(String platform) async {
+  Future<void> _connect(String platform, String profileId) async {
     final handle = _ctrl(platform).text.trim();
     if (handle.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -91,11 +90,10 @@ class _ConnectedAccountsScreenState
     }
     setState(() => _connecting[platform] = true);
     try {
-      await ref.read(apiClientProvider).fetchSocialStats(platform, handle);
-      // Allow _initFrom to re-run when profile reloads so stats update automatically
+      await ref.read(apiClientProvider).connectProfileSocial(profileId, platform, handle);
       _initialized = false;
       setState(() => _pending.add(platform));
-      ref.invalidate(profileMeProvider);
+      ref.invalidate(creatorProfilesProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -122,7 +120,7 @@ class _ConnectedAccountsScreenState
     }
   }
 
-  Future<void> _disconnect(String platform) async {
+  Future<void> _disconnect(String platform, String profileId) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) {
@@ -143,14 +141,12 @@ class _ConnectedAccountsScreenState
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text('Cancel',
-                  style: TextStyle(color: vc.muted)),
+              child: Text('Cancel', style: TextStyle(color: vc.muted)),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
               child: Text('Disconnect',
-                  style: TextStyle(
-                      color: vc.error, fontWeight: FontWeight.w700)),
+                  style: TextStyle(color: vc.error, fontWeight: FontWeight.w700)),
             ),
           ],
         );
@@ -160,14 +156,14 @@ class _ConnectedAccountsScreenState
 
     setState(() => _disconnecting[platform] = true);
     try {
-      await ref.read(apiClientProvider).disconnectSocial(platform);
+      await ref.read(apiClientProvider).disconnectProfileSocial(profileId, platform);
       setState(() {
         _ctrl(platform).text = '';
         _stats.remove(platform);
         _pending.remove(platform);
-        _initialized = false; // allow re-init on rebuild
+        _initialized = false;
       });
-      ref.invalidate(profileMeProvider);
+      ref.invalidate(creatorProfilesProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -185,75 +181,72 @@ class _ConnectedAccountsScreenState
     }
   }
 
-  void _prefillActiveProfile(Map<String, dynamic> user) {
-    final activeProfile = ref.read(activeCreatorProfileProvider);
-    if (activeProfile == null || _initialized) return;
-    // If the active profile's handle is set but the social link for that platform isn't,
-    // pre-fill the text field with the profile's handle so the user can connect easily.
-    final platform = activeProfile.platform.toLowerCase();
-    final links = (user['socialLinks'] as Map<String, dynamic>?) ?? {};
-    if ((links[platform] as String?)?.isNotEmpty != true) {
-      final handle = activeProfile.handle;
-      if (handle.isNotEmpty) {
-        _ctrl(platform).text = handle;
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final me = ref.watch(profileMeProvider);
+    final profiles = ref.watch(creatorProfilesProvider);
     final activeProfile = ref.watch(activeCreatorProfileProvider);
     final vc = ViralCutColors.of(context);
 
-    // Determine which platforms to show — if a profile is active, show only its platform
-    final visiblePlatforms = activeProfile != null
-        ? _platforms.where((p) => p.key == activeProfile.platform.toLowerCase()).toList()
-        : _platforms;
+    // Reset init when the active profile changes
+    if (activeProfile?.id != _lastProfileId) {
+      _initialized = false;
+      _lastProfileId = activeProfile?.id;
+      for (final c in _controllers.values) { c.clear(); }
+      _stats.clear();
+      _pending.clear();
+    }
 
     return VcScaffold(
       title: 'Connected Accounts',
       showBack: true,
-      body: me.when(
+      body: profiles.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
-        data: (user) {
-          _initFrom(user);
-          _prefillActiveProfile(user);
+        data: (_) {
+          if (activeProfile == null) {
+            return Center(
+              child: Text(
+                'No profile selected',
+                style: GoogleFonts.inter(color: vc.muted),
+              ),
+            );
+          }
+
+          final links = activeProfile.socialLinks;
+          final stats = activeProfile.socialStats;
+          _initFrom(links, stats);
+
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
             children: [
-              if (activeProfile != null) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.2)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.person_outline_rounded, size: 14, color: Color(0xFF7C3AED)),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Showing connection for "${activeProfile.displayName}" profile. Switch profiles to manage other accounts.',
-                          style: GoogleFonts.inter(
-                              fontSize: 12, color: const Color(0xFF7C3AED), height: 1.4),
-                        ),
-                      ),
-                    ],
-                  ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.2)),
                 ),
-                const SizedBox(height: 16),
-              ],
+                child: Row(
+                  children: [
+                    const Icon(Icons.person_outline_rounded, size: 14, color: Color(0xFF7C3AED)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '"${activeProfile.displayName}" — switch profiles to manage connections for other accounts.',
+                        style: GoogleFonts.inter(
+                            fontSize: 12, color: const Color(0xFF7C3AED), height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
                 'Link your accounts so brands can match you with the right campaigns.',
-                style: GoogleFonts.inter(
-                    fontSize: 13, color: vc.muted, height: 1.45),
+                style: GoogleFonts.inter(fontSize: 13, color: vc.muted, height: 1.45),
               ),
               const SizedBox(height: 20),
-              for (final p in visiblePlatforms) ...[
+              for (final p in _platforms) ...[
                 _PlatformCard(
                   meta: p,
                   controller: _ctrl(p.key),
@@ -262,8 +255,8 @@ class _ConnectedAccountsScreenState
                   isConnecting: _connecting[p.key] ?? false,
                   isDisconnecting: _disconnecting[p.key] ?? false,
                   isPending: _pending.contains(p.key),
-                  onConnect: () => _connect(p.key),
-                  onDisconnect: () => _disconnect(p.key),
+                  onConnect: () => _connect(p.key, activeProfile.id),
+                  onDisconnect: () => _disconnect(p.key, activeProfile.id),
                 ),
                 const SizedBox(height: 12),
               ],

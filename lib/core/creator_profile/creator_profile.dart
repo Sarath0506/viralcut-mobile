@@ -6,6 +6,8 @@ class CreatorProfile {
     required this.isDefault,
     this.label,
     this.avatarUrl,
+    this.socialLinks = const {},
+    this.socialStats = const {},
   });
 
   final String id;
@@ -14,6 +16,8 @@ class CreatorProfile {
   final bool isDefault;
   final String? label;
   final String? avatarUrl;
+  final Map<String, dynamic> socialLinks;
+  final Map<String, dynamic> socialStats;
 
   String get displayName => label ?? handle;
 
@@ -24,5 +28,7 @@ class CreatorProfile {
         isDefault: json['isDefault'] as bool? ?? false,
         label: json['label'] as String?,
         avatarUrl: json['avatarUrl'] as String?,
+        socialLinks: (json['socialLinks'] as Map<String, dynamic>?) ?? {},
+        socialStats: (json['socialStats'] as Map<String, dynamic>?) ?? {},
       );
 }
