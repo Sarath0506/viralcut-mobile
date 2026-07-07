@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,6 +8,7 @@ import 'realtime_invalidation.dart';
 import 'realtime_providers.dart';
 
 /// Connects Socket.IO when authed and keeps creator-app data in sync.
+/// Falls back to polling every 30 seconds if WebSocket events are missed.
 class RealtimeSync extends ConsumerStatefulWidget {
   const RealtimeSync({super.key, required this.child});
 
@@ -17,6 +20,8 @@ class RealtimeSync extends ConsumerStatefulWidget {
 
 class _RealtimeSyncState extends ConsumerState<RealtimeSync>
     with WidgetsBindingObserver {
+  Timer? _pollTimer;
+
   @override
   void initState() {
     super.initState();
@@ -24,17 +29,37 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
     ref.listenManual(authStateProvider, (prev, next) {
       if (next == AuthStatus.authed) {
         _connect();
+        _startPolling();
       } else if (next == AuthStatus.unauthed) {
         ref.read(realtimeServiceProvider).disconnect();
+        _stopPolling();
       }
     });
     if (ref.read(authStateProvider) == AuthStatus.authed) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _connect());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _connect();
+        _startPolling();
+      });
     }
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (ref.read(authStateProvider) == AuthStatus.authed) {
+        invalidateAppDataCaches(ref);
+      }
+    });
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
   }
 
   @override
   void dispose() {
+    _stopPolling();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
