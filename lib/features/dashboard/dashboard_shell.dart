@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import '../submissions/submission_providers.dart';
 import 'widgets/shell_top_bar.dart';
 
@@ -44,7 +44,7 @@ class DashboardShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final path = GoRouterState.of(context).uri.path;
     final index = _indexForPath(path);
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return Scaffold(
       backgroundColor: vc.background,
@@ -75,7 +75,7 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 

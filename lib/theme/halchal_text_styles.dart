@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-abstract final class ViralCutTextStyles {
+abstract final class HalchalTextStyles {
   static TextStyle display(BuildContext context) => GoogleFonts.plusJakartaSans(
         textStyle: Theme.of(context).textTheme.bodyMedium,
       );

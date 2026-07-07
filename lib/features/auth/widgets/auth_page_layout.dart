@@ -3,7 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/layout/app_spacing.dart';
-import '../../../theme/viralcut_colors.dart';
+import '../../../theme/halchal_colors.dart';
 import 'auth_app_icon.dart';
 import 'auth_switch_link.dart';
 import 'auth_ui.dart';
@@ -33,7 +33,7 @@ class AuthPageLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
     final viewInsets = MediaQuery.viewInsetsOf(context);
     final bottomSafe = MediaQuery.paddingOf(context).bottom;

@@ -11,10 +11,9 @@ import 'submission_providers.dart';
 import '../../core/campaign/platform_labels.dart';
 import '../../core/participation/participation_status_labels.dart';
 import '../../core/participation/rejection_history.dart';
-import '../../core/validation/drive_url.dart';
 import '../../core/widgets/status_pill.dart';
 import '../../core/widgets/vc_scaffold.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 
 class ParticipationDetailScreen extends ConsumerStatefulWidget {
   const ParticipationDetailScreen({super.key, required this.id});
@@ -30,7 +29,6 @@ class _ParticipationDetailScreenState
     extends ConsumerState<ParticipationDetailScreen>
     with WidgetsBindingObserver {
   final _liveControllers = <String, TextEditingController>{};
-  final _draftControllers = <String, TextEditingController>{};
   final _loadingIds = <String>{};
   final _expandedHistory = <String>{};
 
@@ -44,9 +42,6 @@ class _ParticipationDetailScreenState
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     for (final c in _liveControllers.values) {
-      c.dispose();
-    }
-    for (final c in _draftControllers.values) {
       c.dispose();
     }
     super.dispose();
@@ -66,15 +61,6 @@ class _ParticipationDetailScreenState
 
   TextEditingController _liveControllerFor(String id) {
     return _liveControllers.putIfAbsent(id, () => TextEditingController());
-  }
-
-  TextEditingController _draftControllerFor(
-    FormatDeliverable deliverable,
-  ) {
-    return _draftControllers.putIfAbsent(
-      deliverable.id,
-      () => TextEditingController(text: deliverable.draftDriveUrl ?? ''),
-    );
   }
 
   Future<void> _submitLiveProof(String deliverableId, String url) async {
@@ -99,54 +85,10 @@ class _ParticipationDetailScreenState
     }
   }
 
-  Future<void> _resubmitDraft(FormatDeliverable deliverable) async {
-    final url = _draftControllerFor(deliverable).text.trim();
-    if (!isValidGoogleDriveUrl(url)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid Google Drive link')),
-      );
-      return;
-    }
-    if (isSameRejectedDriveUrl(deliverable, url)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'This Drive link was already rejected. Upload an updated creative or use a new link.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    setState(() => _loadingIds.add(deliverable.id));
-    try {
-      await ref.read(apiClientProvider).submitDeliverableDraft(
-            deliverableId: deliverable.id,
-            draftDriveUrl: url,
-          );
-      ref.invalidate(participationDetailProvider(widget.id));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${formatPlatformLabel(deliverable.platform)} resubmitted for review',
-          ),
-        ),
-      );
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
-    } finally {
-      if (mounted) setState(() => _loadingIds.remove(deliverable.id));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final detail = ref.watch(participationDetailProvider(widget.id));
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return detail.when(
       loading: () => const VcScaffold(
@@ -160,7 +102,6 @@ class _ParticipationDetailScreenState
         body: Center(child: Text('$e')),
       ),
       data: (p) {
-        final hasRate = (p.campaign.ratePer1kPaise ?? 0) > 0;
         return VcScaffold(
           title: 'Submission Details',
           showBack: true,
@@ -177,10 +118,10 @@ class _ParticipationDetailScreenState
                     padding: const EdgeInsets.only(bottom: 16),
                     child: _DeliverableSubmissionCard(
                       participationId: widget.id,
+                      campaignId: p.campaignId,
                       deliverable: d,
                       loading: _loadingIds.contains(d.id),
                       liveController: _liveControllerFor(d.id),
-                      draftController: _draftControllerFor(d),
                       historyExpanded: _expandedHistory.contains(d.id),
                       onToggleHistory: () {
                         setState(() {
@@ -192,7 +133,6 @@ class _ParticipationDetailScreenState
                         });
                       },
                       onSubmitLiveProof: (url) => _submitLiveProof(d.id, url),
-                      onSubmitDraft: () => _resubmitDraft(d),
                       onRefreshed: () => ref
                           .invalidate(participationDetailProvider(widget.id)),
                       vc: vc,
@@ -218,7 +158,7 @@ class _CampaignSummaryCard extends StatelessWidget {
   const _CampaignSummaryCard({required this.participation, required this.vc});
 
   final Participation participation;
-  final ViralCutColors vc;
+  final HalchalColors vc;
 
   @override
   Widget build(BuildContext context) {
@@ -339,7 +279,7 @@ class _StatusBannerData {
 
 _StatusBannerData _bannerFor(
   FormatDeliverable d,
-  ViralCutColors vc,
+  HalchalColors vc,
   String platformLabel,
 ) {
   switch (d.status) {
@@ -410,29 +350,27 @@ _StatusBannerData _bannerFor(
 class _DeliverableSubmissionCard extends StatelessWidget {
   const _DeliverableSubmissionCard({
     required this.participationId,
+    required this.campaignId,
     required this.deliverable,
     required this.loading,
     required this.liveController,
-    required this.draftController,
     required this.historyExpanded,
     required this.onToggleHistory,
     required this.onSubmitLiveProof,
-    required this.onSubmitDraft,
     required this.onRefreshed,
     required this.vc,
   });
 
   final String participationId;
+  final String campaignId;
   final FormatDeliverable deliverable;
   final bool loading;
   final TextEditingController liveController;
-  final TextEditingController draftController;
   final bool historyExpanded;
   final VoidCallback onToggleHistory;
   final ValueChanged<String> onSubmitLiveProof;
-  final VoidCallback onSubmitDraft;
   final VoidCallback onRefreshed;
-  final ViralCutColors vc;
+  final HalchalColors vc;
 
   @override
   Widget build(BuildContext context) {
@@ -619,39 +557,12 @@ class _DeliverableSubmissionCard extends StatelessWidget {
 
           // First-time draft submission (pending)
           if (deliverable.isDraftPending) ...[
-            const SizedBox(height: 12),
-            Text('Submit your content',
-                style: GoogleFonts.inter(
-                    fontSize: 14, fontWeight: FontWeight.w700, color: vc.onSurface)),
-            const SizedBox(height: 4),
-            Text('Paste a Google Drive link to your $platformLabel content.',
-                style: GoogleFonts.inter(fontSize: 12, color: vc.muted)),
-            const SizedBox(height: 10),
-            TextField(
-              controller: draftController,
-              keyboardType: TextInputType.url,
-              autocorrect: false,
-              style: TextStyle(color: vc.onSurface),
-              decoration: InputDecoration(
-                labelText: 'Google Drive link',
-                filled: true,
-                fillColor: vc.background,
-                errorText: driveUrlError(draftController.text),
-              ),
-            ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
             FilledButton.icon(
-              onPressed: loading ? null : onSubmitDraft,
-              icon: loading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.arrow_forward_rounded, size: 18),
-              label: Text(
-                loading ? 'Submitting...' : 'Submit for review',
-              ),
+              onPressed: () =>
+                  context.push('/campaigns/$campaignId/submit'),
+              icon: const Icon(Icons.upload_rounded, size: 18),
+              label: const Text('Submit your work'),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
                 shape: RoundedRectangleBorder(
@@ -665,38 +576,17 @@ class _DeliverableSubmissionCard extends StatelessWidget {
           // Resubmit draft (rejected)
           if (deliverable.isRejected) ...[
             const SizedBox(height: 12),
-            Text('Submit your content',
-                style: GoogleFonts.inter(
-                    fontSize: 14, fontWeight: FontWeight.w700, color: vc.onSurface)),
-            const SizedBox(height: 4),
-            Text('Paste an updated Google Drive link to your $platformLabel content.',
-                style: GoogleFonts.inter(fontSize: 12, color: vc.muted)),
-            const SizedBox(height: 10),
-            TextField(
-              controller: draftController,
-              keyboardType: TextInputType.url,
-              autocorrect: false,
-              style: TextStyle(color: vc.onSurface),
-              decoration: InputDecoration(
-                labelText: 'Updated Google Drive link',
-                filled: true,
-                fillColor: vc.background,
-                errorText: driveUrlError(draftController.text),
-              ),
+            Text(
+              'Address the feedback and resubmit',
+              style: GoogleFonts.inter(
+                  fontSize: 13, color: vc.muted),
             ),
             const SizedBox(height: 10),
             FilledButton.icon(
-              onPressed: loading ? null : onSubmitDraft,
-              icon: loading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.refresh, size: 18),
-              label: Text(
-                loading ? 'Submitting...' : 'Resubmit for review',
-              ),
+              onPressed: () =>
+                  context.push('/campaigns/$campaignId/submit'),
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Resubmit your work'),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
                 shape: RoundedRectangleBorder(
@@ -813,7 +703,7 @@ class _SubmittedDraftCard extends StatelessWidget {
 
   final String url;
   final String? submittedAt;
-  final ViralCutColors vc;
+  final HalchalColors vc;
 
   @override
   Widget build(BuildContext context) {
@@ -906,7 +796,7 @@ class _ReviewTimelineCard extends StatelessWidget {
     this.note = 'This usually takes 1-2 business days.',
   });
 
-  final ViralCutColors vc;
+  final HalchalColors vc;
   final List<({String label, bool done})> steps;
   final String note;
 
@@ -970,7 +860,7 @@ class _ReviewTimelineCard extends StatelessWidget {
 class _TipsCard extends StatelessWidget {
   const _TipsCard({required this.vc});
 
-  final ViralCutColors vc;
+  final HalchalColors vc;
 
   static const _tips = [
     'Make sure your content is public and accessible',
@@ -1040,7 +930,7 @@ class _ProofSubmittedCard extends ConsumerStatefulWidget {
   final int viewCount;
   final bool isProofApproved;
   final VoidCallback onRefreshed;
-  final ViralCutColors vc;
+  final HalchalColors vc;
 
   @override
   ConsumerState<_ProofSubmittedCard> createState() =>

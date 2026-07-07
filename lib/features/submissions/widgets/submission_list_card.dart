@@ -5,7 +5,7 @@ import '../../../core/campaign/platform_labels.dart';
 import '../../../core/participation/participation_models.dart';
 import '../../../core/participation/participation_status_labels.dart';
 import '../../../core/widgets/status_pill.dart';
-import '../../../theme/viralcut_colors.dart';
+import '../../../theme/halchal_colors.dart';
 import '../../campaigns/widgets/campaign_shared_widgets.dart';
 
 class SubmissionListCard extends StatelessWidget {
@@ -22,7 +22,7 @@ class SubmissionListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final metaLine = submissionListMetaLine(item);
 
     return Semantics(

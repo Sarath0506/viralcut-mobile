@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
 import '../../core/format/money_format.dart';
 import '../../core/widgets/vc_scaffold.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import 'campaign_providers.dart';
 
 String _formatViews(int n) {
@@ -44,7 +44,7 @@ class LeaderboardScreen extends ConsumerWidget {
                 currentUser: b.currentUser,
               ),
             );
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return VcScaffold(
       title: id != null ? 'Leaderboard' : 'Overall Leaderboard',
@@ -135,7 +135,7 @@ class _LeaderboardRow extends StatelessWidget {
   final LeaderboardEntry entry;
   final bool highlighted;
 
-  Color _rankColor(ViralCutColors vc) {
+  Color _rankColor(HalchalColors vc) {
     switch (entry.rank) {
       case 1:
         return const Color(0xFFFFC94D);
@@ -150,7 +150,7 @@ class _LeaderboardRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final rankColor = _rankColor(vc);
     final letter = entry.displayName.isNotEmpty
         ? entry.displayName[0].toUpperCase()

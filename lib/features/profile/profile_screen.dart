@@ -15,7 +15,7 @@ import '../../core/layout/list_entrance.dart';
 import '../dashboard/widgets/social_connect_section.dart';
 import 'profile_providers.dart';
 import 'widgets/profile_switcher_sheet.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import '../../theme/theme_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -103,9 +103,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final activeCount = ref.watch(profileActiveSubmissionsProvider);
     final themeMode = ref.watch(themeModeProvider);
     final activeProfile = ref.watch(activeCreatorProfileProvider);
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return me.when(
+      skipLoadingOnRefresh: true,
       loading: () => const ScreenLoader(),
       error: (e, _) => _ProfileError(
         error: e,
@@ -128,9 +129,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           youtube: ((profileLinksMap['youtube'] as String?) ?? '').isNotEmpty,
           twitter: ((profileLinksMap['twitter'] as String?) ?? '').isNotEmpty,
         );
-        final animationKey =
-            '${user['id']}:$lifetimePaise:$activeSubmissions:$clipsUnderReview:$kycStatus';
-
         return RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(profileMeProvider);
@@ -139,7 +137,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ref.invalidate(creatorProfilesProvider);
           },
           child: ScreenStaggeredColumn(
-            animationKey: animationKey,
+            animationKey: 'profile',
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.fromLTRB(
               AppSpacing.screenHorizontal,
@@ -335,7 +333,7 @@ class _ProfileHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
     final handle = (username != null && username!.isNotEmpty) ? '@$username' : phone;
 
@@ -547,7 +545,7 @@ class _StatCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Column(
@@ -592,7 +590,7 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Text(
@@ -615,7 +613,7 @@ class _SettingsGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Container(
       decoration: BoxDecoration(
         color: vc.surface,
@@ -657,7 +655,7 @@ class _SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -717,7 +715,7 @@ class _LogoutButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(

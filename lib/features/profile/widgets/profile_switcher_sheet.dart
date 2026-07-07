@@ -6,7 +6,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/creator_profile/creator_profile.dart';
 import '../../../core/creator_profile/creator_profile_providers.dart';
-import '../../../theme/viralcut_colors.dart';
+import '../../../theme/halchal_colors.dart';
 
 const _platforms = <({String key, String label, IconData icon})>[
   (key: 'instagram', label: 'Instagram', icon: Icons.camera_alt_rounded),
@@ -46,7 +46,7 @@ class _ProfileSwitcherSheetState extends ConsumerState<ProfileSwitcherSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final profiles = ref.watch(creatorProfilesProvider);
     final activeId = ref.watch(activeCreatorProfileProvider)?.id;
 
@@ -154,7 +154,7 @@ class _ProfileTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -286,7 +286,7 @@ class _AddProfileFormState extends ConsumerState<_AddProfileForm> {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Form(
       key: _formKey,
       child: Column(

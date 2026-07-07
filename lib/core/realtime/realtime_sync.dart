@@ -21,6 +21,7 @@ class RealtimeSync extends ConsumerStatefulWidget {
 class _RealtimeSyncState extends ConsumerState<RealtimeSync>
     with WidgetsBindingObserver {
   Timer? _pollTimer;
+  DateTime? _lastRefresh;
 
   @override
   void initState() {
@@ -45,9 +46,9 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
 
   void _startPolling() {
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _pollTimer = Timer.periodic(const Duration(minutes: 5), (_) {
       if (ref.read(authStateProvider) == AuthStatus.authed) {
-        invalidateAppDataCaches(ref);
+        _refreshIfStale();
       }
     });
   }
@@ -64,13 +65,21 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
     super.dispose();
   }
 
+  void _refreshIfStale() {
+    final now = DateTime.now();
+    if (_lastRefresh != null &&
+        now.difference(_lastRefresh!) < const Duration(minutes: 5)) return;
+    _lastRefresh = now;
+    invalidateAppDataCaches(ref);
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
     if (ref.read(authStateProvider) != AuthStatus.authed) return;
 
     ref.read(realtimeServiceProvider).reconnectIfNeeded();
-    invalidateAppDataCaches(ref);
+    _refreshIfStale();
   }
 
   void _onRealtimeEvent(Map<String, dynamic> payload) {

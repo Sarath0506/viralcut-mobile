@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'token_colors.dart';
 
 /// Brand semantic colors for the active brightness.
-/// Use [ViralCutColors.of] in feature code — not [ViralCutTokenColors] *Light/*Dark.
+/// Use [HalchalColors.of] in feature code — not [ViralCutTokenColors] *Light/*Dark.
 @immutable
-class ViralCutColors extends ThemeExtension<ViralCutColors> {
-  const ViralCutColors({
+class HalchalColors extends ThemeExtension<HalchalColors> {
+  const HalchalColors({
     required this.primary,
     required this.primaryVariant,
     required this.money,
@@ -48,15 +48,15 @@ class ViralCutColors extends ThemeExtension<ViralCutColors> {
   final Color authGradientEnd;
   final Color infoSurface;
 
-  static ViralCutColors of(BuildContext context) {
-    final ext = Theme.of(context).extension<ViralCutColors>();
-    assert(ext != null, 'ViralCutColors not registered on ThemeData');
+  static HalchalColors of(BuildContext context) {
+    final ext = Theme.of(context).extension<HalchalColors>();
+    assert(ext != null, 'HalchalColors not registered on ThemeData');
     return ext!;
   }
 
-  static ViralCutColors forBrightness(Brightness brightness) {
+  static HalchalColors forBrightness(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
-    return ViralCutColors(
+    return HalchalColors(
       primary: isDark
           ? ViralCutTokenColors.primaryDark
           : ViralCutTokenColors.primaryLight,
@@ -118,7 +118,7 @@ class ViralCutColors extends ThemeExtension<ViralCutColors> {
   }
 
   @override
-  ViralCutColors copyWith({
+  HalchalColors copyWith({
     Color? primary,
     Color? primaryVariant,
     Color? money,
@@ -139,7 +139,7 @@ class ViralCutColors extends ThemeExtension<ViralCutColors> {
     Color? authGradientEnd,
     Color? infoSurface,
   }) {
-    return ViralCutColors(
+    return HalchalColors(
       primary: primary ?? this.primary,
       primaryVariant: primaryVariant ?? this.primaryVariant,
       money: money ?? this.money,
@@ -163,10 +163,10 @@ class ViralCutColors extends ThemeExtension<ViralCutColors> {
   }
 
   @override
-  ViralCutColors lerp(ThemeExtension<ViralCutColors>? other, double t) {
-    if (other is! ViralCutColors) return this;
+  HalchalColors lerp(ThemeExtension<HalchalColors>? other, double t) {
+    if (other is! HalchalColors) return this;
     Color lerpColor(Color a, Color b) => Color.lerp(a, b, t)!;
-    return ViralCutColors(
+    return HalchalColors(
       primary: lerpColor(primary, other.primary),
       primaryVariant: lerpColor(primaryVariant, other.primaryVariant),
       money: lerpColor(money, other.money),

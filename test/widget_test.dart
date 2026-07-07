@@ -6,8 +6,8 @@ import 'package:viralcut_mobile/app.dart';
 void main() {
   testWidgets('app shell loads', (WidgetTester tester) async {
     await tester.pumpWidget(
-      const ProviderScope(child: ViralCutApp()),
+      const ProviderScope(child: HalchalApp()),
     );
-    expect(find.byType(ViralCutApp), findsOneWidget);
+    expect(find.byType(HalchalApp), findsOneWidget);
   });
 }

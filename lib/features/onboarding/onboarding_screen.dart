@@ -3,8 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/layout/app_spacing.dart';
-import '../../theme/viralcut_colors.dart';
-import '../../theme/viralcut_text_styles.dart';
+import '../../theme/halchal_colors.dart';
+import '../../theme/halchal_text_styles.dart';
 import '../auth/widgets/auth_app_icon.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -49,7 +49,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return Scaffold(
       backgroundColor: vc.background,
@@ -73,7 +73,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     const SizedBox(width: 8),
                     Text(
                       'Halchal',
-                      style: ViralCutTextStyles.meta(context).copyWith(
+                      style: HalchalTextStyles.meta(context).copyWith(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
                         color: vc.onSurface,
@@ -84,7 +84,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       onPressed: () => context.go('/signup'),
                       child: Text(
                         'Skip',
-                        style: ViralCutTextStyles.meta(context).copyWith(
+                        style: HalchalTextStyles.meta(context).copyWith(
                           color: vc.muted,
                           fontWeight: FontWeight.w500,
                         ),
@@ -127,7 +127,7 @@ class _OnboardingBottom extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
     final bottomSafe = MediaQuery.paddingOf(context).bottom;
 
@@ -147,7 +147,7 @@ class _OnboardingBottom extends StatelessWidget {
             onPressed: onLogin,
             child: RichText(
               text: TextSpan(
-                style: ViralCutTextStyles.meta(context).copyWith(
+                style: HalchalTextStyles.meta(context).copyWith(
                   color: vc.muted,
                   fontSize: 14,
                 ),
@@ -178,7 +178,7 @@ class _PageDots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -251,7 +251,7 @@ class _WalletOnboardingSlide extends StatelessWidget {
 class _PurpleCardMockup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Container(
       width: 160,
       height: 200,
@@ -499,7 +499,7 @@ class _OnboardingTextBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
 
     return Padding(

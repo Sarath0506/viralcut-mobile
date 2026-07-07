@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../theme/viralcut_colors.dart';
-import '../../theme/viralcut_text_styles.dart';
+import '../../theme/halchal_colors.dart';
+import '../../theme/halchal_text_styles.dart';
 import 'app_spacing.dart';
 
 class OnboardingTextBlock extends StatelessWidget {
@@ -15,7 +15,7 @@ class OnboardingTextBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -28,7 +28,7 @@ class OnboardingTextBlock extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: ViralCutTextStyles.screenTitle(context).copyWith(
+            style: HalchalTextStyles.screenTitle(context).copyWith(
               fontSize: 27,
               color: vc.onSurface,
             ),
@@ -38,7 +38,7 @@ class OnboardingTextBlock extends StatelessWidget {
             Text(
               subtitle!,
               textAlign: TextAlign.center,
-              style: ViralCutTextStyles.bodyText(context).copyWith(
+              style: HalchalTextStyles.bodyText(context).copyWith(
                 color: vc.muted,
               ),
             ),

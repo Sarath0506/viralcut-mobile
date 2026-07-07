@@ -9,7 +9,7 @@ import '../../core/layout/list_entrance.dart';
 import 'dashboard_providers.dart';
 import '../../features/profile/profile_providers.dart';
 import '../../core/campaign/campaign_schedule_label.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 import 'widgets/dashboard_earnings_card.dart';
 import 'widgets/trending_campaigns_carousel.dart';
 
@@ -25,23 +25,17 @@ class DashboardScreen extends ConsumerWidget {
         );
 
     return state.when(
+      skipLoadingOnRefresh: true,
       loading: () => const ScreenLoader(),
       error: (e, _) => _DashboardError(
         error: e,
         onRetry: () => ref.invalidate(dashboardProvider),
       ),
       data: (data) {
-        final animationKey = [
-          data.wallet.availablePaise,
-          data.wallet.pendingPaise,
-          data.clipsUnderReview,
-          ...data.trending.map((c) => c.id),
-        ].join('|');
-
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(dashboardProvider),
           child: ScreenStaggeredColumn(
-            animationKey: animationKey,
+            animationKey: 'dashboard',
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.fromLTRB(
               AppSpacing.screenHorizontal,
@@ -82,7 +76,7 @@ class _DashboardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final name = dashboardGreetingName(displayName);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,7 +120,7 @@ class _OverallLeaderboardLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return Material(
       color: vc.surface,

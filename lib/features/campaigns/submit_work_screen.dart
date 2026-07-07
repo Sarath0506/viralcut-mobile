@@ -15,7 +15,7 @@ import '../../core/layout/app_spacing.dart';
 import '../../core/validation/drive_url.dart';
 import '../../core/widgets/status_pill.dart';
 import '../../core/widgets/vc_scaffold.dart';
-import '../../theme/viralcut_colors.dart';
+import '../../theme/halchal_colors.dart';
 
 enum _SubmitMethod { drive, device }
 
@@ -161,7 +161,7 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
   @override
   Widget build(BuildContext context) {
     final participation = ref.watch(participationSubmitProvider(widget.campaignId));
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return participation.when(
       loading: () => const VcScaffold(
@@ -301,7 +301,7 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
   }
 
   Widget _sectionHeader(
-      BuildContext context, ViralCutColors vc, String title, String? subtitle) {
+      BuildContext context, HalchalColors vc, String title, String? subtitle) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -339,7 +339,7 @@ class _DeliverableSubmitCard extends StatefulWidget {
   final VoidCallback onPickFile;
   final VoidCallback onRemoveUpload;
   final VoidCallback onChanged;
-  final ViralCutColors vc;
+  final HalchalColors vc;
 
   @override
   State<_DeliverableSubmitCard> createState() => _DeliverableSubmitCardState();
@@ -349,7 +349,7 @@ class _DeliverableSubmitCardState extends State<_DeliverableSubmitCard> {
   _SubmitMethod _method = _SubmitMethod.drive;
 
   FormatDeliverable get d => widget.deliverable;
-  ViralCutColors get vc => widget.vc;
+  HalchalColors get vc => widget.vc;
 
   @override
   Widget build(BuildContext context) {
@@ -567,7 +567,7 @@ class _MethodCard extends StatelessWidget {
 
   final bool selected;
   final VoidCallback onTap;
-  final ViralCutColors vc;
+  final HalchalColors vc;
   final Widget icon;
   final String title;
   final String? badge;
@@ -655,7 +655,7 @@ class _DropZone extends StatelessWidget {
   });
 
   final bool isUploading;
-  final ViralCutColors vc;
+  final HalchalColors vc;
   final VoidCallback onTap;
 
   @override
@@ -722,7 +722,7 @@ class _UploadedFileRow extends StatelessWidget {
       {required this.url, required this.vc, required this.onRemove});
 
   final String url;
-  final ViralCutColors vc;
+  final HalchalColors vc;
   final VoidCallback onRemove;
 
   @override
@@ -763,7 +763,7 @@ class _UploadedFileRow extends StatelessWidget {
 class _SubmissionTipsCard extends StatelessWidget {
   const _SubmissionTipsCard({required this.vc});
 
-  final ViralCutColors vc;
+  final HalchalColors vc;
 
   static const _tips = [
     'Make sure your content is public and accessible',
@@ -826,7 +826,7 @@ class _CompletedDeliverableRow extends StatelessWidget {
   const _CompletedDeliverableRow({required this.d, required this.vc});
 
   final FormatDeliverable d;
-  final ViralCutColors vc;
+  final HalchalColors vc;
 
   @override
   Widget build(BuildContext context) {

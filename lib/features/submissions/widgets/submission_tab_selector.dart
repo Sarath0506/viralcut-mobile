@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../theme/viralcut_colors.dart';
+import '../../../theme/halchal_colors.dart';
 
 class SubmissionTabSelector extends StatelessWidget {
   const SubmissionTabSelector({
@@ -58,7 +58,7 @@ class _SubmissionTabPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
 
     final background = selected

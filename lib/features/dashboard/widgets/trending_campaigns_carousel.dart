@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/campaign/campaign_schedule_label.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/format/money_format.dart';
-import '../../../theme/viralcut_colors.dart';
+import '../../../theme/halchal_colors.dart';
 import '../../campaigns/widgets/campaign_shared_widgets.dart';
 
 class TrendingCampaignsCarousel extends StatefulWidget {
@@ -30,7 +30,7 @@ class _TrendingCampaignsCarouselState extends State<TrendingCampaignsCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
 
     if (widget.campaigns.isEmpty) {
@@ -80,7 +80,7 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -125,7 +125,7 @@ class _TrendingCampaignCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
     final c = campaign;
     final isNew = c.createdAt != null &&

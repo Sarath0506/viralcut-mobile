@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/widgets/social_logo_painters.dart';
-import '../../../theme/viralcut_colors.dart';
+import '../../../theme/halchal_colors.dart';
 
 class SocialConnectSection extends StatelessWidget {
   const SocialConnectSection({
@@ -35,7 +35,7 @@ class SocialConnectSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (_allConnected) return const SizedBox.shrink();
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
 
     return Material(
       color: Colors.transparent,
@@ -120,7 +120,7 @@ class _OverlappingLogos extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
+    final vc = HalchalColors.of(context);
     final items = [
       (platform: 'instagram', connected: links.instagram),
       (platform: 'youtube', connected: links.youtube),
