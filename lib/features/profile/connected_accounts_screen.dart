@@ -65,20 +65,32 @@ class _ConnectedAccountsScreenState
   }
 
   String? _lastProfileId;
+  // Tracks which platforms are actually saved on the server (from profile.socialLinks)
+  final _savedHandles = <String, String>{};
 
-  void _initFrom(Map<String, dynamic> socialLinks, Map<String, dynamic> socialStats) {
-    if (_initialized) return;
+  void _syncFromProfile(Map<String, dynamic> socialLinks, Map<String, dynamic> socialStats) {
+    // Always sync saved handles and stats from server data
     for (final p in _platforms) {
-      _ctrl(p.key).text = socialLinks[p.key] as String? ?? '';
+      final saved = socialLinks[p.key] as String? ?? '';
+      _savedHandles[p.key] = saved;
       if (socialStats[p.key] != null) {
-        _stats[p.key] = socialStats[p.key] as Map<String, dynamic>;
+        _stats[p.key] = Map<String, dynamic>.from(socialStats[p.key] as Map);
+      } else {
+        _stats.remove(p.key);
       }
     }
-    _initialized = true;
+    // Only pre-fill text controllers on first load (don't overwrite user typing)
+    if (!_initialized) {
+      for (final p in _platforms) {
+        _ctrl(p.key).text = _savedHandles[p.key] ?? '';
+      }
+      _initialized = true;
+    }
   }
 
+  // Connected = handle is actually saved on the server
   bool _isConnected(String platform) =>
-      _ctrl(platform).text.trim().isNotEmpty;
+      (_savedHandles[platform] ?? '').isNotEmpty;
 
   Future<void> _connect(String platform, String profileId) async {
     final handle = _ctrl(platform).text.trim();
@@ -187,12 +199,13 @@ class _ConnectedAccountsScreenState
     final activeProfile = ref.watch(activeCreatorProfileProvider);
     final vc = ViralCutColors.of(context);
 
-    // Reset init when the active profile changes
+    // Reset everything when the active profile changes
     if (activeProfile?.id != _lastProfileId) {
       _initialized = false;
       _lastProfileId = activeProfile?.id;
       for (final c in _controllers.values) { c.clear(); }
       _stats.clear();
+      _savedHandles.clear();
       _pending.clear();
     }
 
@@ -214,7 +227,7 @@ class _ConnectedAccountsScreenState
 
           final links = activeProfile.socialLinks;
           final stats = activeProfile.socialStats;
-          _initFrom(links, stats);
+          _syncFromProfile(links, stats);
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
