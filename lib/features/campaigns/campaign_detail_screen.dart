@@ -43,12 +43,11 @@ class CampaignDetailScreen extends ConsumerWidget {
     Participation? participation,
   ) async {
     if (participation == null) {
-      // Guard: require at least one linked social account
-      final user = ref.read(profileMeProvider).valueOrNull;
-      final socialLinksMap =
-          (user?['socialLinks'] as Map<String, dynamic>?) ?? {};
+      // Guard: require at least one linked social account on the active profile
+      final activeProfileForCheck = ref.read(activeCreatorProfileProvider);
+      final profileLinksMap = activeProfileForCheck?.socialLinks ?? {};
       final hasAnyLinked = ['instagram', 'youtube', 'twitter'].any(
-        (k) => ((socialLinksMap[k] as String?) ?? '').isNotEmpty,
+        (k) => ((profileLinksMap[k] as String?) ?? '').isNotEmpty,
       );
       if (!hasAnyLinked) {
         if (!context.mounted) return;
