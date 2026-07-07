@@ -11,17 +11,10 @@ import '../../features/profile/profile_providers.dart';
 import '../../core/campaign/campaign_schedule_label.dart';
 import '../../theme/viralcut_colors.dart';
 import 'widgets/dashboard_earnings_card.dart';
-import 'widgets/social_connect_section.dart';
 import 'widgets/trending_campaigns_carousel.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
-
-  void _showSocialLinkSnackBar(BuildContext context, String platform) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$platform linking coming soon')),
-    );
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -58,23 +51,17 @@ class DashboardScreen extends ConsumerWidget {
             ),
             children: [
               _DashboardHeader(displayName: displayName),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               DashboardEarningsCard(
                 wallet: data.wallet,
                 clipsUnderReview: data.clipsUnderReview,
                 onWithdraw: () => context.go('/wallet'),
               ),
-              const SizedBox(height: 16),
-              SocialConnectSection(
-                links: data.socialLinks,
-                onInstagramTap: () =>
-                    _showSocialLinkSnackBar(context, 'Instagram'),
-                onYouTubeTap: () =>
-                    _showSocialLinkSnackBar(context, 'YouTube'),
-                onXTap: () =>
-                    _showSocialLinkSnackBar(context, 'X'),
+              const SizedBox(height: 12),
+              _OverallLeaderboardLink(
+                onTap: () => context.push('/leaderboard'),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               TrendingCampaignsCarousel(
                 campaigns: data.trending,
                 onCampaignTap: (c) => context.push('/campaigns/${c.id}'),
@@ -119,7 +106,7 @@ class _DashboardHeader extends StatelessWidget {
               height: 1.16,
             ),
             children: [
-              const TextSpan(text: 'Post clips. '),
+              const TextSpan(text: 'Post clips.\n'),
               TextSpan(
                 text: 'Get paid.',
                 style: TextStyle(color: vc.primary),
@@ -128,6 +115,59 @@ class _DashboardHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _OverallLeaderboardLink extends StatelessWidget {
+  const _OverallLeaderboardLink({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
+
+    return Material(
+      color: vc.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: vc.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Icon(Icons.emoji_events_outlined, color: vc.primary, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Overall leaderboard',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: vc.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'See how you rank across all campaigns',
+                      style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, size: 18, color: vc.muted),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

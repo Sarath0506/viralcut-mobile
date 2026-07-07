@@ -104,12 +104,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     return AuthPageLayout(
       showBack: true,
-      onBack: () => context.go('/'),
+      onBack: () => context.go('/onboarding'),
       headerTitle: 'Welcome back',
       title: 'Log in',
       titleHighlight: 'in',
       subtitle: 'Continue earning from your clips.',
-      footer: AuthSwitchLink(
+      footer: const AuthSwitchLink(
         leadText: 'New to Halchal? ',
         linkText: 'Sign up',
         route: '/signup',

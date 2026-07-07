@@ -21,3 +21,14 @@ final profileActiveSubmissionsProvider = FutureProvider<int>((ref) async {
       await ref.read(apiClientProvider).fetchParticipations(tab: 'active');
   return items.length;
 });
+
+final notificationsProvider =
+    FutureProvider<List<AppNotification>>((ref) async {
+  watchAppRealtimeTick(ref);
+  return ref.read(apiClientProvider).fetchNotifications();
+});
+
+final unreadNotificationCountProvider = FutureProvider<int>((ref) async {
+  watchAppRealtimeTick(ref);
+  return ref.read(apiClientProvider).fetchUnreadNotificationCount();
+});

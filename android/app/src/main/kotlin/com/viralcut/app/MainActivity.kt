@@ -1,4 +1,4 @@
-package com.example.viralcut_mobile
+package com.viralcut.app
 
 import io.flutter.embedding.android.FlutterActivity
 

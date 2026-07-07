@@ -73,16 +73,28 @@ class SubmissionListCard extends StatelessWidget {
                           children: [
                             StatusPill(status: item.summary),
                             const SizedBox(height: 4),
-                            Text(
-                              metaLine,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                                color: vc.muted,
-                                height: 1.1,
-                              ),
+                            Row(
+                              children: [
+                                Icon(
+                                  submissionActionIcon(item.deliverables),
+                                  size: 11,
+                                  color: vc.muted,
+                                ),
+                                const SizedBox(width: 3),
+                                Expanded(
+                                  child: Text(
+                                    metaLine,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                      color: vc.muted,
+                                      height: 1.1,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -114,6 +126,11 @@ String submissionListMetaLine(ParticipationListItem item) {
   final deliverables = item.deliverables;
   final parts = <String>[];
 
+  final profile = item.creatorProfile;
+  if (profile != null) {
+    parts.add('@${profile.handle}');
+  }
+
   if (deliverables.length == 1) {
     parts.add(formatPlatformLabel(deliverables.first.platform));
   } else if (deliverables.length > 1) {
@@ -128,6 +145,26 @@ String submissionListMetaLine(ParticipationListItem item) {
   }
 
   return parts.isEmpty ? 'Tap to view' : parts.join(' · ');
+}
+
+IconData submissionActionIcon(List<FormatDeliverable> deliverables) {
+  if (deliverables.any((d) => d.isRejected)) {
+    return Icons.report_problem_outlined;
+  }
+  if (deliverables.any((d) => d.isDraftPending)) {
+    return Icons.upload_file_outlined;
+  }
+  if (deliverables.any((d) => d.isApproved)) {
+    return Icons.link_rounded;
+  }
+  if (deliverables.any((d) => d.isUnderReview)) {
+    return Icons.hourglass_top_rounded;
+  }
+  if (deliverables.isNotEmpty &&
+      deliverables.every((d) => d.isLiveSubmitted)) {
+    return Icons.check_circle_outline_rounded;
+  }
+  return Icons.info_outline_rounded;
 }
 
 String? submissionActionHint(List<FormatDeliverable> deliverables) {

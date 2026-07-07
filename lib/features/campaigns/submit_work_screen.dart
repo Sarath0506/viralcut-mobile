@@ -10,7 +10,6 @@ import '../../core/auth/auth_provider.dart';
 import '../../core/realtime/campaign_realtime_scope.dart';
 import '../../core/campaign/platform_labels.dart';
 import 'campaign_providers.dart';
-import '../../core/participation/participation_models.dart';
 import '../../core/participation/rejection_history.dart';
 import '../../core/layout/app_spacing.dart';
 import '../../core/validation/drive_url.dart';
@@ -51,7 +50,9 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    for (final c in _driveControllers.values) c.dispose();
+    for (final c in _driveControllers.values) {
+      c.dispose();
+    }
     _entrance.dispose();
     super.dispose();
   }
@@ -120,20 +121,18 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
     }
   }
 
-  Future<void> _pickAndUpload(FormatDeliverable d, {required bool isVideo}) async {
+  static const _videoExtensions = {'mp4', 'mov', 'm4v', 'avi', 'mkv'};
+
+  Future<void> _pickAndUpload(FormatDeliverable d) async {
     final picker = ImagePicker();
-    XFile? file;
-    if (isVideo) {
-      file = await picker.pickVideo(source: ImageSource.gallery);
-    } else {
-      file = await picker.pickImage(source: ImageSource.gallery);
-    }
+    final file = await picker.pickMedia();
     if (file == null) return;
 
     setState(() => _uploadingIds.add(d.id));
     try {
       final api = ref.read(apiClientProvider);
       final ext = file.name.split('.').last.toLowerCase();
+      final isVideo = _videoExtensions.contains(ext);
       final mime = isVideo
           ? (ext == 'mov' ? 'video/quicktime' : 'video/mp4')
           : (ext == 'png' ? 'image/png' : 'image/jpeg');
@@ -176,12 +175,15 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
         body: Center(child: Text('$e')),
       ),
       data: (p) {
-        for (final d in p.deliverables) _controllerFor(d.id, d.draftDriveUrl);
+        for (final d in p.deliverables) {
+          _controllerFor(d.id, d.draftDriveUrl);
+        }
 
         final pendingDeliverables =
             p.deliverables.where((d) => d.isRejected || d.isDraftPending).toList();
         final otherDeliverables =
             p.deliverables.where((d) => !d.isRejected && !d.isDraftPending).toList();
+        final hasRate = (p.campaign.ratePer1kPaise ?? 0) > 0;
 
         return CampaignRealtimeScope(
           campaignId: widget.campaignId,
@@ -213,9 +215,6 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
                     16, 8, 16, AppSpacing.floatingNavBottom(context) + 80),
                 children: [
                   if (pendingDeliverables.isNotEmpty) ...[
-                    _sectionHeader(context, vc, 'What are you submitting?',
-                        'Choose the type of content you created.'),
-                    const SizedBox(height: 12),
                     ...pendingDeliverables.asMap().entries.map((e) {
                       final d = e.value;
                       final anim = CurvedAnimation(
@@ -241,7 +240,7 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
                                   ? _expandedHistory.remove(id)
                                   : _expandedHistory.add(id);
                             }),
-                            onPickFile: (bool isVideo) => _pickAndUpload(d, isVideo: isVideo),
+                            onPickFile: () => _pickAndUpload(d),
                             onRemoveUpload: () => setState(() => _uploadedUrls.remove(d.id)),
                             onChanged: () => setState(() {}),
                             vc: vc,
@@ -317,13 +316,6 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
   }
 }
 
-bool _isVideoFormat(String platform) {
-  return platform.contains('reel') ||
-      platform.contains('short') ||
-      platform.contains('video') ||
-      platform.contains('tiktok');
-}
-
 class _DeliverableSubmitCard extends StatefulWidget {
   const _DeliverableSubmitCard({
     required this.deliverable,
@@ -344,7 +336,7 @@ class _DeliverableSubmitCard extends StatefulWidget {
   final bool isUploading;
   final Set<String> expandedHistory;
   final void Function(String id) onExpandHistory;
-  final void Function(bool isVideo) onPickFile;
+  final VoidCallback onPickFile;
   final VoidCallback onRemoveUpload;
   final VoidCallback onChanged;
   final ViralCutColors vc;
@@ -355,15 +347,7 @@ class _DeliverableSubmitCard extends StatefulWidget {
 
 class _DeliverableSubmitCardState extends State<_DeliverableSubmitCard> {
   _SubmitMethod _method = _SubmitMethod.drive;
-  late bool _selectedIsVideo;
 
-  @override
-  void initState() {
-    super.initState();
-    _selectedIsVideo = _isVideoFormat(widget.deliverable.platform);
-  }
-
-  bool get _isVideo => _selectedIsVideo;
   FormatDeliverable get d => widget.deliverable;
   ViralCutColors get vc => widget.vc;
 
@@ -384,38 +368,10 @@ class _DeliverableSubmitCardState extends State<_DeliverableSubmitCard> {
                   style: TextStyle(
                       fontSize: 16, fontWeight: FontWeight.w700)),
             ),
-            StatusPill(status: d.status),
+            StatusPill(status: d.status, useDeliverableLabels: true),
           ],
         ),
         const SizedBox(height: 12),
-
-        // Content type chips
-        Row(
-          children: [
-            Expanded(
-              child: _TypeChip(
-                icon: Icons.play_circle_outline_rounded,
-                label: 'Video',
-                sublabel: 'Reels / Shorts / Videos',
-                selected: _selectedIsVideo,
-                vc: vc,
-                onTap: () => setState(() => _selectedIsVideo = true),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _TypeChip(
-                icon: Icons.image_outlined,
-                label: 'Image',
-                sublabel: 'Memes / Posts / Photos',
-                selected: !_selectedIsVideo,
-                vc: vc,
-                onTap: () => setState(() => _selectedIsVideo = false),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
 
         // Rejection feedback
         if (d.latestRejectionReason != null) ...[
@@ -426,8 +382,17 @@ class _DeliverableSubmitCardState extends State<_DeliverableSubmitCard> {
               color: vc.error.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(d.latestRejectionReason!,
-                style: TextStyle(color: vc.error, fontSize: 13)),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.report_problem_outlined, size: 16, color: vc.error),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(d.latestRejectionReason!,
+                      style: TextStyle(color: vc.error, fontSize: 13)),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
         ],
@@ -494,9 +459,8 @@ class _DeliverableSubmitCardState extends State<_DeliverableSubmitCard> {
                         )
                       : _DropZone(
                           isUploading: widget.isUploading,
-                          isVideo: _isVideo,
                           vc: vc,
-                          onTap: () => widget.onPickFile(_selectedIsVideo),
+                          onTap: widget.onPickFile,
                         ),
                 )
               : null,
@@ -589,66 +553,6 @@ class _DeliverableSubmitCardState extends State<_DeliverableSubmitCard> {
   }
 }
 
-class _TypeChip extends StatelessWidget {
-  const _TypeChip({
-    required this.icon,
-    required this.label,
-    required this.sublabel,
-    required this.selected,
-    required this.vc,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final String sublabel;
-  final bool selected;
-  final ViralCutColors vc;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: selected
-            ? vc.primary.withValues(alpha: 0.06)
-            : vc.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: selected ? vc.primary : vc.border,
-          width: selected ? 1.5 : 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: selected ? vc.primary : vc.muted),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: selected ? vc.primary : vc.onSurface),
-                    overflow: TextOverflow.ellipsis),
-                Text(sublabel,
-                    style: TextStyle(fontSize: 11, color: vc.muted),
-                    overflow: TextOverflow.ellipsis),
-              ],
-            ),
-          ),
-        ],
-      ),
-      ),
-    );
-  }
-}
-
 class _MethodCard extends StatelessWidget {
   const _MethodCard({
     required this.selected,
@@ -726,12 +630,12 @@ class _MethodCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                Radio<bool>(
-                  value: true,
-                  groupValue: selected,
-                  onChanged: (_) => onTap(),
-                  activeColor: vc.primary,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                Icon(
+                  selected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  color: selected ? vc.primary : vc.muted,
+                  size: 20,
                 ),
               ],
             ),
@@ -746,13 +650,11 @@ class _MethodCard extends StatelessWidget {
 class _DropZone extends StatelessWidget {
   const _DropZone({
     required this.isUploading,
-    required this.isVideo,
     required this.vc,
     required this.onTap,
   });
 
   final bool isUploading;
-  final bool isVideo;
   final ViralCutColors vc;
   final VoidCallback onTap;
 
@@ -806,9 +708,7 @@ class _DropZone extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isVideo
-                      ? 'MP4, MOV up to 500MB  •  Max 5 min'
-                      : 'JPG, PNG up to 20MB',
+                  'Videos up to 500MB (max 5 min) or images up to 20MB',
                   style: TextStyle(fontSize: 11, color: vc.muted),
                 ),
               ]),
@@ -885,12 +785,12 @@ class _SubmissionTipsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.lightbulb_outline,
+              Icon(Icons.lightbulb_outline,
                   color: Color(0xFFF59E0B), size: 18),
-              const SizedBox(width: 8),
-              const Text('Submission tips',
+              SizedBox(width: 8),
+              Text('Submission tips',
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -944,7 +844,7 @@ class _CompletedDeliverableRow extends StatelessWidget {
                 style: const TextStyle(
                     fontSize: 13, fontWeight: FontWeight.w500)),
           ),
-          StatusPill(status: d.status),
+          StatusPill(status: d.status, useDeliverableLabels: true),
           if (d.draftDriveUrl != null) ...[
             const SizedBox(width: 8),
             GestureDetector(
@@ -1009,65 +909,4 @@ class _DriveIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _StepStrip extends StatelessWidget {
-  const _StepStrip({required this.activeStep, required this.vc});
-
-  final int activeStep;
-  final ViralCutColors vc;
-
-  static const _steps = ['Upload drafts', 'Brand review', 'Post & prove'];
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(_steps.length * 2 - 1, (i) {
-        if (i.isOdd) {
-          return Expanded(
-            child: Container(
-              height: 2,
-              color: i ~/ 2 < activeStep ? vc.primary : vc.border,
-            ),
-          );
-        }
-        final stepIndex = i ~/ 2;
-        final active = stepIndex <= activeStep;
-        return Column(
-          children: [
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: active ? vc.primary : vc.surfaceVariant,
-              child: Text(
-                '${stepIndex + 1}',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: active ? vc.onPrimary : vc.muted,
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _steps[stepIndex],
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: active ? vc.onSurface : vc.muted,
-              ),
-            ),
-          ],
-        );
-      }),
-    );
-  }
-}
-
-int _activeStepFor(Participation participation) {
-  if (participation.deliverables
-      .any((d) => d.isApproved || d.isLiveSubmitted)) {
-    return 2;
-  }
-  if (participation.deliverables.any((d) => d.isUnderReview)) return 1;
-  return 0;
 }

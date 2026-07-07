@@ -2,10 +2,15 @@ import 'package:dio/dio.dart';
 
 import '../auth/auth_storage.dart';
 import '../campaign/campaign_models.dart';
+import '../campaign/leaderboard_models.dart';
+import '../creator_profile/creator_profile.dart';
+import '../notifications/notification_models.dart';
 import '../participation/participation_models.dart';
 import 'api_base_url.dart';
 
 export '../campaign/campaign_models.dart';
+export '../campaign/leaderboard_models.dart';
+export '../notifications/notification_models.dart';
 export '../participation/participation_models.dart';
 
 class ApiException implements Exception {
@@ -311,6 +316,20 @@ class ApiClient {
     return _parse(res, mapData);
   }
 
+  Future<T> delete<T>(
+    String path,
+    T Function(dynamic data) mapData, {
+    bool auth = true,
+  }) async {
+    final res = await _request(
+      () => _dio.delete<dynamic>(
+        path,
+        options: _options(auth: auth),
+      ),
+    );
+    return _parse(res, mapData);
+  }
+
   /// Revokes refresh token on server (best-effort).
   Future<void> logoutSession() async {
     final refresh = await _storage.getRefreshToken();
@@ -359,9 +378,10 @@ class ApiClient {
   }
 
   // Creator
-  Future<CreatorDashboard> fetchDashboard() => get(
+  Future<CreatorDashboard> fetchDashboard({String? creatorProfileId}) => get(
         '/creator/dashboard',
         (d) => CreatorDashboard.fromJson(d as Map<String, dynamic>),
+        query: creatorProfileId != null ? {'creatorProfileId': creatorProfileId} : null,
       );
 
   Future<List<Campaign>> fetchCampaigns() => get(
@@ -376,20 +396,93 @@ class ApiClient {
         (d) => Campaign.fromJson(d as Map<String, dynamic>),
       );
 
-  Future<Participation> joinCampaign(String campaignId) => post(
+  Future<Participation> joinCampaign(
+    String campaignId,
+    String creatorProfileId,
+  ) =>
+      post(
         '/creator/campaigns/$campaignId/join',
-        {},
+        {'creatorProfileId': creatorProfileId},
         (d) => Participation.fromJson(d as Map<String, dynamic>),
       );
 
-  Future<Participation> fetchParticipationByCampaign(String campaignId) =>
+  Future<Participation> fetchParticipationByCampaign(
+    String campaignId,
+    String creatorProfileId,
+  ) =>
       get(
         '/creator/campaigns/$campaignId/participation',
         (d) => Participation.fromJson(d as Map<String, dynamic>),
+        query: {'creatorProfileId': creatorProfileId},
+      );
+
+  Future<Leaderboard> fetchLeaderboard(
+    String campaignId, {
+    String? creatorProfileId,
+  }) =>
+      get(
+        '/creator/campaigns/$campaignId/leaderboard',
+        (d) => Leaderboard.fromJson(d as Map<String, dynamic>),
+        query: creatorProfileId != null
+            ? {'creatorProfileId': creatorProfileId}
+            : null,
+      );
+
+  Future<List<CreatorProfile>> fetchCreatorProfiles() => get(
+        '/creator/profiles',
+        (d) => (d as List<dynamic>)
+            .map((e) => CreatorProfile.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+
+  Future<CreatorProfile> createCreatorProfile({
+    required String platform,
+    required String handle,
+    String? label,
+  }) =>
+      post(
+        '/creator/profiles',
+        {
+          'platform': platform,
+          'handle': handle,
+          if (label != null && label.isNotEmpty) 'label': label,
+        },
+        (d) => CreatorProfile.fromJson(d as Map<String, dynamic>),
+      );
+
+  Future<void> setDefaultCreatorProfile(String id) => patch<void>(
+        '/creator/profiles/$id/default',
+        {},
+        (_) {},
+      );
+
+  Future<void> deleteCreatorProfile(String id) => delete<void>(
+        '/creator/profiles/$id',
+        (_) {},
+      );
+
+  Future<Map<String, dynamic>> connectProfileSocial(
+    String profileId,
+    String platform,
+    String handle,
+  ) =>
+      post(
+        '/creator/profiles/$profileId/social/$platform',
+        {'handle': handle},
+        (d) => d as Map<String, dynamic>,
+      );
+
+  Future<void> disconnectProfileSocial(String profileId, String platform) =>
+      delete<void>('/creator/profiles/$profileId/social/$platform', (_) {});
+
+  Future<OverallLeaderboard> fetchOverallLeaderboard() => get(
+        '/creator/leaderboard',
+        (d) => OverallLeaderboard.fromJson(d as Map<String, dynamic>),
       );
 
   Future<List<ParticipationListItem>> fetchParticipations({
     String tab = 'active',
+    String? creatorProfileId,
   }) =>
       get(
         '/creator/participations',
@@ -398,7 +491,10 @@ class ApiClient {
               (e) => ParticipationListItem.fromJson(e as Map<String, dynamic>),
             )
             .toList(),
-        query: {'tab': tab},
+        query: {
+          'tab': tab,
+          if (creatorProfileId != null) 'creatorProfileId': creatorProfileId,
+        },
       );
 
   Future<Participation> fetchParticipation(String id) => get(
@@ -446,9 +542,25 @@ class ApiClient {
         (_) {},
       );
 
+  Future<Map<String, dynamic>> fetchSocialStats(String platform, String handle) {
+    return post<Map<String, dynamic>>(
+      '/users/me/social-stats/$platform',
+      {'handle': handle},
+      (d) => (d as Map<String, dynamic>?) ?? {},
+    );
+  }
+
+  Future<void> disconnectSocial(String platform) {
+    return delete<void>(
+      '/users/me/social-stats/$platform',
+      (_) {},
+    );
+  }
+
   Future<Map<String, int>> refreshDeliverableViews(String deliverableId) async {
     final resp = await _dio.post<Map<String, dynamic>>(
       '/creator/deliverables/$deliverableId/refresh-views',
+      options: Options(receiveTimeout: const Duration(seconds: 150)),
     );
     final body = resp.data ?? {};
     final data = (body['data'] as Map<String, dynamic>?) ?? body;
@@ -461,9 +573,10 @@ class ApiClient {
     };
   }
 
-  Future<WalletData> fetchWallet() => get(
+  Future<WalletData> fetchWallet({String? creatorProfileId}) => get(
         '/wallet',
         (d) => WalletData.fromJson(d as Map<String, dynamic>),
+        query: creatorProfileId != null ? {'creatorProfileId': creatorProfileId} : null,
       );
 
   Future<List<TransactionItem>> fetchTransactions() => get(
@@ -481,6 +594,36 @@ class ApiClient {
         (d) => (d as List<dynamic>)
             .map((e) => PayoutMethod.fromJson(e as Map<String, dynamic>))
             .toList(),
+      );
+
+  Future<PayoutMethod> createPayoutMethod({
+    required String type,
+    required String label,
+    required String accountHolderName,
+    required String account,
+    String? ifscCode,
+  }) =>
+      post(
+        '/payout-methods',
+        {
+          'type': type,
+          'label': label,
+          'accountHolderName': accountHolderName,
+          'account': account,
+          if (ifscCode != null) 'ifscCode': ifscCode,
+        },
+        (d) => PayoutMethod.fromJson(d as Map<String, dynamic>),
+      );
+
+  Future<void> setDefaultPayoutMethod(String id) => patch<void>(
+        '/payout-methods/$id/default',
+        {},
+        (_) {},
+      );
+
+  Future<void> deletePayoutMethod(String id) => delete<void>(
+        '/payout-methods/$id',
+        (_) {},
       );
 
   Future<WithdrawalResult> createWithdrawal({
@@ -501,6 +644,104 @@ class ApiClient {
   Future<Map<String, dynamic>> fetchMe() => get(
         '/users/me',
         (d) => d as Map<String, dynamic>,
+      );
+
+  Future<Map<String, dynamic>> updateProfile({
+    String? displayName,
+    String? phone,
+    String? bio,
+    String? avatarUrl,
+    Map<String, String>? socialLinks,
+  }) =>
+      patch(
+        '/users/me',
+        {
+          if (displayName != null) 'displayName': displayName,
+          if (phone != null) 'phone': phone,
+          if (bio != null) 'bio': bio,
+          if (avatarUrl != null) 'avatarUrl': avatarUrl,
+          if (socialLinks != null) 'socialLinks': socialLinks,
+        },
+        (d) => d as Map<String, dynamic>,
+      );
+
+  Future<String> uploadAvatar({
+    required String filePath,
+    required String fileName,
+    required String mimeType,
+  }) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        filePath,
+        filename: fileName,
+        contentType: DioMediaType.parse(mimeType),
+      ),
+    });
+    final resp = await _dio.post<Map<String, dynamic>>(
+      '/users/me/avatar',
+      data: formData,
+    );
+    return (resp.data?['data']?['url'] as String?) ?? '';
+  }
+
+  Future<Map<String, dynamic>> submitKyc({
+    required String filePath,
+    required String fileName,
+    required String mimeType,
+    String documentType = 'id_proof',
+  }) async {
+    final formData = FormData.fromMap({
+      'documentType': documentType,
+      'file': await MultipartFile.fromFile(
+        filePath,
+        filename: fileName,
+        contentType: DioMediaType.parse(mimeType),
+      ),
+    });
+    final resp = await _dio.post<Map<String, dynamic>>(
+      '/users/me/kyc',
+      data: formData,
+    );
+    return (resp.data?['data'] as Map<String, dynamic>?) ?? {};
+  }
+
+  Future<List<AppNotification>> fetchNotifications({bool unreadOnly = false}) =>
+      get(
+        '/notifications',
+        (d) => (d as List<dynamic>)
+            .map((e) => AppNotification.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        query: unreadOnly ? {'unreadOnly': 'true'} : null,
+      );
+
+  Future<int> fetchUnreadNotificationCount() => get(
+        '/notifications/unread-count',
+        (d) => (d as Map<String, dynamic>)['count'] as int? ?? 0,
+      );
+
+  Future<void> markNotificationRead(String id) => patch<void>(
+        '/notifications/$id/read',
+        {},
+        (_) {},
+      );
+
+  Future<void> markAllNotificationsRead() => patch<void>(
+        '/notifications/read-all',
+        {},
+        (_) {},
+      );
+
+  /// Registers a push device token. Not called anywhere yet — there's no
+  /// Firebase/APNs SDK in the app to produce a real token from. Wire this up
+  /// once `firebase_messaging` is added with real Firebase config files.
+  Future<void> registerDeviceToken({
+    required String token,
+    required String platform,
+  }) =>
+      post<void>(
+        '/users/me/device-token',
+        {'token': token, 'platform': platform},
+        (_) {},
       );
 }
 
@@ -570,42 +811,63 @@ class WalletData {
     required this.availablePaise,
     required this.pendingPaise,
     required this.lifetimePaise,
+    this.clipsUnderReview = 0,
   });
 
   final int availablePaise;
   final int pendingPaise;
   final int lifetimePaise;
+  final int clipsUnderReview;
 
   factory WalletData.fromJson(Map<String, dynamic> json) => WalletData(
         availablePaise: json['availablePaise'] as int? ?? 0,
         pendingPaise: json['pendingPaise'] as int? ?? 0,
         lifetimePaise: json['lifetimePaise'] as int? ?? 0,
+        clipsUnderReview: json['clipsUnderReview'] as int? ?? 0,
       );
 }
 
 class TransactionItem {
-  TransactionItem({required this.type, required this.amountPaise, required this.createdAt});
+  TransactionItem({required this.type, required this.amountPaise, required this.createdAt, this.note});
   final String type;
   final int amountPaise;
   final String createdAt;
+  final String? note;
 
   factory TransactionItem.fromJson(Map<String, dynamic> json) => TransactionItem(
         type: json['type'] as String,
         amountPaise: json['amountPaise'] as int,
         createdAt: json['createdAt'] as String,
+        note: json['note'] as String?,
       );
 }
 
 class PayoutMethod {
-  PayoutMethod({required this.id, required this.label, required this.accountMasked});
+  PayoutMethod({
+    required this.id,
+    required this.type,
+    required this.label,
+    required this.accountHolderName,
+    required this.accountMasked,
+    this.ifscCode,
+    required this.isDefault,
+  });
   final String id;
+  final String type;
   final String label;
+  final String accountHolderName;
   final String accountMasked;
+  final String? ifscCode;
+  final bool isDefault;
 
   factory PayoutMethod.fromJson(Map<String, dynamic> json) => PayoutMethod(
         id: json['id'] as String,
+        type: json['type'] as String? ?? 'bank',
         label: json['label'] as String,
+        accountHolderName: json['accountHolderName'] as String? ?? '',
         accountMasked: json['accountMasked'] as String,
+        ifscCode: json['ifscCode'] as String?,
+        isDefault: json['isDefault'] as bool? ?? false,
       );
 }
 

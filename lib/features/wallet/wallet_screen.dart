@@ -19,14 +19,13 @@ class WalletScreen extends ConsumerWidget {
     final wallet = ref.watch(walletProvider);
     final transactions = ref.watch(walletTransactionsProvider);
     final me = ref.watch(profileMeProvider);
-    final clipsUnderReview = ref.watch(clipsUnderReviewCountProvider);
 
     return wallet.when(
       loading: () => const ScreenLoader(),
       error: (e, _) => Center(child: Text('$e')),
       data: (w) {
         final kycStatus = me.valueOrNull?['kycStatus'] as String? ?? 'pending';
-        final animKey = '${w.availablePaise}|${w.pendingPaise}|${w.lifetimePaise}';
+        final animKey = '${w.availablePaise}|${w.pendingPaise}|${w.lifetimePaise}|${w.clipsUnderReview}';
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -45,7 +44,7 @@ class WalletScreen extends ConsumerWidget {
             children: [
               _BalanceCard(
                 wallet: w,
-                clipsUnderReview: clipsUnderReview.valueOrNull ?? 0,
+                clipsUnderReview: w.clipsUnderReview,
                 onWithdraw: () => context.push('/withdraw'),
                 onViewClips: () => context.go('/submissions'),
               ),
@@ -113,7 +112,7 @@ class _BalanceCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.bar_chart_rounded, size: 14, color: Colors.white70),
+                      const Icon(Icons.bar_chart_rounded, size: 14, color: Colors.white70),
                       const SizedBox(width: 5),
                       Text(
                         'View analytics',
@@ -124,7 +123,7 @@ class _BalanceCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 3),
-                      Icon(Icons.chevron_right_rounded, size: 14, color: Colors.white54),
+                      const Icon(Icons.chevron_right_rounded, size: 14, color: Colors.white54),
                     ],
                   ),
                 ),
@@ -175,7 +174,7 @@ class _BalanceCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(Icons.schedule_rounded, size: 11, color: Colors.white38),
+                          const Icon(Icons.schedule_rounded, size: 11, color: Colors.white38),
                           const SizedBox(width: 3),
                           Text(
                             'Available soon',
@@ -209,15 +208,19 @@ class _BalanceCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Text(
-                              'Clips under review',
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                color: Colors.white54,
+                            Flexible(
+                              child: Text(
+                                'Clips under review',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: Colors.white54,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 2),
-                            Icon(Icons.chevron_right_rounded, size: 13, color: Colors.white38),
+                            const Icon(Icons.chevron_right_rounded, size: 13, color: Colors.white38),
                           ],
                         ),
                       ],
@@ -244,15 +247,19 @@ class _BalanceCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Text(
-                              'Transfer to bank',
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                color: Colors.white54,
+                            Flexible(
+                              child: Text(
+                                'Transfer to bank',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: Colors.white54,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 3),
-                            Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white54),
+                            const Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white54),
                           ],
                         ),
                       ],
@@ -330,6 +337,7 @@ class _EarningsOverview extends StatelessWidget {
           children: [
             Expanded(
               child: _StatBox(
+                icon: Icons.account_balance_wallet_outlined,
                 label: 'Total earned',
                 value: formatPaise(wallet.lifetimePaise),
                 valueColor: vc.money,
@@ -338,6 +346,7 @@ class _EarningsOverview extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: _StatBox(
+                icon: Icons.check_circle_outline_rounded,
                 label: 'Available',
                 value: formatPaise(wallet.availablePaise),
                 valueColor: vc.onSurface,
@@ -346,6 +355,7 @@ class _EarningsOverview extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: _StatBox(
+                icon: Icons.schedule_rounded,
                 label: 'Pending',
                 value: formatPaise(wallet.pendingPaise),
                 valueColor: vc.muted,
@@ -360,11 +370,13 @@ class _EarningsOverview extends StatelessWidget {
 
 class _StatBox extends StatelessWidget {
   const _StatBox({
+    required this.icon,
     required this.label,
     required this.value,
     required this.valueColor,
   });
 
+  final IconData icon;
   final String label;
   final String value;
   final Color valueColor;
@@ -382,6 +394,8 @@ class _StatBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Icon(icon, size: 14, color: vc.muted),
+          const SizedBox(height: 4),
           Text(
             label,
             style: GoogleFonts.inter(
@@ -461,14 +475,14 @@ class _TransactionRow extends StatelessWidget {
     final vc = ViralCutColors.of(context);
     final isCredit = tx.amountPaise > 0 || tx.type == 'earning';
     final label = switch (tx.type) {
-      'earning' => 'Campaign earning',
+      'earning' || 'earning_credit' => 'Campaign earning',
       'withdrawal' => 'Withdrawal',
       'refund' => 'Refund',
       'bonus' => 'Bonus',
       _ => tx.type,
     };
     final icon = switch (tx.type) {
-      'earning' => Icons.trending_up,
+      'earning' || 'earning_credit' => Icons.trending_up,
       'withdrawal' => Icons.arrow_upward,
       'refund' => Icons.replay,
       _ => Icons.receipt_outlined,
@@ -521,6 +535,16 @@ class _TransactionRow extends StatelessWidget {
                     color: vc.onSurface,
                   ),
                 ),
+                if (tx.note != null && tx.note!.isNotEmpty)
+                  Text(
+                    tx.note!,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: vc.onSurface.withValues(alpha: 0.7),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 Text(
                   dateStr,
                   style: GoogleFonts.inter(

@@ -49,12 +49,18 @@ class ListStaggerEntrance extends StatelessWidget {
 /// Drives [ListStaggerEntrance] for scrollable lists (campaigns, submissions).
 mixin ListEntranceAnimationMixin<T extends StatefulWidget>
     on State<T>, SingleTickerProviderStateMixin<T> {
-  late final AnimationController listEntranceController = AnimationController(
-    vsync: this,
-    duration: kListEntranceDuration,
-  );
+  late final AnimationController listEntranceController;
 
   String? _listEntranceKey;
+
+  @override
+  void initState() {
+    super.initState();
+    listEntranceController = AnimationController(
+      vsync: this,
+      duration: kListEntranceDuration,
+    );
+  }
 
   void disposeListEntrance() {
     listEntranceController.dispose();

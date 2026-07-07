@@ -87,11 +87,11 @@ class _PerformanceBodyState extends ConsumerState<_PerformanceBody> {
           .read(apiClientProvider)
           .refreshDeliverableViews(widget.deliverable.id);
       setState(() {
-        _localViews     = result['viewCount'] as int? ?? 0;
-        _localReach     = result['reach']     as int? ?? 0;
-        _localLikes     = result['likeCount'] as int? ?? 0;
-        _localComments  = result['commentCount'] as int? ?? 0;
-        _localShares    = result['shareCount'] as int? ?? 0;
+        _localViews     = result['viewCount'] ?? 0;
+        _localReach     = result['reach'] ?? 0;
+        _localLikes     = result['likeCount'] ?? 0;
+        _localComments  = result['commentCount'] ?? 0;
+        _localShares    = result['shareCount'] ?? 0;
         // recalculate estimated from new views
         final rate = widget.deliverable.ratePer1kPaise;
         final max  = widget.participation.campaign.maxPayoutPaise ?? 999999999;

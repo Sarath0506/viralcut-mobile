@@ -2,6 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>http</string>
+		<string>instagram</string>
+		<string>youtube</string>
+		<string>twitter</string>
+	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ViralCut needs access to your photo library to upload content for submission.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

@@ -1,26 +1,71 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/api/api_base_url.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
+import '../../core/creator_profile/creator_profile_providers.dart';
 import '../../core/format/money_format.dart';
 import '../../core/layout/app_spacing.dart';
 import '../../core/layout/list_entrance.dart';
+import '../dashboard/widgets/social_connect_section.dart';
 import 'profile_providers.dart';
+import 'widgets/profile_switcher_sheet.dart';
 import '../../theme/viralcut_colors.dart';
 import '../../theme/theme_provider.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  bool _uploadingAvatar = false;
 
   String _initialsFor(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty || parts.first.isEmpty) return '?';
     if (parts.length == 1) return parts.first[0].toUpperCase();
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    );
+    if (file == null) return;
+
+    setState(() => _uploadingAvatar = true);
+    try {
+      final ext = file.name.split('.').last.toLowerCase();
+      final mime = ext == 'png' ? 'image/png' : 'image/jpeg';
+      await ref.read(apiClientProvider).uploadAvatar(
+            filePath: file.path,
+            fileName: file.name,
+            mimeType: mime,
+          );
+      ref.invalidate(profileMeProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo updated')),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
   }
 
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
@@ -52,13 +97,13 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final me = ref.watch(profileMeProvider);
     final dash = ref.watch(profileDashboardProvider);
     final activeCount = ref.watch(profileActiveSubmissionsProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final activeProfile = ref.watch(activeCreatorProfileProvider);
     final vc = ViralCutColors.of(context);
-    final primary = Theme.of(context).colorScheme.primary;
 
     return me.when(
       loading: () => const ScreenLoader(),
@@ -69,139 +114,137 @@ class ProfileScreen extends ConsumerWidget {
       ),
       data: (user) {
         final displayName = user['displayName'] as String? ?? 'Creator';
+        final avatarUrl = user['avatarUrl'] as String?;
         final username = user['username'] as String?;
         final phone = user['phone'] as String? ?? '';
         final kycStatus = user['kycStatus'] as String? ?? 'pending';
+        final isVerified = kycStatus == 'verified';
         final lifetimePaise = dash.valueOrNull?.wallet.lifetimePaise ?? 0;
+        final clipsUnderReview = dash.valueOrNull?.clipsUnderReview ?? 0;
         final activeSubmissions = activeCount.valueOrNull ?? 0;
+        final profileLinksMap = activeProfile?.socialLinks ?? {};
+        final socialLinks = SocialLinks(
+          instagram: ((profileLinksMap['instagram'] as String?) ?? '').isNotEmpty,
+          youtube: ((profileLinksMap['youtube'] as String?) ?? '').isNotEmpty,
+          twitter: ((profileLinksMap['twitter'] as String?) ?? '').isNotEmpty,
+        );
         final animationKey =
-            '${user['id']}:$lifetimePaise:$activeSubmissions:$kycStatus';
+            '${user['id']}:$lifetimePaise:$activeSubmissions:$clipsUnderReview:$kycStatus';
 
         return RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(profileMeProvider);
             ref.invalidate(profileDashboardProvider);
             ref.invalidate(profileActiveSubmissionsProvider);
+            ref.invalidate(creatorProfilesProvider);
           },
           child: ScreenStaggeredColumn(
             animationKey: animationKey,
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               AppSpacing.screenHorizontal,
               8,
               AppSpacing.screenHorizontal,
-              AppSpacing.lg,
+              AppSpacing.floatingNavBottom(context),
             ),
             children: [
-              Column(
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      CircleAvatar(
-                        radius: 44,
-                        backgroundColor: primary.withValues(alpha: 0.15),
-                        child: Text(
-                          _initialsFor(displayName),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w700,
-                            color: primary,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: CircleAvatar(
-                          radius: 14,
-                          backgroundColor: primary,
-                          child: Icon(
-                            Icons.edit,
-                            size: 14,
-                            color: Theme.of(context).colorScheme.onPrimary,
-                          ),
-                        ),
-                      ),
-                    ],
+              _ProfileHeroCard(
+                displayName: displayName,
+                avatarUrl: avatarUrl,
+                username: username,
+                phone: phone,
+                isVerified: isVerified,
+                initials: _initialsFor(displayName),
+                lifetimePaise: lifetimePaise,
+                lifetimeLoading: dash.isLoading,
+                activeSubmissions: activeSubmissions,
+                activeLoading: activeCount.isLoading,
+                clipsUnderReview: clipsUnderReview,
+                isUploadingAvatar: _uploadingAvatar,
+                onAvatarTap: _uploadingAvatar ? null : _pickAndUploadAvatar,
+              ),
+              const SizedBox(height: 16),
+              SocialConnectSection(
+                links: socialLinks,
+                onInstagramTap: () => context.push('/profile/connected-accounts'),
+                onYouTubeTap: () => context.push('/profile/connected-accounts'),
+                onXTap: () => context.push('/profile/connected-accounts'),
+              ),
+              const SizedBox(height: 16),
+              const _SectionLabel('ACCOUNT'),
+              const SizedBox(height: 8),
+              _SettingsGroup(
+                rows: [
+                  _SettingsRow(
+                    icon: Icons.person_outline_rounded,
+                    iconColor: vc.primary,
+                    label: 'Edit profile',
+                    onTap: () => context.push('/profile/edit'),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    displayName,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  _SettingsRow(
+                    icon: Icons.link_rounded,
+                    iconColor: vc.primary,
+                    label: 'Connected accounts',
+                    onTap: () => context.push('/profile/connected-accounts'),
                   ),
-                  if (username != null && username.isNotEmpty)
-                    Text(
-                      '@$username',
-                      style: GoogleFonts.inter(color: vc.muted),
-                    )
-                  else if (phone.isNotEmpty)
-                    Text(
-                      phone,
-                      style: GoogleFonts.inter(color: vc.muted),
-                    ),
+                  _SettingsRow(
+                    icon: Icons.switch_account_outlined,
+                    iconColor: vc.primary,
+                    label: 'Linked profiles',
+                    onTap: () => showProfileSwitcherSheet(context),
+                  ),
+                  _SettingsRow(
+                    icon: Icons.verified_user_outlined,
+                    iconColor: isVerified ? vc.moneyBright : vc.warning,
+                    label: 'KYC status',
+                    badge: kycStatus.toUpperCase(),
+                    badgeColor: isVerified ? vc.moneyBright : vc.warning,
+                    onTap: () => context.push('/profile/kyc'),
+                  ),
+                  _SettingsRow(
+                    icon: Icons.account_balance_outlined,
+                    iconColor: vc.primary,
+                    label: 'Payout methods',
+                    onTap: () => context.push('/wallet/payout-methods'),
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
-              dash.when(
-                loading: () => const _EarningsCardSkeleton(),
-                error: (_, __) => const _EarningsCard(
-                  lifetimePaise: 0,
-                  error: true,
-                ),
-                data: (d) => _EarningsCard(
-                  lifetimePaise: d.wallet.lifetimePaise,
-                ),
-              ),
-              const SizedBox(height: 12),
-              activeCount.when(
-                loading: () => const _StatTileSkeleton(),
-                error: (_, __) => const SizedBox.shrink(),
-                data: (count) => Row(
-                  children: [
-                    Expanded(
-                      child: _StatTile(
-                        label: 'ACTIVE CLIPS',
-                        value: '$count',
-                        subtitle: count == 1 ? 'submission' : 'submissions',
-                      ),
+              const _SectionLabel('PREFERENCES'),
+              const SizedBox(height: 8),
+              _SettingsGroup(
+                rows: [
+                  _SettingsRow(
+                    icon: Icons.notifications_outlined,
+                    iconColor: vc.primary,
+                    label: 'Notifications',
+                    onTap: () => context.push('/notifications'),
+                  ),
+                  _SettingsRow(
+                    icon: Icons.dark_mode_outlined,
+                    iconColor: vc.primary,
+                    label: 'Dark mode',
+                    trailing: Switch(
+                      value: themeMode == ThemeMode.dark,
+                      onChanged: (_) =>
+                          ref.read(themeModeProvider.notifier).toggle(),
                     ),
-                  ],
-                ),
+                    onTap: () => ref.read(themeModeProvider.notifier).toggle(),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              _SettingsTile(
-                icon: Icons.link,
-                label: 'Connected accounts',
-                onTap: () {},
-              ),
-              _SettingsTile(
-                icon: Icons.notifications_outlined,
-                label: 'Notifications',
-                onTap: () {},
-              ),
-              _SettingsTile(
-                icon: Icons.verified_user_outlined,
-                label: 'KYC status',
-                badge: kycStatus.toUpperCase(),
-                badgeColor:
-                    kycStatus == 'verified' ? vc.moneyBright : vc.warning,
-                onTap: () {},
-              ),
-              _SettingsTile(
-                icon: Icons.account_balance_outlined,
-                label: 'Payout methods',
-                onTap: () => context.go('/wallet'),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Dark mode'),
-                value: themeMode == ThemeMode.dark,
-                onChanged: (_) =>
-                    ref.read(themeModeProvider.notifier).toggle(),
+              const SizedBox(height: 20),
+              const _SectionLabel('SUPPORT'),
+              const SizedBox(height: 8),
+              _SettingsGroup(
+                rows: [
+                  _SettingsRow(
+                    icon: Icons.help_outline_rounded,
+                    iconColor: vc.primary,
+                    label: 'Support center',
+                    onTap: () => context.push('/support'),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
               _LogoutButton(
@@ -213,7 +256,6 @@ class ProfileScreen extends ConsumerWidget {
       },
     );
   }
-
 }
 
 class _ProfileError extends StatelessWidget {
@@ -260,36 +302,196 @@ class _ProfileError extends StatelessWidget {
   }
 }
 
-class _EarningsCard extends StatelessWidget {
-  const _EarningsCard({required this.lifetimePaise, this.error = false});
+class _ProfileHeroCard extends StatelessWidget {
+  const _ProfileHeroCard({
+    required this.displayName,
+    required this.avatarUrl,
+    required this.username,
+    required this.phone,
+    required this.isVerified,
+    required this.initials,
+    required this.lifetimePaise,
+    required this.lifetimeLoading,
+    required this.activeSubmissions,
+    required this.activeLoading,
+    required this.clipsUnderReview,
+    required this.isUploadingAvatar,
+    required this.onAvatarTap,
+  });
 
+  final String displayName;
+  final String? avatarUrl;
+  final String? username;
+  final String phone;
+  final bool isVerified;
+  final String initials;
   final int lifetimePaise;
-  final bool error;
+  final bool lifetimeLoading;
+  final int activeSubmissions;
+  final bool activeLoading;
+  final int clipsUnderReview;
+  final bool isUploadingAvatar;
+  final VoidCallback? onAvatarTap;
 
   @override
   Widget build(BuildContext context) {
     final vc = ViralCutColors.of(context);
+    final primary = Theme.of(context).colorScheme.primary;
+    final handle = (username != null && username!.isNotEmpty) ? '@$username' : phone;
+
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: vc.deepSurface,
-        borderRadius: BorderRadius.circular(16),
+        color: vc.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: vc.border),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Total earned',
-            style: TextStyle(color: vc.onPrimary.withValues(alpha: 0.7)),
+          // Gradient accent stripe
+          Container(
+            height: 4,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [vc.authGradientStart, vc.authGradientMid, vc.authGradientEnd],
+              ),
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            error ? '—' : formatPaise(lifetimePaise),
-            style: TextStyle(
-              color: error ? vc.onPrimary.withValues(alpha: 0.7) : vc.moneyBright,
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
+          // Avatar + info row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            child: Row(
+              children: [
+                // Avatar
+                GestureDetector(
+                  onTap: onAvatarTap,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      CircleAvatar(
+                        radius: 36,
+                        backgroundColor: primary.withValues(alpha: 0.12),
+                        backgroundImage: avatarUrl != null
+                            ? CachedNetworkImageProvider(avatarUrl!)
+                            : null,
+                        child: avatarUrl == null
+                            ? Text(
+                                initials,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w700,
+                                  color: primary,
+                                ),
+                              )
+                            : null,
+                      ),
+                      if (isUploadingAvatar)
+                        const CircleAvatar(
+                          radius: 36,
+                          backgroundColor: Colors.black45,
+                          child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          ),
+                        ),
+                      Positioned(
+                        right: -2,
+                        bottom: -2,
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: vc.surface, width: 2),
+                          ),
+                          child: const Icon(Icons.camera_alt_rounded,
+                              size: 11, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                // Name + handle + badges
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: vc.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        handle,
+                        style: GoogleFonts.inter(
+                            fontSize: 12, color: vc.muted),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          if (isVerified)
+                            _Badge(
+                              label: 'Verified',
+                              icon: Icons.verified_rounded,
+                              color: vc.moneyBright,
+                            )
+                          else
+                            _Badge(
+                              label: 'Unverified',
+                              icon: Icons.shield_outlined,
+                              color: vc.muted,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Stats row
+          Container(
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: vc.border)),
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _StatCell(
+                      value: lifetimeLoading ? null : formatPaise(lifetimePaise),
+                      label: 'Total earned',
+                      valueColor: vc.money,
+                    ),
+                  ),
+                  VerticalDivider(color: vc.border, width: 1),
+                  Expanded(
+                    child: _StatCell(
+                      value: activeLoading ? null : '$activeSubmissions',
+                      label: 'Active clips',
+                      valueColor: vc.onSurface,
+                    ),
+                  ),
+                  VerticalDivider(color: vc.border, width: 1),
+                  Expanded(
+                    child: _StatCell(
+                      value: '$clipsUnderReview',
+                      label: 'In review',
+                      valueColor: primary,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -298,158 +500,211 @@ class _EarningsCard extends StatelessWidget {
   }
 }
 
-class _EarningsCardSkeleton extends StatelessWidget {
-  const _EarningsCardSkeleton();
+class _Badge extends StatelessWidget {
+  const _Badge({required this.label, required this.icon, required this.color});
+
+  final String label;
+  final IconData icon;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final vc = ViralCutColors.of(context);
     return Container(
-      height: 100,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: vc.deepSurface,
-        borderRadius: BorderRadius.circular(16),
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
       ),
-      alignment: Alignment.center,
-      child: CircularProgressIndicator(color: vc.onPrimary.withValues(alpha: 0.54)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _StatTileSkeleton extends StatelessWidget {
-  const _StatTileSkeleton();
+class _StatCell extends StatelessWidget {
+  const _StatCell({
+    required this.value,
+    required this.label,
+    required this.valueColor,
+  });
+
+  final String? value;
+  final String label;
+  final Color valueColor;
 
   @override
   Widget build(BuildContext context) {
     final vc = ViralCutColors.of(context);
-    return Container(
-      height: 72,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: vc.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: vc.border),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          value == null
+              ? SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: valueColor.withValues(alpha: 0.5),
+                  ),
+                )
+              : Text(
+                  value!,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: valueColor,
+                  ),
+                ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: vc.muted,
+            ),
+          ),
+        ],
       ),
-      alignment: Alignment.centerLeft,
-      child: SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: vc.muted.withValues(alpha: 0.5),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final vc = ViralCutColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        text,
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+          color: vc.muted,
         ),
       ),
     );
   }
 }
 
-class _StatTile extends StatelessWidget {
-  const _StatTile({
-    required this.label,
-    required this.value,
-    required this.subtitle,
-  });
+class _SettingsGroup extends StatelessWidget {
+  const _SettingsGroup({required this.rows});
 
-  final String label;
-  final String value;
-  final String subtitle;
+  final List<_SettingsRow> rows;
 
   @override
   Widget build(BuildContext context) {
     final vc = ViralCutColors.of(context);
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: vc.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: vc.border),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-              color: vc.muted,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: vc.onSurface,
-            ),
-          ),
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 12,
-              color: vc.muted,
-            ),
-          ),
+          for (var i = 0; i < rows.length; i++) ...[
+            rows[i],
+            if (i != rows.length - 1)
+              Divider(height: 1, indent: 56, color: vc.border),
+          ],
         ],
       ),
     );
   }
 }
 
-class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({
+class _SettingsRow extends StatelessWidget {
+  const _SettingsRow({
     required this.icon,
+    required this.iconColor,
     required this.label,
     this.badge,
     this.badgeColor,
+    this.trailing,
     required this.onTap,
   });
 
   final IconData icon;
+  final Color iconColor;
   final String label;
   final String? badge;
   final Color? badgeColor;
+  final Widget? trailing;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final vc = ViralCutColors.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: vc.border),
-      ),
-      child: ListTile(
-        leading: Icon(icon, color: vc.muted),
-        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
           children: [
-            if (badge != null)
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(icon, size: 17, color: iconColor),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: vc.onSurface,
+                ),
+              ),
+            ),
+            if (badge != null) ...[
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: (badgeColor ?? vc.warning).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   badge!,
-                  style: TextStyle(
+                  style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     color: badgeColor ?? vc.warning,
                   ),
                 ),
               ),
-            const Icon(Icons.chevron_right),
+              const SizedBox(width: 6),
+            ],
+            trailing ?? Icon(Icons.chevron_right_rounded, color: vc.muted),
           ],
         ),
-        onTap: onTap,
       ),
     );
   }

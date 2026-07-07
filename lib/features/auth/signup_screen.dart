@@ -135,12 +135,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     final vc = ViralCutColors.of(context);
     return AuthPageLayout(
       showBack: true,
-      onBack: () => context.go('/'),
+      onBack: () => context.go('/onboarding'),
       headerTitle: 'Create account',
       title: 'Welcome to Halchal',
       titleHighlight: 'Halchal',
       subtitle: 'Join the elite network of digital entrepreneurs.',
-      footer: AuthSwitchLink(
+      footer: const AuthSwitchLink(
         leadText: 'Already have an account? ',
         linkText: 'Log in',
         route: '/login',

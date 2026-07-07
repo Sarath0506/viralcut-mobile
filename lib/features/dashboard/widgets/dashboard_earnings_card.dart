@@ -39,13 +39,20 @@ class DashboardEarningsCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Total earned',
-                      style: GoogleFonts.inter(
-                        color: onDark.withValues(alpha: 0.62),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    Row(
+                      children: [
+                        Icon(Icons.account_balance_wallet_rounded,
+                            size: 13, color: onDark.withValues(alpha: 0.62)),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Total earned',
+                          style: GoogleFonts.inter(
+                            color: onDark.withValues(alpha: 0.62),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(

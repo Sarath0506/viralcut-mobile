@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../theme/viralcut_colors.dart';
+
 /// Branded Halchal app icon with size variants for splash, auth, and headers.
 class AuthAppIcon extends StatelessWidget {
   const AuthAppIcon({
@@ -30,6 +32,9 @@ class AuthAppIcon extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
+        // Fixed dark backing so the logo's white glyph stays visible
+        // regardless of the active theme (light pages have no dark backdrop).
+        color: ViralCutColors.of(context).deepSurface,
         borderRadius: radius,
         boxShadow: showShadow
             ? [
