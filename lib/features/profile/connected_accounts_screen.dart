@@ -229,51 +229,56 @@ class _ConnectedAccountsScreenState
           final stats = activeProfile.socialStats;
           _syncFromProfile(links, stats);
 
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.2)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.person_outline_rounded, size: 14, color: Color(0xFF7C3AED)),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        '"${activeProfile.displayName}" — switch profiles to manage connections for other accounts.',
-                        style: GoogleFonts.inter(
-                            fontSize: 12, color: const Color(0xFF7C3AED), height: 1.4),
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(creatorProfilesProvider),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person_outline_rounded, size: 14, color: Color(0xFF7C3AED)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '"${activeProfile.displayName}" — switch profiles to manage connections for other accounts.',
+                          style: GoogleFonts.inter(
+                              fontSize: 12, color: const Color(0xFF7C3AED), height: 1.4),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Link your accounts so brands can match you with the right campaigns.',
-                style: GoogleFonts.inter(fontSize: 13, color: vc.muted, height: 1.45),
-              ),
-              const SizedBox(height: 20),
-              for (final p in _platforms) ...[
-                _PlatformCard(
-                  meta: p,
-                  controller: _ctrl(p.key),
-                  stats: _stats[p.key],
-                  isConnected: _isConnected(p.key),
-                  isConnecting: _connecting[p.key] ?? false,
-                  isDisconnecting: _disconnecting[p.key] ?? false,
-                  isPending: _pending.contains(p.key),
-                  onConnect: () => _connect(p.key, activeProfile.id),
-                  onDisconnect: () => _disconnect(p.key, activeProfile.id),
+                const SizedBox(height: 16),
+                Text(
+                  'Link your accounts so brands can match you with the right campaigns.',
+                  style: GoogleFonts.inter(fontSize: 13, color: vc.muted, height: 1.45),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
+                for (final p in _platforms) ...[
+                  _PlatformCard(
+                    meta: p,
+                    controller: _ctrl(p.key),
+                    stats: _stats[p.key],
+                    isConnected: _isConnected(p.key),
+                    isConnecting: _connecting[p.key] ?? false,
+                    isDisconnecting: _disconnecting[p.key] ?? false,
+                    // Show syncing whenever connected but stats haven't loaded yet
+                    isPending: _isConnected(p.key) && _stats[p.key] == null,
+                    onConnect: () => _connect(p.key, activeProfile.id),
+                    onDisconnect: () => _disconnect(p.key, activeProfile.id),
+                  ),
+                  const SizedBox(height: 12),
+                ],
               ],
-            ],
+            ),
           );
         },
       ),
