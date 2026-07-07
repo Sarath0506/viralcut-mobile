@@ -828,15 +828,17 @@ class WalletData {
 }
 
 class TransactionItem {
-  TransactionItem({required this.type, required this.amountPaise, required this.createdAt});
+  TransactionItem({required this.type, required this.amountPaise, required this.createdAt, this.note});
   final String type;
   final int amountPaise;
   final String createdAt;
+  final String? note;
 
   factory TransactionItem.fromJson(Map<String, dynamic> json) => TransactionItem(
         type: json['type'] as String,
         amountPaise: json['amountPaise'] as int,
         createdAt: json['createdAt'] as String,
+        note: json['note'] as String?,
       );
 }
 

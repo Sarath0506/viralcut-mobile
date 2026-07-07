@@ -475,14 +475,14 @@ class _TransactionRow extends StatelessWidget {
     final vc = ViralCutColors.of(context);
     final isCredit = tx.amountPaise > 0 || tx.type == 'earning';
     final label = switch (tx.type) {
-      'earning' => 'Campaign earning',
+      'earning' || 'earning_credit' => 'Campaign earning',
       'withdrawal' => 'Withdrawal',
       'refund' => 'Refund',
       'bonus' => 'Bonus',
       _ => tx.type,
     };
     final icon = switch (tx.type) {
-      'earning' => Icons.trending_up,
+      'earning' || 'earning_credit' => Icons.trending_up,
       'withdrawal' => Icons.arrow_upward,
       'refund' => Icons.replay,
       _ => Icons.receipt_outlined,
@@ -535,6 +535,16 @@ class _TransactionRow extends StatelessWidget {
                     color: vc.onSurface,
                   ),
                 ),
+                if (tx.note != null && tx.note!.isNotEmpty)
+                  Text(
+                    tx.note!,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: vc.onSurface.withValues(alpha: 0.7),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 Text(
                   dateStr,
                   style: GoogleFonts.inter(

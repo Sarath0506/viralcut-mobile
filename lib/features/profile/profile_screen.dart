@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/api/api_base_url.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
+import '../../core/creator_profile/creator_profile_providers.dart';
 import '../../core/format/money_format.dart';
 import '../../core/layout/app_spacing.dart';
 import '../../core/layout/list_entrance.dart';
@@ -101,6 +102,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final dash = ref.watch(profileDashboardProvider);
     final activeCount = ref.watch(profileActiveSubmissionsProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final activeProfile = ref.watch(activeCreatorProfileProvider);
     final vc = ViralCutColors.of(context);
 
     return me.when(
@@ -120,12 +122,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         final lifetimePaise = dash.valueOrNull?.wallet.lifetimePaise ?? 0;
         final clipsUnderReview = dash.valueOrNull?.clipsUnderReview ?? 0;
         final activeSubmissions = activeCount.valueOrNull ?? 0;
-        final socialLinksMap =
-            (user['socialLinks'] as Map<String, dynamic>?) ?? {};
+        final profileLinksMap = activeProfile?.socialLinks ?? {};
         final socialLinks = SocialLinks(
-          instagram: ((socialLinksMap['instagram'] as String?) ?? '').isNotEmpty,
-          youtube: ((socialLinksMap['youtube'] as String?) ?? '').isNotEmpty,
-          twitter: ((socialLinksMap['twitter'] as String?) ?? '').isNotEmpty,
+          instagram: ((profileLinksMap['instagram'] as String?) ?? '').isNotEmpty,
+          youtube: ((profileLinksMap['youtube'] as String?) ?? '').isNotEmpty,
+          twitter: ((profileLinksMap['twitter'] as String?) ?? '').isNotEmpty,
         );
         final animationKey =
             '${user['id']}:$lifetimePaise:$activeSubmissions:$clipsUnderReview:$kycStatus';
@@ -135,6 +136,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ref.invalidate(profileMeProvider);
             ref.invalidate(profileDashboardProvider);
             ref.invalidate(profileActiveSubmissionsProvider);
+            ref.invalidate(creatorProfilesProvider);
           },
           child: ScreenStaggeredColumn(
             animationKey: animationKey,
