@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
+import '../../core/creator_profile/creator_profile_providers.dart';
 import '../../core/widgets/social_logo_painters.dart';
 import '../../theme/viralcut_colors.dart';
 import '../../core/widgets/vc_scaffold.dart';
@@ -60,7 +61,7 @@ class _ConnectedAccountsScreenState
 
   @override
   void dispose() {
-    for (final c in _controllers.values) c.dispose();
+    for (final c in _controllers.values) { c.dispose(); }
     super.dispose();
   }
 
@@ -111,8 +112,8 @@ class _ConnectedAccountsScreenState
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Connection failed. Check your username and try again.'),
+        const SnackBar(
+          content: Text('Connection failed. Check your username and try again.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -184,10 +185,31 @@ class _ConnectedAccountsScreenState
     }
   }
 
+  void _prefillActiveProfile(Map<String, dynamic> user) {
+    final activeProfile = ref.read(activeCreatorProfileProvider);
+    if (activeProfile == null || _initialized) return;
+    // If the active profile's handle is set but the social link for that platform isn't,
+    // pre-fill the text field with the profile's handle so the user can connect easily.
+    final platform = activeProfile.platform.toLowerCase();
+    final links = (user['socialLinks'] as Map<String, dynamic>?) ?? {};
+    if ((links[platform] as String?)?.isNotEmpty != true) {
+      final handle = activeProfile.handle;
+      if (handle.isNotEmpty) {
+        _ctrl(platform).text = handle;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final me = ref.watch(profileMeProvider);
+    final activeProfile = ref.watch(activeCreatorProfileProvider);
     final vc = ViralCutColors.of(context);
+
+    // Determine which platforms to show — if a profile is active, show only its platform
+    final visiblePlatforms = activeProfile != null
+        ? _platforms.where((p) => p.key == activeProfile.platform.toLowerCase()).toList()
+        : _platforms;
 
     return VcScaffold(
       title: 'Connected Accounts',
@@ -197,16 +219,41 @@ class _ConnectedAccountsScreenState
         error: (e, _) => Center(child: Text('$e')),
         data: (user) {
           _initFrom(user);
+          _prefillActiveProfile(user);
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
             children: [
+              if (activeProfile != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person_outline_rounded, size: 14, color: Color(0xFF7C3AED)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Showing connection for "${activeProfile.displayName}" profile. Switch profiles to manage other accounts.',
+                          style: GoogleFonts.inter(
+                              fontSize: 12, color: const Color(0xFF7C3AED), height: 1.4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               Text(
                 'Link your accounts so brands can match you with the right campaigns.',
                 style: GoogleFonts.inter(
                     fontSize: 13, color: vc.muted, height: 1.45),
               ),
               const SizedBox(height: 20),
-              for (final p in _platforms) ...[
+              for (final p in visiblePlatforms) ...[
                 _PlatformCard(
                   meta: p,
                   controller: _ctrl(p.key),

@@ -378,9 +378,10 @@ class ApiClient {
   }
 
   // Creator
-  Future<CreatorDashboard> fetchDashboard() => get(
+  Future<CreatorDashboard> fetchDashboard({String? creatorProfileId}) => get(
         '/creator/dashboard',
         (d) => CreatorDashboard.fromJson(d as Map<String, dynamic>),
+        query: creatorProfileId != null ? {'creatorProfileId': creatorProfileId} : null,
       );
 
   Future<List<Campaign>> fetchCampaigns() => get(
@@ -467,6 +468,7 @@ class ApiClient {
 
   Future<List<ParticipationListItem>> fetchParticipations({
     String tab = 'active',
+    String? creatorProfileId,
   }) =>
       get(
         '/creator/participations',
@@ -475,7 +477,10 @@ class ApiClient {
               (e) => ParticipationListItem.fromJson(e as Map<String, dynamic>),
             )
             .toList(),
-        query: {'tab': tab},
+        query: {
+          'tab': tab,
+          if (creatorProfileId != null) 'creatorProfileId': creatorProfileId,
+        },
       );
 
   Future<Participation> fetchParticipation(String id) => get(
@@ -554,9 +559,10 @@ class ApiClient {
     };
   }
 
-  Future<WalletData> fetchWallet() => get(
+  Future<WalletData> fetchWallet({String? creatorProfileId}) => get(
         '/wallet',
         (d) => WalletData.fromJson(d as Map<String, dynamic>),
+        query: creatorProfileId != null ? {'creatorProfileId': creatorProfileId} : null,
       );
 
   Future<List<TransactionItem>> fetchTransactions() => get(
