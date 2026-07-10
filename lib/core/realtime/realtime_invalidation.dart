@@ -5,6 +5,7 @@ import '../../features/dashboard/dashboard_providers.dart';
 import '../../features/profile/profile_providers.dart';
 import '../../features/submissions/submission_providers.dart';
 import '../../features/wallet/wallet_providers.dart';
+import '../creator_profile/creator_profile_providers.dart';
 import 'participation_realtime.dart';
 
 String? campaignIdFromRealtimePayload(Map<String, dynamic> payload) {
@@ -18,6 +19,22 @@ String? campaignIdFromRealtimePayload(Map<String, dynamic> payload) {
   }
 
   return null;
+}
+
+/// Clears all user-scoped caches — call on logout/account switch.
+void clearSessionCaches(WidgetRef ref) {
+  ref.invalidate(creatorProfilesProvider);
+  ref.invalidate(campaignsProvider);
+  ref.invalidate(participationsProvider('active'));
+  ref.invalidate(participationsProvider('completed'));
+  ref.invalidate(dashboardProvider);
+  ref.invalidate(profileMeProvider);
+  ref.invalidate(profileDashboardProvider);
+  ref.invalidate(profileActiveSubmissionsProvider);
+  ref.invalidate(walletProvider);
+  // StateProvider must be reset by value, not invalidated — invalidating it
+  // while widgets are still mounted causes a _dependents.isEmpty assertion.
+  ref.read(participationRealtimeTickProvider.notifier).state = 0;
 }
 
 /// Bumps the realtime tick and invalidates all creator-app data caches.
@@ -36,6 +53,7 @@ void invalidateAppDataCaches(
     ref.invalidate(participationDetailProvider(participationId));
   }
 
+  ref.invalidate(creatorProfilesProvider);
   ref.invalidate(campaignsProvider);
   ref.invalidate(participationsProvider('active'));
   ref.invalidate(participationsProvider('completed'));

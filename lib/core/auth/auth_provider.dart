@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/api_client.dart';
+import '../creator_profile/creator_profile_providers.dart';
 import 'auth_storage.dart';
 
 enum AuthStatus { unknown, authed, unauthed }
@@ -56,7 +57,19 @@ class AuthNotifier extends StateNotifier<AuthStatus> {
     } catch (_) {
       // Clear local tokens even when API is down.
     }
-    await _ref.read(authStorageProvider).clear();
+    await Future.wait([
+      _ref.read(authStorageProvider).clear(),
+      _ref.read(activeCreatorProfileIdProvider.notifier).clear(),
+    ]);
+    state = AuthStatus.unauthed;
+  }
+
+  Future<void> deleteAccount() async {
+    await _ref.read(apiClientProvider).deleteAccount();
+    await Future.wait([
+      _ref.read(authStorageProvider).clear(),
+      _ref.read(activeCreatorProfileIdProvider.notifier).clear(),
+    ]);
     state = AuthStatus.unauthed;
   }
 }

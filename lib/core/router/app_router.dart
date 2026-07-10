@@ -22,6 +22,8 @@ import '../../features/submissions/participation_detail_screen.dart';
 import '../../features/submissions/performance_screen.dart';
 import '../../features/submissions/submissions_screen.dart';
 import '../../features/support/support_screen.dart';
+import '../../features/legal/legal_screen.dart';
+import '../../features/wallet/bank_details_screen.dart';
 import '../../features/wallet/payout_methods_screen.dart';
 import '../../features/wallet/wallet_screen.dart';
 import '../../features/wallet/withdraw_screen.dart';
@@ -136,6 +138,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/wallet/payout-methods',
         builder: (_, __) => const PayoutMethodsScreen(),
       ),
+      GoRoute(
+        path: '/wallet/bank-details',
+        builder: (_, __) => const BankDetailsScreen(),
+      ),
+      GoRoute(path: '/legal/terms', builder: (_, __) => const TermsScreen()),
+      GoRoute(path: '/legal/privacy', builder: (_, __) => const PrivacyScreen()),
       GoRoute(
         path: '/profile/edit',
         builder: (_, __) => const EditProfileScreen(),

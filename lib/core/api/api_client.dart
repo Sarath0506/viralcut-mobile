@@ -347,6 +347,8 @@ class ApiClient {
     }
   }
 
+  Future<void> deleteAccount() => delete<void>('/users/me', (_) {});
+
   // Auth
   Future<void> requestOtp(String phone) => post<void>(
         '/auth/creator/otp/request',
@@ -602,6 +604,7 @@ class ApiClient {
     required String accountHolderName,
     required String account,
     String? ifscCode,
+    String? bankName,
   }) =>
       post(
         '/payout-methods',
@@ -611,6 +614,25 @@ class ApiClient {
           'accountHolderName': accountHolderName,
           'account': account,
           if (ifscCode != null) 'ifscCode': ifscCode,
+          if (bankName != null) 'bankName': bankName,
+        },
+        (d) => PayoutMethod.fromJson(d as Map<String, dynamic>),
+      );
+
+  Future<PayoutMethod> updatePayoutMethod(
+    String id, {
+    String? accountHolderName,
+    String? ifscCode,
+    String? bankName,
+    String? label,
+  }) =>
+      patch(
+        '/payout-methods/$id',
+        {
+          if (accountHolderName != null) 'accountHolderName': accountHolderName,
+          if (ifscCode != null) 'ifscCode': ifscCode,
+          if (bankName != null) 'bankName': bankName,
+          if (label != null) 'label': label,
         },
         (d) => PayoutMethod.fromJson(d as Map<String, dynamic>),
       );
@@ -850,6 +872,7 @@ class PayoutMethod {
     required this.accountHolderName,
     required this.accountMasked,
     this.ifscCode,
+    this.bankName,
     required this.isDefault,
   });
   final String id;
@@ -858,6 +881,7 @@ class PayoutMethod {
   final String accountHolderName;
   final String accountMasked;
   final String? ifscCode;
+  final String? bankName;
   final bool isDefault;
 
   factory PayoutMethod.fromJson(Map<String, dynamic> json) => PayoutMethod(
@@ -867,6 +891,7 @@ class PayoutMethod {
         accountHolderName: json['accountHolderName'] as String? ?? '',
         accountMasked: json['accountMasked'] as String,
         ifscCode: json['ifscCode'] as String?,
+        bankName: json['bankName'] as String?,
         isDefault: json['isDefault'] as bool? ?? false,
       );
 }

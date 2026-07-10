@@ -25,6 +25,12 @@ class ActiveCreatorProfileIdNotifier extends StateNotifier<String?> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_activeProfileIdKey, profileId);
   }
+
+  Future<void> clear() async {
+    state = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_activeProfileIdKey);
+  }
 }
 
 final activeCreatorProfileIdProvider =
