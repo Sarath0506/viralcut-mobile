@@ -29,11 +29,17 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
     WidgetsBinding.instance.addObserver(this);
     ref.listenManual(authStateProvider, (prev, next) {
       if (next == AuthStatus.authed) {
+        // Clear stale data from previous session now that fresh tokens are saved.
+        if (prev == AuthStatus.unauthed || prev == AuthStatus.unknown) {
+          clearSessionCaches(ref);
+        }
         _connect();
         _startPolling();
       } else if (next == AuthStatus.unauthed) {
         ref.read(realtimeServiceProvider).disconnect();
         _stopPolling();
+        // Do NOT invalidate here — widgets are still mounted and would
+        // immediately refetch with no token, causing stale 401 errors.
       }
     });
     if (ref.read(authStateProvider) == AuthStatus.authed) {

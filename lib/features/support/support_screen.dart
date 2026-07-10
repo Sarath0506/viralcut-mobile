@@ -5,8 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 
-const _supportEmail = 'support@halchal.app';
-const _supportWhatsapp = '911234567890';
+const _supportEmail = 'Support@halchalapp.com';
 
 const _faqs = <({String question, String answer})>[
   (
@@ -50,11 +49,6 @@ class SupportScreen extends StatelessWidget {
       path: _supportEmail,
       query: 'subject=${Uri.encodeComponent('Support request')}',
     );
-    await launchUrl(uri);
-  }
-
-  Future<void> _whatsappSupport() async {
-    final uri = Uri.parse('https://wa.me/$_supportWhatsapp');
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
@@ -68,59 +62,42 @@ class SupportScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [vc.primary, vc.primaryVariant],
-              ),
-              borderRadius: BorderRadius.circular(18),
+          const SizedBox(height: 4),
+          Text(
+            'CONTACT US',
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+              color: vc.muted,
             ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: vc.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: vc.border),
+            ),
+            clipBehavior: Clip.antiAlias,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Need a hand?',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
+                _ContactInfoTile(
+                  icon: Icons.mail_outline_rounded,
+                  title: 'Email Us',
+                  subtitle: _supportEmail,
+                  onTap: _emailSupport,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Browse common questions below, or reach out directly.',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.85),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ContactButton(
-                        icon: Icons.mail_outline_rounded,
-                        label: 'Email',
-                        onTap: _emailSupport,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _ContactButton(
-                        icon: Icons.chat_bubble_outline_rounded,
-                        label: 'WhatsApp',
-                        onTap: _whatsappSupport,
-                      ),
-                    ),
-                  ],
+                Divider(height: 1, indent: 16, endIndent: 16, color: vc.border),
+                _ContactInfoTile(
+                  icon: Icons.location_on_outlined,
+                  title: 'Headquarters',
+                  subtitle: 'Mutiny Talent Pvt. Ltd.\nHyderabad, Telangana, India',
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           Text(
             'FREQUENTLY ASKED',
             style: GoogleFonts.inter(
@@ -154,44 +131,69 @@ class SupportScreen extends StatelessWidget {
   }
 }
 
-class _ContactButton extends StatelessWidget {
-  const _ContactButton({
+class _ContactInfoTile extends StatelessWidget {
+  const _ContactInfoTile({
     required this.icon,
-    required this.label,
-    required this.onTap,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
   });
 
   final IconData icon;
-  final String label;
-  final Future<void> Function() onTap;
+  final String title;
+  final String subtitle;
+  final Future<void> Function()? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.16),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 16, color: Colors.white),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ],
+    final vc = HalchalColors.of(context);
+    final tile = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8E1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 20, color: const Color(0xFFF59E0B)),
           ),
-        ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: vc.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: vc.muted,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
+    );
+
+    if (onTap == null) return tile;
+    return InkWell(
+      onTap: onTap,
+      child: tile,
     );
   }
 }

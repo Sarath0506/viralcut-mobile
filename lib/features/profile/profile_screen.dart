@@ -96,6 +96,83 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (context.mounted) context.go('/login');
   }
 
+  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+    final step1 = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This is permanent. Your profile, earnings history, and KYC documents will be erased and cannot be recovered.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Yes, delete my account'),
+          ),
+        ],
+      ),
+    );
+    if (step1 != true || !context.mounted) return;
+
+    final controller = TextEditingController();
+    final step2 = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Are you absolutely sure?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Type DELETE to confirm:'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'DELETE',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: controller.text.trim() == 'DELETE'
+                  ? () => Navigator.pop(ctx, true)
+                  : null,
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Delete forever'),
+            ),
+          ],
+        ),
+      ),
+    );
+    // Defer dispose — the dialog closing animation is still running on this frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
+    if (step2 != true || !context.mounted) return;
+
+    try {
+      await ref.read(authStateProvider.notifier).deleteAccount();
+      if (context.mounted) context.go('/login');
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final me = ref.watch(profileMeProvider);
@@ -202,6 +279,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   _SettingsRow(
                     icon: Icons.account_balance_outlined,
                     iconColor: vc.primary,
+                    label: 'Bank details',
+                    onTap: () => context.push('/wallet/bank-details'),
+                  ),
+                  _SettingsRow(
+                    icon: Icons.payment_outlined,
+                    iconColor: vc.primary,
                     label: 'Payout methods',
                     onTap: () => context.push('/wallet/payout-methods'),
                   ),
@@ -241,6 +324,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     iconColor: vc.primary,
                     label: 'Support center',
                     onTap: () => context.push('/support'),
+                  ),
+                  _SettingsRow(
+                    icon: Icons.description_outlined,
+                    iconColor: vc.primary,
+                    label: 'Terms & Conditions',
+                    onTap: () => context.push('/legal/terms'),
+                  ),
+                  _SettingsRow(
+                    icon: Icons.privacy_tip_outlined,
+                    iconColor: vc.primary,
+                    label: 'Privacy Policy',
+                    onTap: () => context.push('/legal/privacy'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const _SectionLabel('DANGER ZONE'),
+              const SizedBox(height: 8),
+              _SettingsGroup(
+                rows: [
+                  _SettingsRow(
+                    icon: Icons.delete_forever_rounded,
+                    iconColor: Colors.red,
+                    label: 'Delete account',
+                    onTap: () => _deleteAccount(context, ref),
                   ),
                 ],
               ),

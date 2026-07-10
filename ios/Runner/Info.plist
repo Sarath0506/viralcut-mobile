@@ -6,6 +6,7 @@
 	<array>
 		<string>https</string>
 		<string>http</string>
+		<string>mailto</string>
 		<string>instagram</string>
 		<string>youtube</string>
 		<string>twitter</string>
