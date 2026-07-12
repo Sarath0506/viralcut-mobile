@@ -26,6 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       API_BASE_URL: ${{ github.event.inputs.api_base_url || vars.API_BASE_URL || 'https://viralcut-api-production-6825.up.railway.app' }}
+      KEYSTORE_PATH: ${{ github.workspace }}/android/upload-keystore.p12
+      STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+      KEY_ALIAS: upload
+      KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
 
     steps:
       - name: Checkout
@@ -42,6 +46,9 @@ jobs:
         with:
           channel: stable
           cache: true
+
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/upload-keystore.p12
 
       - name: Install dependencies
         run: flutter pub get
