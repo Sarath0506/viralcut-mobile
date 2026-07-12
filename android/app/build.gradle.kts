@@ -33,7 +33,7 @@ android {
                 keyPassword   = keystoreProperties["keyPassword"] as String
             } else {
                 // CI: read from environment variables written by the workflow
-                storeFile     = file(System.getenv("KEYSTORE_PATH") ?: "upload-keystore.p12")
+                storeFile     = file(System.getenv("KEYSTORE_PATH") ?: "upload-keystore.jks")
                 storePassword = System.getenv("STORE_PASSWORD") ?: ""
                 keyAlias      = System.getenv("KEY_ALIAS") ?: "upload"
                 keyPassword   = System.getenv("KEY_PASSWORD") ?: ""
