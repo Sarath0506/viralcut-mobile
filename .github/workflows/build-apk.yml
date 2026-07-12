@@ -47,20 +47,8 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Reconstruct keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_KEY_PEM }}" | base64 --decode > /tmp/signing_key.pem
-          echo "${{ secrets.KEYSTORE_CERT_PEM }}" | base64 --decode > /tmp/signing_cert.pem
-          openssl pkcs12 -export \
-            -in /tmp/signing_cert.pem \
-            -inkey /tmp/signing_key.pem \
-            -name upload \
-            -out android/upload-keystore.p12 \
-            -passout "pass:${{ secrets.KEYSTORE_STORE_PASSWORD }}" \
-            -certpbe PBE-SHA1-3DES \
-            -keypbe PBE-SHA1-3DES \
-            -macalg sha1
-          rm -f /tmp/signing_key.pem /tmp/signing_cert.pem
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/upload-keystore.p12
 
       - name: Install dependencies
         run: flutter pub get
