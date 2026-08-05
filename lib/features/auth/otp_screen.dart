@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -124,17 +123,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               enabled: !_verifying,
               onCompleted: _verify,
             ),
-            if (kDebugMode) ...[
-              const SizedBox(height: 12),
-              Text(
-                'Dev: OTP is always 000000',
-                textAlign: TextAlign.center,
-                style: AuthUi.bodyFont(context).copyWith(
-                  color: HalchalColors.of(context).muted,
-                  fontSize: 13,
-                ),
-              ),
-            ],
             if (_verifying) ...[
               const SizedBox(height: 20),
               const Center(child: CircularProgressIndicator()),
