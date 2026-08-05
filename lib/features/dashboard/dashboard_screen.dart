@@ -12,6 +12,7 @@ import '../../core/campaign/campaign_schedule_label.dart';
 import '../../theme/halchal_colors.dart';
 import 'widgets/dashboard_earnings_card.dart';
 import 'widgets/trending_campaigns_carousel.dart';
+import 'widgets/update_banner.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -46,6 +47,7 @@ class DashboardScreen extends ConsumerWidget {
             children: [
               _DashboardHeader(displayName: displayName),
               const SizedBox(height: 16),
+              const UpdateBanner(),
               DashboardEarningsCard(
                 wallet: data.wallet,
                 clipsUnderReview: data.clipsUnderReview,

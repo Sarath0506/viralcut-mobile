@@ -26,10 +26,11 @@ class DashboardShell extends ConsumerWidget {
   ];
 
   int _indexForPath(String path) {
-    if (path.startsWith('/wallet')) return 3;
-    if (path.startsWith('/submissions')) return 2;
+    if (path.startsWith('/dashboard')) return 0;
     if (path.startsWith('/campaigns')) return 1;
-    return 0;
+    if (path.startsWith('/submissions')) return 2;
+    if (path.startsWith('/wallet')) return 3;
+    return -1;
   }
 
   void _onTabSelected(WidgetRef ref, int index, BuildContext context) {

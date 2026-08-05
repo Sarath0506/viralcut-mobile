@@ -6,12 +6,14 @@ import '../campaign/leaderboard_models.dart';
 import '../creator_profile/creator_profile.dart';
 import '../notifications/notification_models.dart';
 import '../participation/participation_models.dart';
+import '../update/app_version_models.dart';
 import 'api_base_url.dart';
 
 export '../campaign/campaign_models.dart';
 export '../campaign/leaderboard_models.dart';
 export '../notifications/notification_models.dart';
 export '../participation/participation_models.dart';
+export '../update/app_version_models.dart';
 
 class ApiException implements Exception {
   ApiException(this.code, this.message);
@@ -378,6 +380,12 @@ class ApiClient {
     );
     return AuthSession.fromJson(data);
   }
+
+  Future<AppVersionInfo> fetchAppVersion() => get(
+        '/app-version',
+        (d) => AppVersionInfo.fromJson(d as Map<String, dynamic>),
+        auth: false,
+      );
 
   // Creator
   Future<CreatorDashboard> fetchDashboard({String? creatorProfileId}) => get(
