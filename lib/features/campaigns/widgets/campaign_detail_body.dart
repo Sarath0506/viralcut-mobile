@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/campaign/campaign_schedule_label.dart';
@@ -44,6 +45,14 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
       context: context,
       barrierColor: Colors.black87,
       builder: (_) => _FullScreenImageViewer(url: url),
+    );
+  }
+
+  void _openFullScreenVideo(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (_) => _FullScreenVideoPlayer(url: url),
     );
   }
 
@@ -153,13 +162,13 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
                 return GestureDetector(
                   onTap: url != null
                       ? () => isVideo
-                          ? _openUrl(context, url)
+                          ? _openFullScreenVideo(context, url)
                           : _openFullScreenImage(context, url)
                       : null,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: isVideo
-                        ? _VideoThumbnail(vc: vc, label: asset.label)
+                        ? _VideoThumbnail(vc: vc, label: asset.label, url: url)
                         : url != null
                             ? Image.network(
                                 url,
@@ -214,6 +223,8 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
         ],
         const SizedBox(height: 24),
         _HowToParticipate(campaign: c),
+        const SizedBox(height: 16),
+        _CashFlowSection(campaign: c),
       ],
     );
   }
@@ -228,40 +239,102 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
   }
 }
 
-class _VideoThumbnail extends StatelessWidget {
-  const _VideoThumbnail({required this.vc, this.label});
+class _VideoThumbnail extends StatefulWidget {
+  const _VideoThumbnail({required this.vc, this.label, this.url});
   final HalchalColors vc;
   final String? label;
+  final String? url;
+
+  @override
+  State<_VideoThumbnail> createState() => _VideoThumbnailState();
+}
+
+class _VideoThumbnailState extends State<_VideoThumbnail> {
+  VideoPlayerController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final url = widget.url;
+    if (url == null) return;
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    _controller = controller;
+    controller.initialize().then((_) {
+      if (mounted) setState(() {});
+    }).catchError((_) {});
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final vc = widget.vc;
+    final controller = _controller;
+    final hasFrame = controller != null && controller.value.isInitialized;
+
     return Container(
       width: 90,
       height: 120,
       color: vc.surface,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Stack(
+        fit: StackFit.expand,
         children: [
+          if (hasFrame)
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: controller.value.size.width,
+                height: controller.value.size.height,
+                child: VideoPlayer(controller),
+              ),
+            ),
           Container(
-            width: 36,
-            height: 36,
             decoration: BoxDecoration(
-              color: vc.primary.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: hasFrame ? 0.1 : 0),
+                  Colors.black.withValues(alpha: hasFrame ? 0.55 : 0),
+                ],
+              ),
             ),
-            child: Icon(Icons.play_arrow_rounded, color: vc.primary, size: 22),
           ),
-          const SizedBox(height: 6),
-          Text(
-            label?.isNotEmpty == true ? label! : 'Video',
-            style: TextStyle(
-              fontSize: 10,
-              color: vc.muted,
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: hasFrame
+                      ? Colors.black45
+                      : vc.primary.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.play_arrow_rounded,
+                  color: hasFrame ? Colors.white : vc.primary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                widget.label?.isNotEmpty == true ? widget.label! : 'Video',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: hasFrame ? Colors.white : vc.muted,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ],
       ),
@@ -1001,6 +1074,129 @@ class _FullScreenImageViewer extends StatelessWidget {
   }
 }
 
+class _FullScreenVideoPlayer extends StatefulWidget {
+  const _FullScreenVideoPlayer({required this.url});
+
+  final String url;
+
+  @override
+  State<_FullScreenVideoPlayer> createState() =>
+      _FullScreenVideoPlayerState();
+}
+
+class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
+  late final VideoPlayerController _controller;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      ..initialize().then((_) {
+        if (!mounted) return;
+        setState(() {});
+        _controller.play();
+      }).catchError((_) {
+        if (mounted) setState(() => _failed = true);
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _togglePlayback() {
+    setState(() {
+      _controller.value.isPlaying ? _controller.pause() : _controller.play();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              behavior: HitTestBehavior.opaque,
+            ),
+          ),
+          Center(
+            child: _failed
+                ? const Icon(
+                    Icons.error_outline,
+                    color: Colors.white54,
+                    size: 64,
+                  )
+                : _controller.value.isInitialized
+                    ? GestureDetector(
+                        onTap: _togglePlayback,
+                        child: AspectRatio(
+                          aspectRatio: _controller.value.aspectRatio,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              VideoPlayer(_controller),
+                              if (!_controller.value.isPlaying)
+                                Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black45,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.play_arrow_rounded,
+                                    color: Colors.white,
+                                    size: 36,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : const CircularProgressIndicator(),
+          ),
+          if (_controller.value.isInitialized)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: MediaQuery.of(context).padding.bottom + 16,
+              child: VideoProgressIndicator(
+                _controller,
+                allowScrubbing: true,
+                padding: EdgeInsets.zero,
+                colors: const VideoProgressColors(
+                  playedColor: Colors.white,
+                  bufferedColor: Colors.white30,
+                  backgroundColor: Colors.white12,
+                ),
+              ),
+            ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 12,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 20),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _HowToParticipate extends StatelessWidget {
   const _HowToParticipate({required this.campaign});
   final Campaign campaign;
@@ -1164,5 +1360,193 @@ class _StepCard extends StatelessWidget {
           delay: Duration(milliseconds: 60 * index),
           duration: const Duration(milliseconds: 300),
         );
+  }
+}
+
+/// Placeholder copy — mechanics are approximately right (matches the review →
+/// payout → withdrawal pipeline) but exact timings are illustrative and
+/// should be corrected once the real SLAs are confirmed.
+class _CashFlowSection extends StatefulWidget {
+  const _CashFlowSection({required this.campaign});
+  final Campaign campaign;
+
+  @override
+  State<_CashFlowSection> createState() => _CashFlowSectionState();
+}
+
+class _CashFlowSectionState extends State<_CashFlowSection> {
+  bool _expanded = false;
+
+  List<({IconData icon, String title, String subtitle})> _steps(
+    HalchalColors vc,
+  ) {
+    final c = widget.campaign;
+    final rate = formatPaise(c.ratePer1kPaise);
+    final cap = formatPaise(c.maxPayoutPaise);
+    return [
+      (
+        icon: Icons.visibility_outlined,
+        title: 'Views are tracked',
+        subtitle: 'Once your clip is live, we track valid views on your post automatically.',
+      ),
+      (
+        icon: Icons.fact_check_outlined,
+        title: 'Proof gets verified',
+        subtitle: 'Our team checks your live post and view count before anything is approved.',
+      ),
+      (
+        icon: Icons.hourglass_top_rounded,
+        title: 'Earnings move to Pending',
+        subtitle: 'You earn $rate per 1,000 views, up to $cap for this campaign. Approved earnings show as "Pending" first.',
+      ),
+      (
+        icon: Icons.check_circle_outline_rounded,
+        title: 'Pending becomes Available',
+        subtitle: 'Once payout is processed, the amount moves from "Pending" to "Available" in your wallet.',
+      ),
+      (
+        icon: Icons.account_balance_outlined,
+        title: 'Withdraw to your bank',
+        subtitle: 'Withdraw any available balance to your bank account. A small platform fee applies.',
+      ),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vc = HalchalColors.of(context);
+    final steps = _steps(vc);
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: vc.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: vc.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Icon(Icons.payments_outlined, size: 18, color: vc.money),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'How you get paid',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: vc.onSurface,
+                      ),
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: _expanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(Icons.keyboard_arrow_down_rounded, color: vc.muted),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 200),
+            crossFadeState:
+                _expanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+            firstChild: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: Column(
+                children: [
+                  for (var i = 0; i < steps.length; i++)
+                    _CashFlowStepRow(
+                      step: steps[i],
+                      vc: vc,
+                      isLast: i == steps.length - 1,
+                    ),
+                ],
+              ),
+            ),
+            secondChild: const SizedBox(width: double.infinity),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CashFlowStepRow extends StatelessWidget {
+  const _CashFlowStepRow({
+    required this.step,
+    required this.vc,
+    required this.isLast,
+  });
+
+  final ({IconData icon, String title, String subtitle}) step;
+  final HalchalColors vc;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: vc.primary.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(step.icon, size: 15, color: vc.primary),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 1.5,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    color: vc.border,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 16, top: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    step.title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: vc.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    step.subtitle,
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      height: 1.4,
+                      color: vc.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
