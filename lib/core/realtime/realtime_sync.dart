@@ -105,6 +105,7 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
           onCampaignCreated: _onRealtimeEvent,
           onCampaignUpdated: _onRealtimeEvent,
           onCampaignPublished: _onRealtimeEvent,
+          onCreatorProfileStatsUpdated: _onRealtimeEvent,
         );
   }
 
