@@ -24,15 +24,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _countryController = TextEditingController(text: '+91');
   final _phoneController = TextEditingController();
   bool _busy = false;
-  String? _lastOtpPhone;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController.addListener(_tryAdvance);
-    _emailController.addListener(_tryAdvance);
-    _phoneController.addListener(_tryAdvance);
-  }
 
   @override
   void dispose() {
@@ -56,31 +47,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     if (_phoneE164 == null) return false;
     if (_nameController.text.trim().length < 2) return false;
     return _isValidEmail(_emailController.text.trim());
-  }
-
-  void _tryAdvance() {
-    final digits = _phoneController.text;
-    if (digits.length < 10) {
-      _lastOtpPhone = null;
-      return;
-    }
-    if (_busy) return;
-
-    final phone = _phoneE164;
-    if (phone == null) {
-      if (digits.length == 10 &&
-          _nameController.text.trim().length >= 2 &&
-          _isValidEmail(_emailController.text.trim()) &&
-          mounted) {
-        _showError(kInvalidIndiaPhoneMessage);
-      }
-      _lastOtpPhone = null;
-      return;
-    }
-    if (!_isFormComplete) return;
-    if (phone == _lastOtpPhone) return;
-    _lastOtpPhone = phone;
-    _sendOtpAndContinue();
   }
 
   Future<void> _sendOtpAndContinue() async {
@@ -110,10 +76,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         ).toString(),
       );
     } on ApiException catch (e) {
-      _lastOtpPhone = null;
       if (mounted) _showError(e.message);
     } catch (_) {
-      _lastOtpPhone = null;
       if (mounted) _showError('Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _busy = false);
