@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/api/api_client.dart';
@@ -63,7 +64,7 @@ class NotificationsScreen extends ConsumerWidget {
                     const SizedBox(height: 12),
                     Text(
                       'No notifications yet',
-                      style: TextStyle(color: vc.muted, fontSize: 14),
+                      style: GoogleFonts.inter(color: vc.muted, fontSize: 14),
                     ),
                   ],
                 ),
@@ -174,7 +175,7 @@ class _NotificationTile extends StatelessWidget {
                 children: [
                   Text(
                     n.title,
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                       fontWeight: n.read ? FontWeight.w600 : FontWeight.w800,
                       fontSize: 14,
                       color: vc.onSurface,
@@ -184,13 +185,13 @@ class _NotificationTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       n.body!,
-                      style: TextStyle(fontSize: 13, color: vc.muted, height: 1.35),
+                      style: GoogleFonts.inter(fontSize: 13, color: vc.muted, height: 1.35),
                     ),
                   ],
                   const SizedBox(height: 6),
                   Text(
                     time,
-                    style: TextStyle(fontSize: 11, color: vc.muted),
+                    style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
                   ),
                 ],
               ),

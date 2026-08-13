@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/api/api_client.dart';
@@ -164,7 +165,7 @@ class _KycStatusScreenState extends ConsumerState<KycStatusScreen> {
                         const SizedBox(width: 10),
                         Text(
                           info.label,
-                          style: TextStyle(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
                             color: color,
@@ -175,7 +176,7 @@ class _KycStatusScreenState extends ConsumerState<KycStatusScreen> {
                     const SizedBox(height: 10),
                     Text(
                       info.description,
-                      style: TextStyle(
+                      style: GoogleFonts.inter(
                         fontSize: 13,
                         height: 1.4,
                         color: vc.onSurface.withValues(alpha: 0.85),
@@ -187,7 +188,7 @@ class _KycStatusScreenState extends ConsumerState<KycStatusScreen> {
               if (canSubmit) ...[
                 const SizedBox(height: 20),
                 Text('Document type',
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                         fontSize: 13, fontWeight: FontWeight.w700, color: vc.onSurface)),
                 const SizedBox(height: 8),
                 Wrap(
@@ -219,7 +220,7 @@ class _KycStatusScreenState extends ConsumerState<KycStatusScreen> {
                             const SizedBox(width: 6),
                             Text(
                               d.label,
-                              style: TextStyle(
+                              style: GoogleFonts.inter(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: selected ? vc.primary : vc.onSurface,
@@ -233,7 +234,7 @@ class _KycStatusScreenState extends ConsumerState<KycStatusScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text('Upload document',
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                         fontSize: 13, fontWeight: FontWeight.w700, color: vc.onSurface)),
                 const SizedBox(height: 8),
                 GestureDetector(
@@ -253,14 +254,14 @@ class _KycStatusScreenState extends ConsumerState<KycStatusScreen> {
                                 color: vc.money, size: 28),
                             const SizedBox(height: 6),
                             Text(_pickedFile!.name,
-                                style: TextStyle(fontSize: 12, color: vc.onSurface)),
+                                style: GoogleFonts.inter(fontSize: 12, color: vc.onSurface)),
                           ])
                         : Column(children: [
                             Icon(Icons.upload_file_outlined,
                                 color: vc.primary, size: 28),
                             const SizedBox(height: 6),
                             Text('Tap to select a photo of your document',
-                                style: TextStyle(fontSize: 12, color: vc.muted)),
+                                style: GoogleFonts.inter(fontSize: 12, color: vc.muted)),
                           ]),
                   ),
                 ),

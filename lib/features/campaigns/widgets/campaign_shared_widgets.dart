@@ -50,12 +50,14 @@ class CampaignCoverImage extends StatelessWidget {
   const CampaignCoverImage({
     super.key,
     required this.campaign,
-    required this.height,
+    this.height,
     this.borderRadius = const BorderRadius.vertical(top: Radius.circular(16)),
   });
 
   final Campaign campaign;
-  final double height;
+  /// When null, the image fills whatever box constraints its parent gives it
+  /// (e.g. an [AspectRatio]) instead of requesting a fixed height.
+  final double? height;
   final BorderRadius borderRadius;
 
   @override
@@ -250,7 +252,7 @@ class _GradientCover extends StatelessWidget {
     this.width = double.infinity,
   });
 
-  final double height;
+  final double? height;
   final double width;
   final HalchalColors vc;
   final Color primary;
@@ -280,11 +282,13 @@ class CampaignPoolBar extends StatelessWidget {
     required this.poolPercent,
     this.minHeight = 5,
     this.showLabels = false,
+    this.trackColor,
   });
 
   final int poolPercent;
   final double minHeight;
   final bool showLabels;
+  final Color? trackColor;
 
   @override
   Widget build(BuildContext context) {
@@ -323,7 +327,7 @@ class CampaignPoolBar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: poolPercent / 100,
             minHeight: minHeight,
-            backgroundColor: vc.surfaceVariant,
+            backgroundColor: trackColor ?? vc.surfaceVariant,
             color: vc.moneyBright,
           ),
         ),

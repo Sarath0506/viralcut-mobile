@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
@@ -80,7 +81,7 @@ class PayoutMethodsScreen extends ConsumerWidget {
                           const SizedBox(height: 10),
                           Text(
                             'No payout methods yet',
-                            style: TextStyle(color: vc.muted, fontSize: 14),
+                            style: GoogleFonts.inter(color: vc.muted, fontSize: 14),
                           ),
                         ],
                       ),
@@ -267,7 +268,7 @@ class _PayoutMethodRowState extends ConsumerState<_PayoutMethodRow> {
                 Row(
                   children: [
                     Text(method.label,
-                        style: const TextStyle(
+                        style: GoogleFonts.inter(
                             fontWeight: FontWeight.w700, fontSize: 14)),
                     if (method.isDefault) ...[
                       const SizedBox(width: 6),
@@ -279,7 +280,7 @@ class _PayoutMethodRowState extends ConsumerState<_PayoutMethodRow> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text('DEFAULT',
-                            style: TextStyle(
+                            style: GoogleFonts.inter(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w800,
                                 color: vc.primary)),
@@ -291,7 +292,7 @@ class _PayoutMethodRowState extends ConsumerState<_PayoutMethodRow> {
                   method.accountHolderName.isNotEmpty
                       ? '${method.accountHolderName} · ${method.accountMasked}'
                       : method.accountMasked,
-                  style: TextStyle(fontSize: 12, color: vc.muted),
+                  style: GoogleFonts.inter(fontSize: 12, color: vc.muted),
                 ),
               ],
             ),

@@ -7,7 +7,7 @@ import '../../../core/format/money_format.dart';
 import '../../../theme/halchal_colors.dart';
 import 'campaign_shared_widgets.dart';
 
-enum _Badge { urgent, trending, newCampaign, upcoming, none }
+enum _Badge { urgent, trending, newCampaign, upcoming }
 
 _Badge _resolveBadge(Campaign c) {
   final now = DateTime.now();
@@ -66,9 +66,22 @@ class CampaignListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vc = HalchalColors.of(context);
+    final primary = Theme.of(context).colorScheme.primary;
     final c = campaign;
     final badge = _resolveBadge(c);
-    final urgent = badge == _Badge.urgent;
+    // Urgency/freshness folds into the schedule line's color, icon, and an
+    // optional prefix instead of a separate corner chip — one visual signal
+    // instead of two competing for attention with the payout callout.
+    final (badgeIcon, badgeColor, badgePrefix) = switch (badge) {
+      _Badge.urgent => (Icons.local_fire_department_rounded, vc.warning, ''),
+      _Badge.upcoming => (Icons.schedule_rounded, const Color(0xFF0284C7), ''),
+      _Badge.newCampaign => (
+          Icons.auto_awesome_rounded,
+          vc.money,
+          'New · ',
+        ),
+      _Badge.trending => (Icons.trending_up_rounded, primary, 'Trending · '),
+    };
 
     return Semantics(
       button: true,
@@ -85,178 +98,162 @@ class CampaignListCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: _Thumbnail(campaign: c),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          right: badge != _Badge.none ? 54 : 0,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: _Thumbnail(campaign: c),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        c.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: vc.onSurface,
+                          height: 1.2,
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              vc.money.withValues(alpha: 0.16),
+                              vc.money.withValues(alpha: 0.06),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: vc.money.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              c.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: vc.onSurface,
-                                height: 1.2,
-                              ),
+                            Icon(
+                              Icons.payments_rounded,
+                              size: 13,
+                              color: vc.money,
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(width: 5),
                             Text(
-                              c.ratePer1kDisplay,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              'Earn up to ',
                               style: GoogleFonts.inter(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
                                 color: vc.money,
-                                height: 1.1,
                               ),
                             ),
-                            const SizedBox(height: 3),
-                            Wrap(
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                Icon(Icons.payments_outlined,
-                                    size: 11, color: vc.muted),
-                                const SizedBox(width: 3),
-                                Text(
-                                  '${formatPaise(c.maxPayoutPaise)} cap',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: vc.muted,
-                                    height: 1.1,
-                                  ),
+                            Flexible(
+                              child: Text(
+                                formatPaise(c.maxPayoutPaise),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  color: vc.money,
+                                  height: 1.1,
                                 ),
-                                Text(
-                                  '  ·  ',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    color: vc.muted,
-                                  ),
-                                ),
-                                Icon(
-                                  urgent
-                                      ? Icons.local_fire_department_rounded
-                                      : Icons.schedule_rounded,
-                                  size: 11,
-                                  color: urgent ? vc.warning : vc.muted,
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  _scheduleLabel(c),
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    fontWeight: urgent
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                    color: urgent ? vc.warning : vc.muted,
-                                    height: 1.1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: CampaignPoolBar(
-                                    poolPercent: c.poolPercent,
-                                    minHeight: 4,
-                                    showLabels: false,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${c.poolPercent}% filled',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: vc.muted,
-                                    height: 1,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Icon(
-                        Icons.chevron_right_rounded,
-                        size: 20,
-                        color: vc.muted.withValues(alpha: 0.65),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: vc.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          c.ratePer1kDisplay,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: vc.primary,
+                            height: 1.2,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          Icon(badgeIcon, size: 11, color: badgeColor),
+                          const SizedBox(width: 3),
+                          Flexible(
+                            child: Text(
+                              '$badgePrefix${_scheduleLabel(c)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: badgeColor,
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: CampaignPoolBar(
+                              poolPercent: c.poolPercent,
+                              minHeight: 4,
+                              showLabels: false,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${c.poolPercent}% filled',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: vc.muted,
+                              height: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              if (badge != _Badge.none)
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: _BadgeChip(badge: badge),
+                const SizedBox(width: 4),
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: vc.muted.withValues(alpha: 0.65),
+                  ),
                 ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BadgeChip extends StatelessWidget {
-  const _BadgeChip({required this.badge});
-
-  final _Badge badge;
-
-  @override
-  Widget build(BuildContext context) {
-    final vc = HalchalColors.of(context);
-    final primary = Theme.of(context).colorScheme.primary;
-    final (label, bg) = switch (badge) {
-      _Badge.urgent => ('URGENT', vc.error),
-      _Badge.trending => ('TRENDING', primary),
-      _Badge.newCampaign => ('NEW', vc.money),
-      _Badge.upcoming => ('UPCOMING', const Color(0xFF0284C7)),
-      _Badge.none => ('', Colors.transparent),
-    };
-
-    // Solid fill so the tag stays legible over any thumbnail image,
-    // matching the badge treatment on the dashboard's trending carousel.
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.inter(
-          fontSize: 8,
-          fontWeight: FontWeight.w800,
-          color: Colors.white,
-          letterSpacing: 0.4,
-          height: 1,
         ),
       ),
     );

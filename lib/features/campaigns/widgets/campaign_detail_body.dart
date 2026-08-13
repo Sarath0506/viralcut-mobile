@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:video_player/video_player.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/campaign/campaign_schedule_label.dart';
@@ -48,14 +48,6 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
     );
   }
 
-  void _openFullScreenVideo(BuildContext context, String url) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black87,
-      builder: (_) => _FullScreenVideoPlayer(url: url),
-    );
-  }
-
   Future<void> _openUrl(BuildContext context, String url) async {
     final uri = Uri.tryParse(url);
     if (uri == null) return;
@@ -76,47 +68,25 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 104),
       children: [
-        _CompactHero(
-          campaign: c,
-          participation: participation,
-        ),
-        const SizedBox(height: 10),
-        _DarkStatsBar(campaign: c),
-        const SizedBox(height: 12),
+        _CompactHero(campaign: c),
+        const SizedBox(height: 14),
         _LinkRow(
           label: 'View leaderboard',
           icon: Icons.leaderboard_outlined,
           onTap: () => context.push('/campaigns/${c.id}/leaderboard'),
         ),
         if (c.displayBrief != null && c.displayBrief!.trim().isNotEmpty) ...[
-          const SizedBox(height: 14),
-          const _SectionTitle('Brief'),
-          const SizedBox(height: 6),
-          _SurfaceBlock(
-            child: Text(
-              c.displayBrief!,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                height: 1.4,
-                color: vc.onSurface,
-              ),
-            ),
-          ),
+          const SizedBox(height: 18),
+          const _SectionHeader('The brief'),
+          const SizedBox(height: 10),
+          _BriefCard(text: c.displayBrief!),
         ],
         if (c.doRuleLines.isNotEmpty || c.avoidRuleLines.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Text(
-            'CONTENT RULES',
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.8,
-              color: vc.muted,
-            ),
-          ),
+          const SizedBox(height: 18),
+          const _SectionHeader('Content rules'),
+          const SizedBox(height: 10),
         ],
         if (c.doRuleLines.isNotEmpty) ...[
-          const SizedBox(height: 8),
           _RuleCard(
             title: 'DO THIS',
             icon: Icons.check_circle_outline_rounded,
@@ -136,9 +106,9 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
           ),
         ],
         if (c.productUrl != null && c.productUrl!.trim().isNotEmpty) ...[
-          const SizedBox(height: 12),
-          const _SectionTitle('Product'),
-          const SizedBox(height: 6),
+          const SizedBox(height: 18),
+          const _SectionHeader('Product'),
+          const SizedBox(height: 10),
           _LinkRow(
             label: 'View product details',
             icon: Icons.link,
@@ -146,11 +116,16 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
           ),
         ],
         if (c.referenceAssets.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          const _SectionTitle('Sample content'),
-          const SizedBox(height: 8),
+          const SizedBox(height: 18),
+          const _SectionHeader('Sample content'),
+          const SizedBox(height: 4),
+          Text(
+            'Get inspired by top creators',
+            style: GoogleFonts.inter(fontSize: 12, color: vc.muted),
+          ),
+          const SizedBox(height: 10),
           SizedBox(
-            height: 120,
+            height: 140,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: c.referenceAssets.length,
@@ -159,40 +134,92 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
                 final asset = c.referenceAssets[i];
                 final url = resolveCampaignMediaUrl(asset.url);
                 final isVideo = asset.type == 'video';
+                final label = asset.label?.trim();
                 return GestureDetector(
                   onTap: url != null
                       ? () => isVideo
-                          ? _openFullScreenVideo(context, url)
+                          ? _openUrl(context, url)
                           : _openFullScreenImage(context, url)
                       : null,
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: isVideo
-                        ? _VideoThumbnail(vc: vc, label: asset.label, url: url)
-                        : url != null
-                            ? Image.network(
-                                url,
-                                width: 90,
-                                height: 120,
-                                fit: BoxFit.cover,
-                                loadingBuilder: (_, child, progress) {
-                                  if (progress == null) return child;
-                                  return Container(
-                                    width: 90,
-                                    height: 120,
-                                    color: vc.surfaceVariant,
-                                  )
-                                      .animate(onPlay: (c) => c.repeat())
-                                      .shimmer(
-                                        duration: 1000.ms,
-                                        color:
-                                            vc.border.withValues(alpha: 0.6),
-                                      );
-                                },
-                                errorBuilder: (_, __, ___) =>
-                                    _assetPlaceholder(vc, 90, 120),
-                              )
-                            : _assetPlaceholder(vc, 90, 120),
+                    borderRadius: BorderRadius.circular(14),
+                    child: SizedBox(
+                      width: 108,
+                      height: 140,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (isVideo)
+                            _VideoThumbnail(vc: vc, label: null)
+                          else if (url != null)
+                            Image.network(
+                              url,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (_, child, progress) {
+                                if (progress == null) return child;
+                                return Container(color: vc.surfaceVariant)
+                                    .animate(onPlay: (c) => c.repeat())
+                                    .shimmer(
+                                      duration: 1000.ms,
+                                      color: vc.border.withValues(alpha: 0.6),
+                                    );
+                              },
+                              errorBuilder: (_, __, ___) =>
+                                  _assetPlaceholder(vc, 108, 140),
+                            )
+                          else
+                            _assetPlaceholder(vc, 108, 140),
+                          if (isVideo)
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              child: Container(
+                                width: 26,
+                                height: 26,
+                                decoration: const BoxDecoration(
+                                  color: Colors.black45,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.play_arrow_rounded,
+                                  color: Colors.white,
+                                  size: 15,
+                                ),
+                              ),
+                            ),
+                          if (label != null && label.isNotEmpty)
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                padding: const EdgeInsets.fromLTRB(8, 22, 8, 8),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.black.withValues(alpha: 0),
+                                      Colors.black.withValues(alpha: 0.78),
+                                    ],
+                                  ),
+                                ),
+                                child: Text(
+                                  label,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    height: 1.25,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                 );
               },
@@ -200,31 +227,40 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
           ),
         ],
         if (c.sourceAssets.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          const _SectionTitle('Source links'),
-          const SizedBox(height: 6),
+          const SizedBox(height: 18),
+          const _SectionHeader('Asset links'),
+          const SizedBox(height: 4),
+          Text(
+            'Brand assets to use in your content',
+            style: GoogleFonts.inter(fontSize: 12, color: vc.muted),
+          ),
+          const SizedBox(height: 10),
           ...c.sourceAssets.map(
             (asset) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: 8),
               child: _LinkRow(
                 label: asset.label?.isNotEmpty == true
                     ? asset.label!
                     : asset.type == 'youtube'
                         ? 'YouTube reference'
                         : 'Drive reference',
-                subtitle: asset.url,
+                subtitle: asset.type == 'youtube'
+                    ? 'Watch on YouTube'
+                    : 'Open in Drive',
                 icon: asset.type == 'youtube'
                     ? Icons.play_circle_outline
                     : Icons.folder_outlined,
+                iconColor:
+                    asset.type == 'youtube' ? const Color(0xFFFF0000) : null,
                 onTap: () => _openUrl(context, asset.url),
               ),
             ),
           ),
         ],
-        const SizedBox(height: 24),
+        const SizedBox(height: 22),
         _HowToParticipate(campaign: c),
-        const SizedBox(height: 16),
-        _CashFlowSection(campaign: c),
+        const SizedBox(height: 22),
+        const _TrustBanner(),
       ],
     );
   }
@@ -239,245 +275,138 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
   }
 }
 
-class _VideoThumbnail extends StatefulWidget {
-  const _VideoThumbnail({required this.vc, this.label, this.url});
+class _VideoThumbnail extends StatelessWidget {
+  const _VideoThumbnail({required this.vc, this.label});
   final HalchalColors vc;
   final String? label;
-  final String? url;
-
-  @override
-  State<_VideoThumbnail> createState() => _VideoThumbnailState();
-}
-
-class _VideoThumbnailState extends State<_VideoThumbnail> {
-  VideoPlayerController? _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    final url = widget.url;
-    if (url == null) return;
-    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
-    _controller = controller;
-    controller.initialize().then((_) {
-      if (mounted) setState(() {});
-    }).catchError((_) {});
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final vc = widget.vc;
-    final controller = _controller;
-    final hasFrame = controller != null && controller.value.isInitialized;
-
     return Container(
-      width: 90,
-      height: 120,
       color: vc.surface,
-      child: Stack(
-        fit: StackFit.expand,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (hasFrame)
-            FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: controller.value.size.width,
-                height: controller.value.size.height,
-                child: VideoPlayer(controller),
-              ),
-            ),
           Container(
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: hasFrame ? 0.1 : 0),
-                  Colors.black.withValues(alpha: hasFrame ? 0.55 : 0),
-                ],
-              ),
+              color: vc.primary.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
             ),
+            child: Icon(Icons.play_arrow_rounded, color: vc.primary, size: 22),
           ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: hasFrame
-                      ? Colors.black45
-                      : vc.primary.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.play_arrow_rounded,
-                  color: hasFrame ? Colors.white : vc.primary,
-                  size: 22,
-                ),
+          if (label != null && label!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              label!,
+              style: TextStyle(
+                fontSize: 10,
+                color: vc.muted,
+                fontWeight: FontWeight.w500,
               ),
-              const SizedBox(height: 6),
-              Text(
-                widget.label?.isNotEmpty == true ? widget.label! : 'Video',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: hasFrame ? Colors.white : vc.muted,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
+// ─── Hero: full-bleed cover image + stats card ─────────────────────────────
+
 class _CompactHero extends StatelessWidget {
   const _CompactHero({
     required this.campaign,
-    this.participation,
   });
 
-  static const _coverHeight = 168.0;
-
   final Campaign campaign;
-  final Participation? participation;
 
   @override
   Widget build(BuildContext context) {
     final vc = HalchalColors.of(context);
     final c = campaign;
-    final subtitle = campaignDetailSubtitle(c);
     final startLabel = campaignStartDetailLabel(c);
     final statusBanner = _campaignStatusBanner(c.status, vc);
-    final participationBanner = _participationBanner(participation, vc);
+    final poolColor = c.poolPercent >= 50 ? vc.warning : vc.money;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: vc.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: vc.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Stack(
-            children: [
-              CampaignCoverImage(
-                campaign: c,
-                height: _coverHeight,
-                borderRadius: BorderRadius.zero,
-              ),
-              if (c.isPoolAlmostFull)
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: vc.warning,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'FILLING FAST',
-                      style: GoogleFonts.inter(
-                        fontSize: 8,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        height: 1,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(26),
+          child: AspectRatio(
+            aspectRatio: 16 / 10,
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                Text(
-                  c.title,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: vc.onSurface,
-                    height: 1.15,
+                CampaignCoverImage(
+                    campaign: c, borderRadius: BorderRadius.zero),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.0, 0.5, 0.78, 1.0],
+                      colors: [
+                        Colors.black.withValues(alpha: 0.0),
+                        Colors.black.withValues(alpha: 0.18),
+                        Colors.black.withValues(alpha: 0.78),
+                        Colors.black.withValues(alpha: 0.94),
+                      ],
+                    ),
                   ),
                 ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: vc.muted,
-                      height: 1.2,
-                    ),
+                Positioned(
+                  left: 18,
+                  right: 18,
+                  bottom: 18,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (c.isPoolAlmostFull) ...[
+                        Row(
+                          children: [
+                            _PillBadge(
+                              label: 'FILLING FAST',
+                              color: vc.warning,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      Text(
+                        c.title.toUpperCase(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          height: 1.1,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-                const SizedBox(height: 10),
-                _StatStrip(campaign: c),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: CampaignPoolBar(
-                        poolPercent: c.poolPercent,
-                        minHeight: 4,
-                        showLabels: false,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${c.poolPercent}% filled',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: vc.muted,
-                      ),
-                    ),
-                  ],
                 ),
-                if (startLabel != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    startLabel,
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: vc.muted,
-                    ),
-                  ),
-                ],
-                if (statusBanner != null) ...[
-                  const SizedBox(height: 8),
-                  statusBanner,
-                ],
-                if (participationBanner != null) ...[
-                  const SizedBox(height: 8),
-                  participationBanner,
-                ],
               ],
             ),
           ),
+        ),
+        const SizedBox(height: 14),
+        _StatsCard(campaign: c, startLabel: startLabel, poolColor: poolColor),
+        const SizedBox(height: 12),
+        _PlatformCard(platform: c.platform, platformLabel: c.platformLabel),
+        if (statusBanner != null) ...[
+          const SizedBox(height: 10),
+          statusBanner,
         ],
-      ),
+      ],
     );
   }
 
@@ -498,55 +427,140 @@ class _CompactHero extends StatelessWidget {
     }
     return null;
   }
+}
 
-  Widget? _participationBanner(Participation? p, HalchalColors vc) {
-    if (p == null) return null;
-    final primary = vc.primary;
-    final (message, color, icon) = switch (p.summary) {
-      'joined' => (
-          'Joined — complete your submission',
-          primary,
-          Icons.check_circle_outline,
-        ),
-      'drafts_incomplete' => (
-          'Draft in progress — tap Continue below',
-          primary,
-          Icons.edit_outlined,
-        ),
-      'in_review' => (
-          'In review — tap to view submission',
-          vc.muted,
-          Icons.hourglass_top_outlined,
-        ),
-      'action_required' => (
-          'Action required — update your submission',
-          vc.warning,
-          Icons.error_outline,
-        ),
-      'proof_complete' => (
-          'Proof submitted — tap to view',
-          vc.money,
-          Icons.verified_outlined,
-        ),
-      'closed' => (
-          'Your participation is closed',
-          vc.muted,
-          Icons.lock_outline,
-        ),
-      _ => (
-          'View your submission',
-          vc.muted,
-          Icons.inbox_outlined,
-        ),
-    };
-    return _StatusBanner(message: message, color: color, icon: icon);
+({String asset, Color color})? _brandMark(String platform) {
+  final p = platform.toLowerCase();
+  if (p.contains('instagram')) {
+    return (
+      asset: 'assets/images/platform_instagram.svg',
+      color: const Color(0xFFE4405F)
+    );
+  }
+  if (p.contains('youtube')) {
+    return (
+      asset: 'assets/images/platform_youtube.svg',
+      color: const Color(0xFFFF0000)
+    );
+  }
+  if (p.contains('twitter') || p.contains('tweet') || p == 'x') {
+    return (asset: 'assets/images/platform_x.svg', color: Colors.black);
+  }
+  return null;
+}
+
+class _PlatformCard extends StatelessWidget {
+  const _PlatformCard({required this.platform, required this.platformLabel});
+
+  final String platform;
+  final String platformLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final vc = HalchalColors.of(context);
+    final brand = _brandMark(platform);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: vc.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: vc.primary.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            padding: EdgeInsets.all(brand != null ? 8 : 0),
+            decoration: BoxDecoration(
+              color: brand?.color ?? vc.primary,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: brand != null
+                ? SvgPicture.asset(
+                    brand.asset,
+                    colorFilter:
+                        const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  )
+                : const Icon(
+                    Icons.video_camera_back_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'PLATFORM & FORMAT',
+                  style: GoogleFonts.inter(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: vc.muted,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  platformLabel,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: vc.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
-class _StatStrip extends StatelessWidget {
-  const _StatStrip({required this.campaign});
+class _PillBadge extends StatelessWidget {
+  const _PillBadge({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.4,
+          color: Colors.white,
+          height: 1,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatsCard extends StatelessWidget {
+  const _StatsCard({
+    required this.campaign,
+    required this.startLabel,
+    required this.poolColor,
+  });
 
   final Campaign campaign;
+  final String? startLabel;
+  final Color poolColor;
 
   @override
   Widget build(BuildContext context) {
@@ -554,114 +568,202 @@ class _StatStrip extends StatelessWidget {
     final c = campaign;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: vc.surfaceVariant.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(10),
+        color: vc.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: vc.border),
       ),
-      child: IntrinsicHeight(
-        child: Row(
-          children: [
-            Expanded(
-              child: _StatCell(
-                icon: Icons.trending_up_rounded,
-                label: 'Rate / 1K',
-                value: c.ratePer1kDisplay,
-                valueColor: vc.money,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'MAX PAYOUT',
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                        color: vc.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      formatPaise(c.maxPayoutPaise),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: vc.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: vc.money.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        c.ratePer1kDisplay,
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: vc.money,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            VerticalDivider(width: 1, color: vc.border.withValues(alpha: 0.6)),
-            Expanded(
-              child: _StatCell(
-                icon: Icons.payments_rounded,
-                label: 'Max payout',
-                value: formatPaise(c.maxPayoutPaise),
-                valueColor: vc.money,
-                alignEnd: true,
+              const SizedBox(width: 12),
+              _PoolRing(percent: c.poolPercent, color: poolColor),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Divider(height: 1, color: vc.border),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              if (startLabel != null)
+                Expanded(
+                  child: _MetaItem(
+                    icon: Icons.event_rounded,
+                    label: 'STARTS',
+                    value: startLabel!,
+                  ),
+                ),
+              Expanded(
+                child: _MetaItem(
+                  icon: Icons.sell_rounded,
+                  label: 'CATEGORY',
+                  value:
+                      c.category?.isNotEmpty == true ? c.category! : 'General',
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-class _StatCell extends StatelessWidget {
-  const _StatCell({
+class _PoolRing extends StatelessWidget {
+  const _PoolRing({required this.percent, required this.color});
+
+  final int percent;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final vc = HalchalColors.of(context);
+    return SizedBox(
+      width: 76,
+      height: 76,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox(
+            width: 76,
+            height: 76,
+            child: CircularProgressIndicator(
+              value: (percent / 100).clamp(0.0, 1.0),
+              strokeWidth: 7,
+              strokeCap: StrokeCap.round,
+              backgroundColor: vc.border,
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$percent%',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: vc.onSurface,
+                ),
+              ),
+              Text(
+                'filled',
+                style: GoogleFonts.inter(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  color: vc.muted,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetaItem extends StatelessWidget {
+  const _MetaItem({
     required this.icon,
     required this.label,
     required this.value,
-    required this.valueColor,
-    this.alignEnd = false,
   });
 
   final IconData icon;
   final String label;
   final String value;
-  final Color valueColor;
-  final bool alignEnd;
 
   @override
   Widget build(BuildContext context) {
     final vc = HalchalColors.of(context);
-    final alignment =
-        alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: Column(
-        crossAxisAlignment: alignment,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
+    return Row(
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: vc.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Icon(icon, size: 15, color: vc.primary),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (alignEnd) ...[
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: vc.muted,
-                    height: 1.1,
-                  ),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                  color: vc.muted,
                 ),
-                const SizedBox(width: 4),
-                Icon(icon, size: 11, color: vc.muted),
-              ] else ...[
-                Icon(icon, size: 11, color: vc.muted),
-                const SizedBox(width: 4),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: vc.muted,
-                    height: 1.1,
-                  ),
+              ),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: vc.onSurface,
                 ),
-              ],
+              ),
             ],
           ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: alignEnd ? TextAlign.end : TextAlign.start,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: valueColor,
-              height: 1.1,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -681,10 +783,11 @@ class _StatusBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
@@ -707,162 +810,85 @@ class _StatusBanner extends StatelessWidget {
   }
 }
 
-class _DarkStatsBar extends StatelessWidget {
-  const _DarkStatsBar({required this.campaign});
+// ─── Shared section pieces ──────────────────────────────────────────────────
 
-  final Campaign campaign;
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.label);
 
-  @override
-  Widget build(BuildContext context) {
-    final c = campaign;
-    final poolUsed = c.poolPercent;
-    final poolColor = poolUsed >= 80
-        ? const Color(0xFFF59E0B)
-        : poolUsed >= 50
-            ? const Color(0xFFF59E0B)
-            : const Color(0xFF22C55E);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-      decoration: BoxDecoration(
-        color: HalchalColors.of(context).deepSurface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          children: [
-            Expanded(
-              child: _DarkStatCell(
-                icon: Icons.payments_rounded,
-                label: 'Max payout',
-                value: formatPaise(c.maxPayoutPaise),
-                valueColor: const Color(0xFF22C55E),
-              ),
-            ),
-            VerticalDivider(
-              width: 1,
-              thickness: 1,
-              color: Colors.white.withValues(alpha: 0.12),
-            ),
-            Expanded(
-              child: _DarkStatCell(
-                icon: Icons.donut_small_rounded,
-                label: 'Pool used',
-                value: '$poolUsed%',
-                valueColor: poolColor,
-              ),
-            ),
-            if (c.category != null && c.category!.isNotEmpty) ...[
-              VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: Colors.white.withValues(alpha: 0.12),
-              ),
-              Expanded(
-                child: _DarkStatCell(
-                  icon: Icons.category_rounded,
-                  label: 'Category',
-                  value: c.category!,
-                  valueColor: Colors.white,
-                  bold: true,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DarkStatCell extends StatelessWidget {
-  const _DarkStatCell({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.valueColor,
-    this.bold = false,
-  });
-
-  final IconData icon;
   final String label;
-  final String value;
-  final Color valueColor;
-  final bool bold;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+    final vc = HalchalColors.of(context);
+    return Row(
       children: [
-        Text(
-          value,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 16,
-            fontWeight: bold ? FontWeight.w800 : FontWeight.w700,
-            color: valueColor,
-            height: 1.1,
+        Container(
+          width: 3,
+          height: 13,
+          decoration: BoxDecoration(
+            color: vc.primary,
+            borderRadius: BorderRadius.circular(2),
           ),
         ),
-        const SizedBox(height: 4),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 11, color: Colors.white.withValues(alpha: 0.5)),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                color: Colors.white.withValues(alpha: 0.5),
-                height: 1.1,
-              ),
-            ),
-          ],
+        const SizedBox(width: 8),
+        Text(
+          label.toUpperCase(),
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+            color: vc.onSurface,
+          ),
         ),
       ],
     );
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
+class _BriefCard extends StatelessWidget {
+  const _BriefCard({required this.text});
 
   final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: GoogleFonts.plusJakartaSans(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        height: 1.2,
-        color: HalchalColors.of(context).onSurface,
-      ),
-    );
-  }
-}
-
-class _SurfaceBlock extends StatelessWidget {
-  const _SurfaceBlock({required this.child});
-
-  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final vc = HalchalColors.of(context);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
         color: vc.surface,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: vc.border),
       ),
-      child: child,
+      child: Stack(
+        children: [
+          Positioned(
+            top: -10,
+            right: -2,
+            child: Text(
+              '”',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 64,
+                fontWeight: FontWeight.w900,
+                color: vc.primary.withValues(alpha: 0.12),
+                height: 1,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 24),
+            child: Text(
+              text,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                height: 1.5,
+                color: vc.onSurface,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -887,10 +913,10 @@ class _RuleCard extends StatelessWidget {
     final vc = HalchalColors.of(context);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Column(
@@ -956,33 +982,43 @@ class _LinkRow extends StatelessWidget {
     required this.icon,
     required this.onTap,
     this.subtitle,
+    this.iconColor,
   });
 
   final String label;
   final String? subtitle;
   final IconData icon;
+  final Color? iconColor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final vc = HalchalColors.of(context);
-    final primary = Theme.of(context).colorScheme.primary;
+    final primary = iconColor ?? Theme.of(context).colorScheme.primary;
 
     return Material(
       color: vc.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: vc.border),
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              Icon(icon, color: primary, size: 18),
-              const SizedBox(width: 8),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(icon, color: primary, size: 17),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -993,7 +1029,7 @@ class _LinkRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.inter(
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         color: vc.onSurface,
                       ),
                     ),
@@ -1012,7 +1048,7 @@ class _LinkRow extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, size: 18, color: vc.muted),
+              Icon(Icons.chevron_right_rounded, size: 20, color: vc.muted),
             ],
           ),
         ),
@@ -1074,128 +1110,7 @@ class _FullScreenImageViewer extends StatelessWidget {
   }
 }
 
-class _FullScreenVideoPlayer extends StatefulWidget {
-  const _FullScreenVideoPlayer({required this.url});
-
-  final String url;
-
-  @override
-  State<_FullScreenVideoPlayer> createState() =>
-      _FullScreenVideoPlayerState();
-}
-
-class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
-  late final VideoPlayerController _controller;
-  bool _failed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-      ..initialize().then((_) {
-        if (!mounted) return;
-        setState(() {});
-        _controller.play();
-      }).catchError((_) {
-        if (mounted) setState(() => _failed = true);
-      });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _togglePlayback() {
-    setState(() {
-      _controller.value.isPlaying ? _controller.pause() : _controller.play();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              behavior: HitTestBehavior.opaque,
-            ),
-          ),
-          Center(
-            child: _failed
-                ? const Icon(
-                    Icons.error_outline,
-                    color: Colors.white54,
-                    size: 64,
-                  )
-                : _controller.value.isInitialized
-                    ? GestureDetector(
-                        onTap: _togglePlayback,
-                        child: AspectRatio(
-                          aspectRatio: _controller.value.aspectRatio,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              VideoPlayer(_controller),
-                              if (!_controller.value.isPlaying)
-                                Container(
-                                  padding: const EdgeInsets.all(14),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.black45,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.play_arrow_rounded,
-                                    color: Colors.white,
-                                    size: 36,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : const CircularProgressIndicator(),
-          ),
-          if (_controller.value.isInitialized)
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: MediaQuery.of(context).padding.bottom + 16,
-              child: VideoProgressIndicator(
-                _controller,
-                allowScrubbing: true,
-                padding: EdgeInsets.zero,
-                colors: const VideoProgressColors(
-                  playedColor: Colors.white,
-                  bufferedColor: Colors.white30,
-                  backgroundColor: Colors.white12,
-                ),
-              ),
-            ),
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            right: 12,
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
-                  color: Colors.black54,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.close, color: Colors.white, size: 20),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// ─── How it works: horizontal mini cards ────────────────────────────────────
 
 class _HowToParticipate extends StatelessWidget {
   const _HowToParticipate({required this.campaign});
@@ -1203,155 +1118,105 @@ class _HowToParticipate extends StatelessWidget {
 
   static const _steps = [
     (
-      num: '01',
-      icon: Icons.videocam_rounded,
-      title: 'Create your clip',
-      subtitle: 'Film content that matches the campaign brief',
+      icon: Icons.edit_note_rounded,
+      title: 'Apply',
       accent: Color(0xFF7C3AED),
-      accentDim: Color(0x267C3AED),
     ),
     (
-      num: '02',
-      icon: Icons.upload_file_rounded,
-      title: 'Submit for review',
-      subtitle: 'Upload your draft and wait for brand approval',
+      icon: Icons.videocam_rounded,
+      title: 'Create',
       accent: Color(0xFF4F46E5),
-      accentDim: Color(0x264F46E5),
     ),
     (
-      num: '03',
-      icon: Icons.wifi_tethering_rounded,
-      title: 'Go live & post',
-      subtitle: 'Publish your clip on social media',
+      icon: Icons.upload_file_rounded,
+      title: 'Submit',
       accent: Color(0xFF0EA5E9),
-      accentDim: Color(0x260EA5E9),
     ),
     (
-      num: '04',
-      icon: Icons.paid_rounded,
-      title: 'Earn per view',
-      subtitle: 'Get paid automatically as views roll in',
+      icon: Icons.payments_rounded,
+      title: 'Get paid',
       accent: Color(0xFF10B981),
-      accentDim: Color(0x2610B981),
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final vc = Theme.of(context).extension<HalchalColors>()!;
+    final vc = HalchalColors.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 3,
-              height: 13,
-              decoration: BoxDecoration(
-                color: vc.primary,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'HOW IT WORKS',
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.4,
-                color: vc.onSurface,
-              ),
-            ),
-          ],
+        const _SectionHeader('How it works'),
+        const SizedBox(height: 4),
+        Text(
+          'Your journey from application to payment',
+          style: GoogleFonts.inter(fontSize: 12, color: vc.muted),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(child: _StepCard(step: _steps[0], vc: vc, index: 0)),
-            const SizedBox(width: 9),
-            Expanded(child: _StepCard(step: _steps[1], vc: vc, index: 1)),
-          ],
-        ),
-        const SizedBox(height: 9),
-        Row(
-          children: [
-            Expanded(child: _StepCard(step: _steps[2], vc: vc, index: 2)),
-            const SizedBox(width: 9),
-            Expanded(child: _StepCard(step: _steps[3], vc: vc, index: 3)),
-          ],
+        SizedBox(
+          height: 118,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: _steps.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, i) =>
+                _MiniStepCard(step: _steps[i], index: i),
+          ),
         ),
       ],
     );
   }
 }
 
-class _StepCard extends StatelessWidget {
-  const _StepCard({required this.step, required this.vc, required this.index});
+class _MiniStepCard extends StatelessWidget {
+  const _MiniStepCard({required this.step, required this.index});
 
-  final ({
-    String num,
-    IconData icon,
-    String title,
-    String subtitle,
-    Color accent,
-    Color accentDim,
-  }) step;
-  final HalchalColors vc;
+  final ({IconData icon, String title, Color accent}) step;
   final int index;
 
   @override
   Widget build(BuildContext context) {
+    final vc = HalchalColors.of(context);
     return Container(
-      padding: const EdgeInsets.all(13),
+      width: 112,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: vc.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: vc.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: step.accentDim,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(step.icon, color: step.accent, size: 18),
-              ),
-              Text(
-                step.num,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: step.accent.withValues(alpha: 0.15),
-                  height: 1,
-                ),
-              ),
-            ],
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: step.accent.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(step.icon, color: step.accent, size: 17),
           ),
-          const SizedBox(height: 10),
+          const Spacer(),
           Text(
-            step.title,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
+            '0${index + 1}',
+            style: GoogleFonts.inter(
+              fontSize: 10,
               fontWeight: FontWeight.w800,
-              color: vc.onSurface,
-              height: 1.25,
+              letterSpacing: 0.6,
+              color: step.accent,
             ),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 2),
           Text(
-            step.subtitle,
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              color: vc.muted,
-              height: 1.35,
+            step.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w800,
+              color: vc.onSurface,
             ),
           ),
         ],
@@ -1363,186 +1228,62 @@ class _StepCard extends StatelessWidget {
   }
 }
 
-/// Placeholder copy — mechanics are approximately right (matches the review →
-/// payout → withdrawal pipeline) but exact timings are illustrative and
-/// should be corrected once the real SLAs are confirmed.
-class _CashFlowSection extends StatefulWidget {
-  const _CashFlowSection({required this.campaign});
-  final Campaign campaign;
+// ─── Trust banner ────────────────────────────────────────────────────────────
 
-  @override
-  State<_CashFlowSection> createState() => _CashFlowSectionState();
-}
-
-class _CashFlowSectionState extends State<_CashFlowSection> {
-  bool _expanded = false;
-
-  List<({IconData icon, String title, String subtitle})> _steps(
-    HalchalColors vc,
-  ) {
-    final c = widget.campaign;
-    final rate = formatPaise(c.ratePer1kPaise);
-    final cap = formatPaise(c.maxPayoutPaise);
-    return [
-      (
-        icon: Icons.visibility_outlined,
-        title: 'Views are tracked',
-        subtitle: 'Once your clip is live, we track valid views on your post automatically.',
-      ),
-      (
-        icon: Icons.fact_check_outlined,
-        title: 'Proof gets verified',
-        subtitle: 'Our team checks your live post and view count before anything is approved.',
-      ),
-      (
-        icon: Icons.hourglass_top_rounded,
-        title: 'Earnings move to Pending',
-        subtitle: 'You earn $rate per 1,000 views, up to $cap for this campaign. Approved earnings show as "Pending" first.',
-      ),
-      (
-        icon: Icons.check_circle_outline_rounded,
-        title: 'Pending becomes Available',
-        subtitle: 'Once payout is processed, the amount moves from "Pending" to "Available" in your wallet.',
-      ),
-      (
-        icon: Icons.account_balance_outlined,
-        title: 'Withdraw to your bank',
-        subtitle: 'Withdraw any available balance to your bank account. A small platform fee applies.',
-      ),
-    ];
-  }
+class _TrustBanner extends StatelessWidget {
+  const _TrustBanner();
 
   @override
   Widget build(BuildContext context) {
     final vc = HalchalColors.of(context);
-    final steps = _steps(vc);
-
     return Container(
       width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: vc.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: vc.border),
+        color: vc.deepSurface,
+        borderRadius: BorderRadius.circular(20),
       ),
-      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  Icon(Icons.payments_outlined, size: 18, color: vc.money),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'How you get paid',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: vc.onSurface,
-                      ),
-                    ),
-                  ),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(Icons.keyboard_arrow_down_rounded, color: vc.muted),
-                  ),
-                ],
-              ),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: vc.primary.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.verified_user_rounded,
+              color: vc.primary,
+              size: 22,
             ),
           ),
-          AnimatedCrossFade(
-            duration: const Duration(milliseconds: 200),
-            crossFadeState:
-                _expanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
-            firstChild: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-              child: Column(
-                children: [
-                  for (var i = 0; i < steps.length; i++)
-                    _CashFlowStepRow(
-                      step: steps[i],
-                      vc: vc,
-                      isLast: i == steps.length - 1,
-                    ),
-                ],
+          const SizedBox(height: 12),
+          RichText(
+            textAlign: TextAlign.center,
+            text: TextSpan(
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
               ),
+              children: [
+                TextSpan(
+                  text: 'Fair. ',
+                  style: TextStyle(color: vc.primaryVariant),
+                ),
+                const TextSpan(text: 'Transparent. Creator First.'),
+              ],
             ),
-            secondChild: const SizedBox(width: double.infinity),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CashFlowStepRow extends StatelessWidget {
-  const _CashFlowStepRow({
-    required this.step,
-    required this.vc,
-    required this.isLast,
-  });
-
-  final ({IconData icon, String title, String subtitle}) step;
-  final HalchalColors vc;
-  final bool isLast;
-
-  @override
-  Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Column(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: vc.primary.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(step.icon, size: 15, color: vc.primary),
-              ),
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 1.5,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: vc.border,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 16, top: 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    step.title,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: vc.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    step.subtitle,
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      height: 1.4,
-                      color: vc.muted,
-                    ),
-                  ),
-                ],
-              ),
+          const SizedBox(height: 8),
+          Text(
+            'We value your time and creativity. Payments are processed securely and on time.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              color: Colors.white.withValues(alpha: 0.65),
+              height: 1.5,
             ),
           ),
         ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/halchal_colors.dart';
 import '../format/money_format.dart';
@@ -37,7 +38,7 @@ class EarningsEstimatorCard extends StatelessWidget {
               Icon(Icons.trending_up_rounded, size: 16, color: vc.primary),
               const SizedBox(width: 6),
               Text('What could you earn?',
-                  style: TextStyle(
+                  style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: vc.onSurface)),
@@ -99,7 +100,7 @@ class _EstimateTile extends StatelessWidget {
         children: [
           Text(
             formatPaise(paise),
-            style: TextStyle(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: 15,
               fontWeight: FontWeight.w800,
               color: vc.money,
@@ -108,7 +109,7 @@ class _EstimateTile extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             _viewsLabel,
-            style: TextStyle(fontSize: 10, color: vc.muted),
+            style: GoogleFonts.inter(fontSize: 10, color: vc.muted),
           ),
         ],
       ),

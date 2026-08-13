@@ -43,6 +43,11 @@ abstract final class HalchalTheme {
         backgroundColor: vc.background,
         foregroundColor: vc.onSurface,
         elevation: 0,
+        titleTextStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: vc.onSurface,
+        ),
       ),
       cardTheme: CardThemeData(
         color: vc.surface,
