@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 
 import '../auth/auth_storage.dart';
@@ -155,8 +157,10 @@ class ApiClient {
     options.extra[ApiRequestExtra.isRetry] = true;
     options.headers['Authorization'] = 'Bearer ${session.accessToken}';
     try {
-      return await _dio.fetch<dynamic>(options);
+      return await _dio.fetch<dynamic>(options).timeout(_requestDeadline);
     } on DioException {
+      return null;
+    } on TimeoutException {
       return null;
     }
   }
@@ -187,11 +191,13 @@ class ApiClient {
     }
 
     try {
-      final response = await _dio.post<dynamic>(
-        '/auth/refresh',
-        data: {'refreshToken': refresh},
-        options: _options(auth: false, skipRefresh: true),
-      );
+      final response = await _dio
+          .post<dynamic>(
+            '/auth/refresh',
+            data: {'refreshToken': refresh},
+            options: _options(auth: false, skipRefresh: true),
+          )
+          .timeout(_requestDeadline);
       final session = await _parse(
         response,
         (data) => AuthSession.fromJson(data as Map<String, dynamic>),
@@ -204,11 +210,18 @@ class ApiClient {
     }
   }
 
+  /// Hard backstop so no request can hang indefinitely regardless of cause
+  /// (Dio's own connect/receive timeouts don't cover time spent stuck
+  /// earlier — e.g. inside an interceptor — before the request is sent).
+  static const _requestDeadline = Duration(seconds: 45);
+
   Future<Response<dynamic>> _request(Future<Response<dynamic>> Function() call) async {
     try {
-      return await call();
+      return await call().timeout(_requestDeadline);
     } on DioException catch (e) {
       throw _mapDioError(e);
+    } on TimeoutException {
+      throw ApiException('TIMEOUT', 'Request timed out. Please try again.');
     }
   }
 
