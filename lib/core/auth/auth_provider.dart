@@ -30,7 +30,19 @@ class AuthNotifier extends StateNotifier<AuthStatus> {
   final Ref _ref;
 
   Future<void> _init() async {
-    final token = await _ref.read(authStorageProvider).getAccessToken();
+    // Keychain reads can hang on iOS (observed after switching signing
+    // identities between builds) — the splash screen polls this state
+    // indefinitely, so an unbounded read here means an infinite spinner.
+    // Fall back to unauthed rather than block the app from ever loading.
+    String? token;
+    try {
+      token = await _ref
+          .read(authStorageProvider)
+          .getAccessToken()
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      token = null;
+    }
     state = token != null ? AuthStatus.authed : AuthStatus.unauthed;
   }
 
