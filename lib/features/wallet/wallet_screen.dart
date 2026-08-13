@@ -90,46 +90,13 @@ class _BalanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row: label + View analytics button
-          Row(
-            children: [
-              Text(
-                'Total earned',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white60,
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: onViewClips,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white24),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.bar_chart_rounded, size: 14, color: Colors.white70),
-                      const SizedBox(width: 5),
-                      Text(
-                        'View analytics',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white70,
-                        ),
-                      ),
-                      const SizedBox(width: 3),
-                      const Icon(Icons.chevron_right_rounded, size: 14, color: Colors.white54),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            'Total earned',
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.white60,
+            ),
           ),
           const SizedBox(height: 10),
           // Large total earned amount

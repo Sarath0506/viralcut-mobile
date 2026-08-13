@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/layout/app_spacing.dart';
 import '../../core/layout/list_entrance.dart';
@@ -90,7 +91,7 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen>
                     _tab == 'completed'
                         ? 'No completed submissions yet'
                         : 'No active submissions yet',
-                    style: TextStyle(color: vc.muted),
+                    style: GoogleFonts.inter(color: vc.muted),
                   ),
                 );
               }

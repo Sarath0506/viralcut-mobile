@@ -1,4 +1,6 @@
+
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -14,25 +16,13 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen>
-    with TickerProviderStateMixin {
+class _OnboardingScreenState extends State<OnboardingScreen> {
   final _pageController = PageController();
   int _page = 0;
-  late final AnimationController _floatController;
-
-  @override
-  void initState() {
-    super.initState();
-    _floatController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2800),
-    )..repeat(reverse: true);
-  }
 
   @override
   void dispose() {
     _pageController.dispose();
-    _floatController.dispose();
     super.dispose();
   }
 
@@ -102,7 +92,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   controller: _pageController,
                   onPageChanged: (i) => setState(() => _page = i),
                   children: [
-                    _WalletOnboardingSlide(floatAnimation: _floatController),
+                    const _WalletOnboardingSlide(),
                     const _MarketplaceOnboardingSlide(),
                   ],
                 ),
@@ -202,42 +192,20 @@ class _PageDots extends StatelessWidget {
 // ─── Slide 1: Wallet / earnings ─────────────────────────────────────────────
 
 class _WalletOnboardingSlide extends StatelessWidget {
-  const _WalletOnboardingSlide({required this.floatAnimation});
-
-  final Animation<double> floatAnimation;
+  const _WalletOnboardingSlide();
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-
-    return Column(
+    return const Column(
       children: [
         Expanded(
           child: Center(
-            child: AnimatedBuilder(
-              animation: floatAnimation,
-              builder: (context, child) {
-                final dy = (floatAnimation.value - 0.5) * 12;
-                return Transform.translate(offset: Offset(0, dy), child: child);
-              },
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 220,
-                    height: 220,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: primary.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  _PurpleCardMockup(),
-                ],
-              ),
+            child: _IllustratedHero(
+              assetPath: 'assets/images/onboarding_hero.svg',
             ),
           ),
         ),
-        const _OnboardingTextBlock(
+        _OnboardingTextBlock(
           title: 'Post clips.\nGet paid.',
           titleHighlight: 'Get paid.',
           subtitle:
@@ -248,238 +216,136 @@ class _WalletOnboardingSlide extends StatelessWidget {
   }
 }
 
-class _PurpleCardMockup extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final vc = HalchalColors.of(context);
-    return Container(
-      width: 160,
-      height: 200,
-      decoration: BoxDecoration(
-        color: vc.primary,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.black, width: 3),
-        boxShadow: [
-          BoxShadow(
-            color: vc.primary.withValues(alpha: 0.35),
-            blurRadius: 28,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Image.asset(
-            'assets/images/halchal_logo.png',
-            width: 110,
-            color: Colors.white,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '₹35,170',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withValues(alpha: 0.9),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+/// Shared onboarding hero: a licensed, professionally illustrated scene
+/// (unDraw), tinted to the brand purple, with a soft ambient glow, a
+/// one-time entrance reveal, and a slow continuous float. Reused across
+/// slides with a different [assetPath] so every slide gets the same
+/// polish instead of one-off hand-built illustrations.
+class _IllustratedHero extends StatefulWidget {
+  const _IllustratedHero({required this.assetPath});
 
-// ─── Slide 2: Campaign marketplace ──────────────────────────────────────────
-
-class _MarketplaceOnboardingSlide extends StatefulWidget {
-  const _MarketplaceOnboardingSlide();
+  final String assetPath;
 
   @override
-  State<_MarketplaceOnboardingSlide> createState() =>
-      _MarketplaceOnboardingSlideState();
+  State<_IllustratedHero> createState() => _IllustratedHeroState();
 }
 
-class _MarketplaceOnboardingSlideState
-    extends State<_MarketplaceOnboardingSlide>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _stagger;
+class _IllustratedHeroState extends State<_IllustratedHero>
+    with TickerProviderStateMixin {
+  late final AnimationController _float;
+  late final AnimationController _breathe;
+  late final AnimationController _reveal;
 
   @override
   void initState() {
     super.initState();
-    _stagger = AnimationController(
+    _float = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 3000),
+    )..repeat(reverse: true);
+    _breathe = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3400),
+    )..repeat(reverse: true);
+    _reveal = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 750),
     )..forward();
   }
 
   @override
   void dispose() {
-    _stagger.dispose();
+    _float.dispose();
+    _breathe.dispose();
+    _reveal.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final vc = HalchalColors.of(context);
+
+    return SizedBox(
+      width: 320,
+      height: 260,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          // Ambient breathing glow behind the illustration.
+          AnimatedBuilder(
+            animation: _breathe,
+            builder: (context, child) => Transform.scale(
+              scale: 1.0 + 0.05 * _breathe.value,
+              child: child,
+            ),
+            child: Container(
+              width: 300,
+              height: 220,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(160),
+                gradient: RadialGradient(
+                  colors: [
+                    vc.primary.withValues(alpha: 0.30),
+                    vc.primary.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Illustration: pops in on mount, then floats gently forever.
+          AnimatedBuilder(
+            animation: Listenable.merge([_float, _reveal]),
+            builder: (context, child) {
+              final reveal = Curves.easeOutBack.transform(_reveal.value);
+              return Opacity(
+                opacity: _reveal.value,
+                child: Transform.translate(
+                  offset: Offset(
+                    0,
+                    (_float.value - 0.5) * 10 + (1 - reveal) * 24,
+                  ),
+                  child: Transform.scale(
+                    scale: 0.9 + 0.1 * reveal,
+                    child: child,
+                  ),
+                ),
+              );
+            },
+            child: SvgPicture.asset(
+              widget.assetPath,
+              width: 300,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+// ─── Slide 2: Campaign marketplace ──────────────────────────────────────────
+
+class _MarketplaceOnboardingSlide extends StatelessWidget {
+  const _MarketplaceOnboardingSlide();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
       children: [
         Expanded(
           child: Center(
-            child: _StackedCampaignCards(stagger: _stagger),
+            child: _IllustratedHero(
+              assetPath: 'assets/images/onboarding_hero_marketplace.svg',
+            ),
           ),
         ),
-        const _OnboardingTextBlock(
+        _OnboardingTextBlock(
           title: 'Pick any\nbrand campaign',
           subtitle:
               'Browse live campaigns from top Indian brands.\nChoose what fits your audience.',
         ),
       ],
-    );
-  }
-}
-
-class _StackedCampaignCards extends StatelessWidget {
-  const _StackedCampaignCards({required this.stagger});
-
-  final Animation<double> stagger;
-
-  static final _cards = [
-    (brand: 'boAt',  label: 'Live campaign', amount: '₹50', icon: Icons.headphones,  iconColor: const Color(0xFF6B7280), iconBg: const Color(0xFFF3F4F6)),
-    (brand: 'Zepto', label: 'Live campaign', amount: '₹60', icon: Icons.bolt,         iconColor: const Color(0xFFF59E0B), iconBg: const Color(0xFFFEF3C7)),
-    (brand: 'CRED',  label: 'Live campaign', amount: '₹45', icon: Icons.credit_card, iconColor: const Color(0xFF6B7280), iconBg: const Color(0xFFF3F4F6)),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 300,
-      height: 200,
-      child: Stack(
-        alignment: Alignment.center,
-        children: List.generate(_cards.length, (i) {
-          final card = _cards[i];
-          final angle = (i - 1) * 0.10;
-          final dy = (i - 1) * 18.0;
-          final scale = 0.84 + (i == 1 ? 0.16 : i == 0 ? 0.08 : 0.04);
-
-          final anim = CurvedAnimation(
-            parent: stagger,
-            curve: Interval(i * 0.15, i * 0.15 + 0.55, curve: Curves.easeOut),
-          );
-
-          return FadeTransition(
-            opacity: anim,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: Offset(0, 0.12 * (i + 1)),
-                end: Offset.zero,
-              ).animate(anim),
-              child: Transform.translate(
-                offset: Offset(0, dy),
-                child: Transform.rotate(
-                  angle: angle,
-                  child: Transform.scale(
-                    scale: scale,
-                    child: _CampaignPreviewCard(
-                      brand: card.brand,
-                      label: card.label,
-                      amount: card.amount,
-                      icon: card.icon,
-                      iconColor: card.iconColor,
-                      iconBg: card.iconBg,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-}
-
-class _CampaignPreviewCard extends StatelessWidget {
-  const _CampaignPreviewCard({
-    required this.brand,
-    required this.label,
-    required this.amount,
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-  });
-
-  final String brand;
-  final String label;
-  final String amount;
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 272,
-      height: 68,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.10),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: iconBg,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 22, color: iconColor),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  brand,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF111827),
-                  ),
-                ),
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: const Color(0xFF9CA3AF),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            amount,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF16A34A),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
     );
   }
 }

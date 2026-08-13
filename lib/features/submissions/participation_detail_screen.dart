@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,7 +12,6 @@ import 'submission_providers.dart';
 import '../../core/campaign/platform_labels.dart';
 import '../../core/participation/participation_status_labels.dart';
 import '../../core/participation/rejection_history.dart';
-import '../../core/widgets/status_pill.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 
@@ -133,8 +133,6 @@ class _ParticipationDetailScreenState
                         });
                       },
                       onSubmitLiveProof: (url) => _submitLiveProof(d.id, url),
-                      onRefreshed: () => ref
-                          .invalidate(participationDetailProvider(widget.id)),
                       vc: vc,
                     ),
                   ),
@@ -148,12 +146,6 @@ class _ParticipationDetailScreenState
   }
 }
 
-String _formatViewCount(int v) {
-  if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';
-  if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}K';
-  return '$v';
-}
-
 class _CampaignSummaryCard extends StatelessWidget {
   const _CampaignSummaryCard({required this.participation, required this.vc});
 
@@ -162,83 +154,68 @@ class _CampaignSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalViews =
-        participation.deliverables.fold<int>(0, (sum, d) => sum + d.viewCount);
     final joined = DateFormat('d MMM yyyy')
         .format(DateTime.parse(participation.joinedAt).toLocal());
+    final subtitle = participation.creatorProfile != null
+        ? '@${participation.creatorProfile!.handle}'
+        : participation.campaign.title;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: vc.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: vc.border),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             child: participation.campaign.brandLogoUrl != null
                 ? Image.network(
                     participation.campaign.brandLogoUrl!,
-                    width: 44,
-                    height: 44,
+                    width: 56,
+                    height: 56,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => _brandFallbackIcon(),
                   )
                 : _brandFallbackIcon(),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   participation.campaign.displayBrand,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: vc.onSurface,
                   ),
                 ),
+                const SizedBox(height: 3),
                 Text(
-                  participation.campaign.title,
+                  subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(fontSize: 12, color: vc.muted),
+                  style: GoogleFonts.inter(fontSize: 13, color: vc.muted),
                 ),
-                if (participation.creatorProfile != null) ...[
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Icon(Icons.person_outline_rounded, size: 11, color: vc.muted),
-                      const SizedBox(width: 3),
-                      Text(
-                        'Submitted as @${participation.creatorProfile!.handle}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 4),
-                Row(
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    if (totalViews > 0) ...[
-                      Icon(Icons.visibility_outlined, size: 12, color: vc.muted),
-                      const SizedBox(width: 3),
-                      Text(
-                        _formatViewCount(totalViews),
-                        style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    Icon(Icons.calendar_today_outlined, size: 11, color: vc.muted),
-                    const SizedBox(width: 3),
-                    Text(
-                      'Joined $joined',
-                      style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
+                    _MetaPill(
+                      icon: Icons.calendar_today_outlined,
+                      label: 'Joined $joined',
+                      vc: vc,
+                    ),
+                    _MetaPill(
+                      icon: Icons.photo_camera_outlined,
+                      label: 'Creator',
+                      vc: vc,
                     ),
                   ],
                 ),
@@ -252,13 +229,48 @@ class _CampaignSummaryCard extends StatelessWidget {
 
   Widget _brandFallbackIcon() {
     return Container(
-      width: 44,
-      height: 44,
+      width: 56,
+      height: 56,
       decoration: BoxDecoration(
         color: vc.primary.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Icon(Icons.storefront_rounded, color: vc.primary, size: 22),
+      child: Icon(Icons.storefront_rounded, color: vc.primary, size: 26),
+    );
+  }
+}
+
+class _MetaPill extends StatelessWidget {
+  const _MetaPill({required this.icon, required this.label, required this.vc});
+
+  final IconData icon;
+  final String label;
+  final HalchalColors vc;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: vc.background,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: vc.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: vc.muted),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: vc.onSurface.withValues(alpha: 0.85),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -357,7 +369,6 @@ class _DeliverableSubmissionCard extends StatelessWidget {
     required this.historyExpanded,
     required this.onToggleHistory,
     required this.onSubmitLiveProof,
-    required this.onRefreshed,
     required this.vc,
   });
 
@@ -369,7 +380,6 @@ class _DeliverableSubmissionCard extends StatelessWidget {
   final bool historyExpanded;
   final VoidCallback onToggleHistory;
   final ValueChanged<String> onSubmitLiveProof;
-  final VoidCallback onRefreshed;
   final HalchalColors vc;
 
   @override
@@ -380,58 +390,423 @@ class _DeliverableSubmissionCard extends StatelessWidget {
     final showHistoryReadOnly =
         deliverable.rejectionHistory.isNotEmpty && !deliverable.isRejected;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: vc.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: vc.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  platformLabel,
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                    color: vc.onSurface,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(_platformIcon(deliverable.platform), size: 14, color: vc.muted),
+            const SizedBox(width: 6),
+            Text(
+              platformLabel.toUpperCase(),
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1,
+                color: vc.muted,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+
+        if (banner.headline.isNotEmpty)
+          _HeroBanner(
+            banner: banner,
+            status: deliverable.status,
+            tag: _tagLabel(deliverable.status),
+            vc: vc,
+          ),
+
+        if (priorEvents.isNotEmpty || showHistoryReadOnly) ...[
+          const SizedBox(height: 12),
+          InkWell(
+            onTap: onToggleHistory,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    historyExpanded ? Icons.expand_less : Icons.expand_more,
+                    size: 18,
+                    color: vc.muted,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    showHistoryReadOnly
+                        ? 'Rejection history (${deliverable.rejectionHistory.length})'
+                        : 'Previous feedback (${priorEvents.length})',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: vc.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (historyExpanded)
+            ...((showHistoryReadOnly ? deliverable.rejectionHistory : priorEvents)
+                .map(
+              (event) => Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: vc.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: vc.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.history_rounded, size: 12, color: vc.muted),
+                          const SizedBox(width: 4),
+                          Text(
+                            DateFormat.yMMMd().add_jm().format(
+                                  DateTime.parse(event.rejectedAt).toLocal(),
+                                ),
+                            style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        event.rejectionReason,
+                        style: GoogleFonts.inter(fontSize: 13, color: vc.onSurface),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              StatusPill(status: deliverable.status, useDeliverableLabels: true),
+            )),
+        ],
+
+        // Draft link — shown whenever a draft exists and proof hasn't been submitted yet
+        if (deliverable.draftDriveUrl != null && !deliverable.hasSubmittedProof) ...[
+          const SizedBox(height: 14),
+          _LinkRow(
+            label: deliverable.isRejected
+                ? 'Your rejected draft'
+                : deliverable.isUnderReview
+                    ? 'Your submitted draft'
+                    : 'Your approved draft',
+            url: deliverable.draftDriveUrl!,
+            color: banner.color,
+            vc: vc,
+            trailing: _shortSubmittedDate(deliverable.draftSubmittedAt),
+          ),
+        ],
+
+        // First-time draft submission (pending)
+        if (deliverable.isDraftPending) ...[
+          const SizedBox(height: 14),
+          _PrimaryActionButton(
+            icon: Icons.upload_rounded,
+            label: 'Submit your work',
+            vc: vc,
+            onPressed: () => context.push('/campaigns/$campaignId/submit'),
+          ),
+          const SizedBox(height: 10),
+          _TipsExpandable(vc: vc),
+        ],
+
+        // Resubmit draft (rejected)
+        if (deliverable.isRejected) ...[
+          const SizedBox(height: 14),
+          _PrimaryActionButton(
+            icon: Icons.refresh_rounded,
+            label: 'Resubmit your work',
+            vc: vc,
+            onPressed: () => context.push('/campaigns/$campaignId/submit'),
+          ),
+          const SizedBox(height: 10),
+          _TipsExpandable(vc: vc),
+        ],
+
+        // Submit live proof (approved)
+        if (deliverable.isApproved) ...[
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: vc.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: vc.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: vc.primary.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Icon(
+                        Icons.send_rounded,
+                        size: 16,
+                        color: vc.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Submit your live link',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: vc.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Paste the link to your live post so we can verify it and release your payout.',
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    color: vc.muted,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: liveController,
+                  keyboardType: TextInputType.url,
+                  autocorrect: false,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: vc.onSurface,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'https://your-post-link.com',
+                    hintStyle:
+                        GoogleFonts.inter(fontSize: 14, color: vc.muted),
+                    prefixIcon: Icon(Icons.link_rounded, color: vc.primary),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        Icons.content_paste_rounded,
+                        color: vc.primary,
+                      ),
+                      tooltip: 'Paste',
+                      onPressed: () async {
+                        final data = await Clipboard.getData('text/plain');
+                        final text = data?.text?.trim();
+                        if (text != null && text.isNotEmpty) {
+                          liveController.text = text;
+                        }
+                      },
+                    ),
+                    filled: true,
+                    fillColor: vc.background,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 0,
+                      horizontal: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: vc.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: vc.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: vc.primary, width: 1.5),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _PrimaryActionButton(
+                  icon: Icons.send_rounded,
+                  label: loading ? 'Submitting...' : 'Submit for payout',
+                  loading: loading,
+                  vc: vc,
+                  onPressed: () =>
+                      onSubmitLiveProof(liveController.text.trim()),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          _TipsExpandable(vc: vc),
+        ],
+
+        if (deliverable.hasSubmittedProof && deliverable.livePostUrl != null) ...[
+          const SizedBox(height: 14),
+          _LinkRow(
+            label: 'Your live proof',
+            url: deliverable.livePostUrl!,
+            color: banner.color,
+            vc: vc,
+            trailing: _shortSubmittedDate(deliverable.liveSubmittedAt),
+          ),
+        ],
+
+        if (deliverable.isProofApproved) ...[
+          const SizedBox(height: 14),
+          _PrimaryActionButton(
+            icon: Icons.bar_chart_rounded,
+            label: 'View Performance & Earnings',
+            vc: vc,
+            onPressed: () => context.push(
+              '/participations/$participationId/performance/${deliverable.id}',
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+IconData _platformIcon(String platform) {
+  final p = platform.toLowerCase();
+  if (p.contains('instagram')) return Icons.camera_alt_rounded;
+  if (p.contains('youtube')) return Icons.smart_display_rounded;
+  if (p.contains('twitter') || p.contains('_x') || p == 'x') {
+    return Icons.alternate_email_rounded;
+  }
+  return Icons.videocam_rounded;
+}
+
+String _tagLabel(String status) {
+  switch (status) {
+    case 'draft_pending':
+      return 'Pending';
+    case 'under_review':
+      return 'In Review';
+    case 'draft_rejected':
+      return 'Changes Needed';
+    case 'draft_approved':
+      return 'Approved';
+    case 'live_submitted':
+    case 'proof_under_review':
+      return 'In Review';
+    case 'proof_approved':
+      return 'Proof Approved';
+    case 'proof_rejected':
+      return 'Rejected';
+    default:
+      return deliverableStatusLabel(status);
+  }
+}
+
+String? _shortSubmittedDate(String? iso) {
+  if (iso == null) return null;
+  return DateFormat('d MMM').format(DateTime.parse(iso).toLocal());
+}
+
+({IconData main, IconData badge}) _illustrationIcons(String status) {
+  switch (status) {
+    case 'draft_pending':
+      return (main: Icons.cloud_upload_rounded, badge: Icons.arrow_upward_rounded);
+    case 'under_review':
+      return (main: Icons.hourglass_top_rounded, badge: Icons.visibility_rounded);
+    case 'draft_rejected':
+      return (main: Icons.description_rounded, badge: Icons.priority_high_rounded);
+    case 'draft_approved':
+      return (main: Icons.celebration_rounded, badge: Icons.check_rounded);
+    case 'live_submitted':
+    case 'proof_under_review':
+      return (main: Icons.podcasts_rounded, badge: Icons.hourglass_top_rounded);
+    case 'proof_approved':
+      return (main: Icons.account_balance_wallet_rounded, badge: Icons.paid_rounded);
+    case 'proof_rejected':
+      return (main: Icons.report_problem_rounded, badge: Icons.close_rounded);
+    default:
+      return (main: Icons.info_outline_rounded, badge: Icons.circle);
+  }
+}
+
+class _HeroBanner extends StatelessWidget {
+  const _HeroBanner({
+    required this.banner,
+    required this.status,
+    required this.tag,
+    required this.vc,
+  });
+
+  final _StatusBannerData banner;
+  final String status;
+  final String tag;
+  final HalchalColors vc;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = banner.color;
+    final illustration = _illustrationIcons(status);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(vc.surface, color, 0.40)!,
+              Color.lerp(vc.surface, color, 0.08)!,
             ],
           ),
-          const SizedBox(height: 14),
-
-          // Status banner
-          if (banner.headline.isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: banner.color.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: banner.color.withValues(alpha: 0.28)),
+          border: Border.all(color: color.withValues(alpha: 0.35)),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              right: -10,
+              bottom: -14,
+              child: Icon(
+                illustration.main,
+                size: 68,
+                color: color.withValues(alpha: 0.14),
               ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(14),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(banner.icon, size: 18, color: banner.color),
-                  const SizedBox(width: 8),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                    child: Icon(banner.icon, color: Colors.white, size: 16),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          banner.headline,
+                          tag.toUpperCase(),
                           style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: banner.color,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.1,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          banner.headline,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w800,
+                            color: vc.onSurface,
+                            height: 1.2,
                           ),
                         ),
                         if (banner.message.isNotEmpty) ...[
@@ -439,9 +814,9 @@ class _DeliverableSubmissionCard extends StatelessWidget {
                           Text(
                             banner.message,
                             style: GoogleFonts.inter(
-                              fontSize: 12,
+                              fontSize: 12.5,
                               height: 1.4,
-                              color: vc.onSurface.withValues(alpha: 0.8),
+                              color: vc.onSurface.withValues(alpha: 0.72),
                             ),
                           ),
                         ],
@@ -451,416 +826,185 @@ class _DeliverableSubmissionCard extends StatelessWidget {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-          if (priorEvents.isNotEmpty || showHistoryReadOnly) ...[
-            const SizedBox(height: 10),
-            InkWell(
-              onTap: onToggleHistory,
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
+class _LinkRow extends StatelessWidget {
+  const _LinkRow({
+    required this.label,
+    required this.url,
+    required this.color,
+    required this.vc,
+    this.trailing,
+  });
+
+  final String label;
+  final String url;
+  final Color color;
+  final HalchalColors vc;
+  final String? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withValues(alpha: 0.07),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.18)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(Icons.link_rounded, size: 17, color: color),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      historyExpanded ? Icons.expand_less : Icons.expand_more,
-                      size: 18,
-                      color: vc.muted,
-                    ),
-                    const SizedBox(width: 4),
                     Text(
-                      showHistoryReadOnly
-                          ? 'Rejection history (${deliverable.rejectionHistory.length})'
-                          : 'Previous feedback (${priorEvents.length})',
+                      label,
                       style: GoogleFonts.inter(
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: vc.muted,
+                        fontWeight: FontWeight.w700,
+                        color: vc.onSurface,
                       ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      trailing != null ? 'Submitted $trailing' : 'Tap to open',
+                      style: GoogleFonts.inter(fontSize: 11.5, color: vc.muted),
                     ),
                   ],
                 ),
               ),
-            ),
-            if (historyExpanded)
-              ...((showHistoryReadOnly
-                      ? deliverable.rejectionHistory
-                      : priorEvents)
-                  .map(
-                (event) => Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: vc.background,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: vc.border),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.history_rounded, size: 12, color: vc.muted),
-                            const SizedBox(width: 4),
-                            Text(
-                              DateFormat.yMMMd().add_jm().format(
-                                    DateTime.parse(event.rejectedAt).toLocal(),
-                                  ),
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                color: vc.muted,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          event.rejectionReason,
-                          style: GoogleFonts.inter(fontSize: 13, color: vc.onSurface),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )),
-          ],
-
-          // Under review: show the submitted draft + what happens next
-          if (deliverable.isUnderReview && deliverable.draftDriveUrl != null) ...[
-            const SizedBox(height: 12),
-            _SubmittedDraftCard(
-              url: deliverable.draftDriveUrl!,
-              submittedAt: deliverable.draftSubmittedAt,
-              vc: vc,
-            ),
-            const SizedBox(height: 12),
-            _ReviewTimelineCard(vc: vc),
-          ],
-
-          if (deliverable.draftDriveUrl != null &&
-              !deliverable.hasSubmittedProof &&
-              !deliverable.isUnderReview) ...[
-            const SizedBox(height: 12),
-            TextButton.icon(
-              onPressed: () => launchUrl(
-                Uri.parse(deliverable.draftDriveUrl!),
-                mode: LaunchMode.externalApplication,
-              ),
-              icon: const Icon(Icons.folder_open_outlined, size: 18),
-              label: Text(
-                deliverable.isRejected
-                    ? 'Open rejected draft'
-                    : 'Open approved draft',
-              ),
-            ),
-          ],
-
-          // First-time draft submission (pending)
-          if (deliverable.isDraftPending) ...[
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () =>
-                  context.push('/campaigns/$campaignId/submit'),
-              icon: const Icon(Icons.upload_rounded, size: 18),
-              label: const Text('Submit your work'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _TipsCard(vc: vc),
-          ],
-
-          // Resubmit draft (rejected)
-          if (deliverable.isRejected) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Address the feedback and resubmit',
-              style: GoogleFonts.inter(
-                  fontSize: 13, color: vc.muted),
-            ),
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              onPressed: () =>
-                  context.push('/campaigns/$campaignId/submit'),
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Resubmit your work'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _TipsCard(vc: vc),
-          ],
-
-          // Submit live proof (approved)
-          if (deliverable.isApproved) ...[
-            const SizedBox(height: 12),
-            Text('Submit proof of work',
-                style: GoogleFonts.inter(
-                    fontSize: 14, fontWeight: FontWeight.w700, color: vc.onSurface)),
-            const SizedBox(height: 4),
-            Text(
-              'Paste the link to your published $platformLabel. Make sure it\'s public and includes the brand as per the brief.',
-              style: GoogleFonts.inter(fontSize: 12, color: vc.muted),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: liveController,
-              keyboardType: TextInputType.url,
-              autocorrect: false,
-              style: TextStyle(color: vc.onSurface),
-              decoration: InputDecoration(
-                labelText: 'Live URL',
-                hintText: 'https://…',
-                prefixIcon: const Icon(Icons.link_rounded),
-                filled: true,
-                fillColor: vc.background,
-              ),
-            ),
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              onPressed: loading
-                  ? null
-                  : () => onSubmitLiveProof(liveController.text.trim()),
-              icon: loading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.arrow_forward_rounded, size: 18),
-              label: Text(
-                loading ? 'Submitting...' : 'Submit live link for payout',
-              ),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _TipsCard(vc: vc),
-          ],
-
-          if (deliverable.hasSubmittedProof &&
-              deliverable.livePostUrl != null) ...[
-            const SizedBox(height: 12),
-            _ProofSubmittedCard(
-              deliverableId: deliverable.id,
-              url: deliverable.livePostUrl!,
-              submittedAt: deliverable.liveSubmittedAt,
-              viewCount: deliverable.viewCount,
-              isProofApproved: deliverable.isProofApproved,
-              vc: vc,
-              onRefreshed: onRefreshed,
-            ),
-            if (deliverable.isLiveSubmitted || deliverable.isProofUnderReview) ...[
-              const SizedBox(height: 12),
-              _ReviewTimelineCard(
-                vc: vc,
-                steps: const [
-                  (label: 'Live link submitted', done: true),
-                  (label: 'Brand verifies your live post', done: false),
-                  (label: 'Payout is processed', done: false),
-                ],
-                note: 'Verification usually takes 1-2 business days.',
+              const SizedBox(width: 6),
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                child: const Icon(Icons.arrow_outward_rounded,
+                    size: 14, color: Colors.white),
               ),
             ],
-          ],
-
-          if (deliverable.isProofApproved) ...[
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: () => context.push(
-                '/participations/$participationId/performance/${deliverable.id}',
-              ),
-              icon: const Icon(Icons.bar_chart_rounded, size: 18),
-              label: const Text('View Performance & Earnings'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
-        ],
+          ),
+        ),
       ),
     );
   }
 }
 
-class _SubmittedDraftCard extends StatelessWidget {
-  const _SubmittedDraftCard({
-    required this.url,
-    required this.submittedAt,
+class _PrimaryActionButton extends StatelessWidget {
+  const _PrimaryActionButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
     required this.vc,
+    this.loading = false,
   });
 
-  final String url;
-  final String? submittedAt;
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
   final HalchalColors vc;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
-    final submittedDate = submittedAt != null
-        ? DateFormat('dd MMM yyyy, hh:mm a')
-            .format(DateTime.parse(submittedAt!).toLocal())
-        : null;
-
     return Container(
       decoration: BoxDecoration(
-        color: vc.warning.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: vc.warning.withValues(alpha: 0.22)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-            child: Row(
-              children: [
-                Icon(Icons.folder_open_outlined, size: 15, color: vc.warning),
-                const SizedBox(width: 6),
-                Text(
-                  'Your submitted draft',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: vc.warning,
-                  ),
-                ),
-                if (submittedDate != null) ...[
-                  const Spacer(),
-                  Text(
-                    submittedDate,
-                    style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
-                  ),
-                ],
-              ],
-            ),
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [vc.primary, vc.primaryVariant],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: vc.primary.withValues(alpha: 0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 8, 10),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: loading ? null : onPressed,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: loading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(icon, color: Colors.white, size: 17),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    url,
-                    maxLines: 2,
+                    label,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: vc.onSurface.withValues(alpha: 0.75),
-                      height: 1.4,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: () => launchUrl(
-                    Uri.parse(url),
-                    mode: LaunchMode.externalApplication,
-                  ),
-                  icon: Icon(Icons.open_in_new_rounded,
-                      size: 18, color: vc.warning),
-                  tooltip: 'Open draft',
-                  style: IconButton.styleFrom(
-                    backgroundColor: vc.warning.withValues(alpha: 0.10),
-                    padding: const EdgeInsets.all(8),
                   ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _ReviewTimelineCard extends StatelessWidget {
-  const _ReviewTimelineCard({
-    required this.vc,
-    this.steps = const [
-      (label: 'Draft submitted', done: true),
-      (label: 'Brand reviews your content', done: false),
-      (label: "You'll be notified either way", done: false),
-    ],
-    this.note = 'This usually takes 1-2 business days.',
-  });
+class _TipsExpandable extends StatefulWidget {
+  const _TipsExpandable({required this.vc});
 
   final HalchalColors vc;
-  final List<({String label, bool done})> steps;
-  final String note;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: vc.surfaceVariant.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: vc.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'What happens next',
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: vc.onSurface,
-            ),
-          ),
-          const SizedBox(height: 10),
-          for (final step in steps)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    step.done
-                        ? Icons.check_circle_rounded
-                        : Icons.radio_button_unchecked,
-                    size: 15,
-                    color: step.done ? vc.money : vc.muted,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      step.label,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: step.done ? vc.onSurface : vc.muted,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          Text(
-            note,
-            style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
-          ),
-        ],
-      ),
-    );
-  }
+  State<_TipsExpandable> createState() => _TipsExpandableState();
 }
 
-class _TipsCard extends StatelessWidget {
-  const _TipsCard({required this.vc});
-
-  final HalchalColors vc;
+class _TipsExpandableState extends State<_TipsExpandable> {
+  bool _open = false;
 
   static const _tips = [
     'Make sure your content is public and accessible',
@@ -871,223 +1015,71 @@ class _TipsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: vc.primary.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: vc.primary.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.lightbulb_outline, color: vc.primary, size: 16),
-              const SizedBox(width: 6),
-              Text('Submission tips',
-                  style: GoogleFonts.inter(
-                      fontSize: 13, fontWeight: FontWeight.w700, color: vc.primary)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ..._tips.map(
-            (tip) => Padding(
-              padding: const EdgeInsets.only(bottom: 5),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.check_circle_rounded, size: 13, color: vc.primary),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(tip,
-                        style: GoogleFonts.inter(fontSize: 12, color: vc.onSurface)),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProofSubmittedCard extends ConsumerStatefulWidget {
-  const _ProofSubmittedCard({
-    required this.deliverableId,
-    required this.url,
-    required this.viewCount,
-    required this.vc,
-    required this.isProofApproved,
-    required this.onRefreshed,
-    this.submittedAt,
-  });
-
-  final String deliverableId;
-  final String url;
-  final String? submittedAt;
-  final int viewCount;
-  final bool isProofApproved;
-  final VoidCallback onRefreshed;
-  final HalchalColors vc;
-
-  @override
-  ConsumerState<_ProofSubmittedCard> createState() =>
-      _ProofSubmittedCardState();
-}
-
-class _ProofSubmittedCardState extends ConsumerState<_ProofSubmittedCard> {
-  bool _refreshing = false;
-  int? _localViewCount;
-
-  Future<void> _refresh() async {
-    setState(() => _refreshing = true);
-    try {
-      final result = await ref
-          .read(apiClientProvider)
-          .refreshDeliverableViews(widget.deliverableId);
-      setState(() => _localViewCount = result['viewCount'] ?? 0);
-      widget.onRefreshed();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not refresh views: $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _refreshing = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
     final vc = widget.vc;
-    final displayViews = _localViewCount ?? widget.viewCount;
-    final submittedDate = widget.submittedAt != null
-        ? DateFormat('dd MMM yyyy, hh:mm a')
-            .format(DateTime.parse(widget.submittedAt!).toLocal())
-        : null;
-
-    final statusColor =
-        widget.isProofApproved ? vc.money : vc.warning;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: statusColor.withValues(alpha: 0.22)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => setState(() => _open = !_open),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               children: [
-                Icon(Icons.link_rounded, size: 15, color: statusColor),
+                Icon(Icons.lightbulb_outline, size: 15, color: vc.primary),
                 const SizedBox(width: 6),
                 Text(
-                  'Your live proof',
+                  'Tips for approval',
                   style: GoogleFonts.inter(
-                    fontSize: 12,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: statusColor,
+                    color: vc.primary,
                   ),
                 ),
-                if (submittedDate != null) ...[
-                  const Spacer(),
-                  Text(
-                    'Submitted $submittedDate',
-                    style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          // URL row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 8, 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.url,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: vc.onSurface.withValues(alpha: 0.75),
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: () => launchUrl(
-                    Uri.parse(widget.url),
-                    mode: LaunchMode.externalApplication,
-                  ),
-                  icon: Icon(Icons.open_in_new_rounded,
-                      size: 18, color: statusColor),
-                  tooltip: 'View live post',
-                  style: IconButton.styleFrom(
-                    backgroundColor: statusColor.withValues(alpha: 0.10),
-                    padding: const EdgeInsets.all(8),
-                  ),
+                const SizedBox(width: 4),
+                Icon(
+                  _open ? Icons.expand_less : Icons.expand_more,
+                  size: 18,
+                  color: vc.primary,
                 ),
               ],
             ),
           ),
-          // Views row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
-            child: Row(
-              children: [
-                Icon(Icons.visibility_outlined, size: 14, color: vc.muted),
-                const SizedBox(width: 5),
-                Text(
-                  displayViews > 0
-                      ? '${_formatViewCount(displayViews)} views'
-                      : 'Views not yet fetched',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: displayViews > 0 ? vc.onSurface : vc.muted,
-                    fontWeight: displayViews > 0
-                        ? FontWeight.w600
-                        : FontWeight.w400,
-                  ),
-                ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: _refreshing ? null : _refresh,
-                  icon: _refreshing
-                      ? SizedBox(
-                          width: 12,
-                          height: 12,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 1.5,
-                            color: vc.muted,
+        ),
+        AnimatedCrossFade(
+          firstChild: const SizedBox(width: double.infinity, height: 0),
+          secondChild: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: _tips
+                  .map(
+                    (tip) => Padding(
+                      padding: const EdgeInsets.only(bottom: 5),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.check_rounded, size: 13, color: vc.primary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              tip,
+                              style: GoogleFonts.inter(
+                                  fontSize: 12.5, color: vc.onSurface),
+                            ),
                           ),
-                        )
-                      : Icon(Icons.refresh_rounded, size: 14, color: vc.muted),
-                  label: Text(
-                    _refreshing ? 'Fetching...' : 'Refresh views',
-                    style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
-                  ),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    minimumSize: Size.zero,
-                  ),
-                ),
-              ],
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
           ),
-        ],
-      ),
+          crossFadeState: _open ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 200),
+        ),
+      ],
     );
   }
 }
+
