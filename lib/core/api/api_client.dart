@@ -85,7 +85,15 @@ class ApiClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           if (options.extra[ApiRequestExtra.auth] != false) {
-            final token = await _storage.getAccessToken();
+            // A hung Keychain read here blocks every request before Dio's
+            // own connect/receive timeouts ever get a chance to apply —
+            // seen as requests (e.g. dashboard fetch) spinning forever.
+            String? token;
+            try {
+              token = await _storage.getAccessToken().timeout(const Duration(seconds: 5));
+            } catch (_) {
+              token = null;
+            }
             if (token != null) {
               options.headers['Authorization'] = 'Bearer $token';
             }
@@ -167,7 +175,12 @@ class ApiClient {
   }
 
   Future<AuthSession?> _doRefreshSession() async {
-    final refresh = await _storage.getRefreshToken();
+    String? refresh;
+    try {
+      refresh = await _storage.getRefreshToken().timeout(const Duration(seconds: 5));
+    } catch (_) {
+      refresh = null;
+    }
     if (refresh == null) {
       await _onSessionExpired?.call();
       return null;
@@ -334,7 +347,12 @@ class ApiClient {
 
   /// Revokes refresh token on server (best-effort).
   Future<void> logoutSession() async {
-    final refresh = await _storage.getRefreshToken();
+    String? refresh;
+    try {
+      refresh = await _storage.getRefreshToken().timeout(const Duration(seconds: 5));
+    } catch (_) {
+      refresh = null;
+    }
     if (refresh == null) return;
     try {
       await _request(

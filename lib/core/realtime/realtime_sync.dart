@@ -93,7 +93,15 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
   }
 
   Future<void> _connect() async {
-    final token = await ref.read(authStorageProvider).getAccessToken();
+    String? token;
+    try {
+      token = await ref
+          .read(authStorageProvider)
+          .getAccessToken()
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      token = null;
+    }
     if (token == null || !mounted) return;
 
     ref.read(realtimeServiceProvider).connect(
