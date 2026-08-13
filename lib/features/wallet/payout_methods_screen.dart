@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
+import '../../core/layout/app_spacing.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
+import 'widgets/bank_card_preview.dart';
 import 'widgets/payout_method_form.dart';
 import 'withdraw_screen.dart';
 
@@ -78,7 +81,7 @@ class PayoutMethodsScreen extends ConsumerWidget {
                           const SizedBox(height: 10),
                           Text(
                             'No payout methods yet',
-                            style: TextStyle(color: vc.muted, fontSize: 14),
+                            style: GoogleFonts.inter(color: vc.muted, fontSize: 14),
                           ),
                         ],
                       ),
@@ -121,7 +124,7 @@ class PayoutMethodsScreen extends ConsumerWidget {
   }
 }
 
-class _PayoutMethodRow extends StatelessWidget {
+class _PayoutMethodRow extends ConsumerStatefulWidget {
   const _PayoutMethodRow({
     required this.method,
     required this.onSetDefault,
@@ -133,8 +136,117 @@ class _PayoutMethodRow extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
+  ConsumerState<_PayoutMethodRow> createState() => _PayoutMethodRowState();
+}
+
+class _PayoutMethodRowState extends ConsumerState<_PayoutMethodRow> {
+  bool _revealed = false;
+  bool _revealing = false;
+  String? _fullAccountNumber;
+
+  Future<void> _toggleRevealed() async {
+    if (_revealed) {
+      setState(() => _revealed = false);
+      return;
+    }
+    if (_fullAccountNumber != null) {
+      setState(() => _revealed = true);
+      return;
+    }
+    setState(() => _revealing = true);
+    try {
+      final full =
+          await ref.read(apiClientProvider).revealPayoutMethodAccountNumber(widget.method.id);
+      if (!mounted) return;
+      setState(() {
+        _fullAccountNumber = full;
+        _revealed = true;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _revealing = false);
+    }
+  }
+
+  Widget _menuAndBadge(HalchalColors vc) {
+    final method = widget.method;
+    return Row(
+      children: [
+        if (method.isDefault)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: vc.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text('DEFAULT',
+                style: TextStyle(
+                    fontSize: 9, fontWeight: FontWeight.w800, color: vc.primary)),
+          ),
+        const Spacer(),
+        PopupMenuButton<String>(
+          icon: Icon(Icons.more_vert_rounded, color: vc.muted),
+          onSelected: (v) {
+            if (v == 'default') widget.onSetDefault();
+            if (v == 'delete') widget.onDelete();
+          },
+          itemBuilder: (context) => [
+            if (!method.isDefault)
+              const PopupMenuItem(value: 'default', child: Text('Set as default')),
+            const PopupMenuItem(value: 'delete', child: Text('Remove')),
+          ],
+        ),
+      ],
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final vc = HalchalColors.of(context);
+    final method = widget.method;
+
+    if (method.type == 'bank') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _menuAndBadge(vc),
+          const SizedBox(height: AppSpacing.xs),
+          BankCardPreview(
+            bankName: method.bankName ?? method.label,
+            holderName: method.accountHolderName,
+            accountNumber:
+                _revealed && _fullAccountNumber != null ? _fullAccountNumber! : method.accountMasked,
+            ifsc: method.ifscCode ?? '',
+            revealed: _revealed,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _revealing
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: vc.muted),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      'Loading full account number…',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: vc.muted),
+                    ),
+                  ],
+                )
+              : BankCardRevealToggle(
+                  revealed: _revealed,
+                  onTap: _toggleRevealed,
+                ),
+        ],
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -147,10 +259,7 @@ class _PayoutMethodRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            method.type == 'upi' ? Icons.phone_android : Icons.account_balance,
-            color: method.isDefault ? vc.primary : vc.muted,
-          ),
+          Icon(Icons.phone_android, color: method.isDefault ? vc.primary : vc.muted),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -159,7 +268,7 @@ class _PayoutMethodRow extends StatelessWidget {
                 Row(
                   children: [
                     Text(method.label,
-                        style: const TextStyle(
+                        style: GoogleFonts.inter(
                             fontWeight: FontWeight.w700, fontSize: 14)),
                     if (method.isDefault) ...[
                       const SizedBox(width: 6),
@@ -171,7 +280,7 @@ class _PayoutMethodRow extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text('DEFAULT',
-                            style: TextStyle(
+                            style: GoogleFonts.inter(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w800,
                                 color: vc.primary)),
@@ -183,21 +292,16 @@ class _PayoutMethodRow extends StatelessWidget {
                   method.accountHolderName.isNotEmpty
                       ? '${method.accountHolderName} · ${method.accountMasked}'
                       : method.accountMasked,
-                  style: TextStyle(fontSize: 12, color: vc.muted),
+                  style: GoogleFonts.inter(fontSize: 12, color: vc.muted),
                 ),
-                if (method.ifscCode != null && method.ifscCode!.isNotEmpty)
-                  Text(
-                    method.ifscCode!,
-                    style: TextStyle(fontSize: 11, color: vc.muted),
-                  ),
               ],
             ),
           ),
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert_rounded, color: vc.muted),
             onSelected: (v) {
-              if (v == 'default') onSetDefault();
-              if (v == 'delete') onDelete();
+              if (v == 'default') widget.onSetDefault();
+              if (v == 'delete') widget.onDelete();
             },
             itemBuilder: (context) => [
               if (!method.isDefault)

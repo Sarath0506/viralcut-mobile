@@ -6,6 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
+import '../../core/layout/app_spacing.dart';
+import '../../theme/halchal_colors.dart';
+import 'widgets/bank_card_preview.dart';
 import 'withdraw_screen.dart';
 
 final _ifscPattern = RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$');
@@ -28,10 +31,16 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
   bool _saving = false;
   bool _loading = true;
   bool _dirty = false;
+  bool _revealed = false;
+  bool _revealing = false;
+  String? _fullAccountNumber;
 
   // Existing saved methods
   PayoutMethod? _existingBank;
   PayoutMethod? _existingUpi;
+
+  bool get _hasAccountNumber =>
+      _existingBank != null || _accountCtrl.text.trim().isNotEmpty;
 
   @override
   void initState() {
@@ -82,7 +91,34 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
     super.dispose();
   }
 
+  Future<void> _toggleRevealed() async {
+    if (_revealed) {
+      setState(() => _revealed = false);
+      return;
+    }
+    if (_existingBank == null || _fullAccountNumber != null) {
+      setState(() => _revealed = true);
+      return;
+    }
+    setState(() => _revealing = true);
+    try {
+      final full =
+          await ref.read(apiClientProvider).revealPayoutMethodAccountNumber(_existingBank!.id);
+      if (!mounted) return;
+      setState(() {
+        _fullAccountNumber = full;
+        _revealed = true;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _revealing = false);
+    }
+  }
+
   Future<void> _delete() async {
+    final vc = HalchalColors.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -95,7 +131,7 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: vc.error),
             child: const Text('Delete'),
           ),
         ],
@@ -196,15 +232,17 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final vc = HalchalColors.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: vc.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        backgroundColor: vc.background,
+        surfaceTintColor: vc.background,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.black),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: vc.onSurface),
           onPressed: () => context.pop(),
         ),
         centerTitle: true,
@@ -213,13 +251,13 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
           style: GoogleFonts.plusJakartaSans(
             fontSize: 17,
             fontWeight: FontWeight.w800,
-            color: Colors.black,
+            color: vc.onSurface,
           ),
         ),
         actions: [
           if (_existingBank != null)
             IconButton(
-              icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+              icon: Icon(Icons.delete_outline_rounded, color: vc.error),
               onPressed: _saving ? null : _delete,
               tooltip: 'Delete bank details',
             ),
@@ -231,10 +269,60 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
               key: _formKey,
               child: Column(
                 children: [
-                  const Divider(height: 1, thickness: 0.5, color: Color(0xFFE5E5E5)),
                   Expanded(
                     child: ListView(
                       children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.screenHorizontal,
+                            AppSpacing.md,
+                            AppSpacing.screenHorizontal,
+                            AppSpacing.md,
+                          ),
+                          child: Column(
+                            children: [
+                              BankCardPreview(
+                                bankName: _bankNameCtrl.text,
+                                holderName: _nameCtrl.text,
+                                accountNumber: _existingBank != null
+                                    ? (_revealed && _fullAccountNumber != null
+                                        ? _fullAccountNumber!
+                                        : _existingBank!.accountMasked)
+                                    : _accountCtrl.text,
+                                ifsc: _ifscCtrl.text,
+                                revealed: _revealed,
+                              ),
+                              if (_hasAccountNumber) ...[
+                                const SizedBox(height: AppSpacing.sm),
+                                _revealing
+                                    ? Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          SizedBox(
+                                            width: 14,
+                                            height: 14,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2, color: vc.muted),
+                                          ),
+                                          const SizedBox(width: AppSpacing.xs),
+                                          Text(
+                                            'Loading full account number…',
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: vc.muted),
+                                          ),
+                                        ],
+                                      )
+                                    : BankCardRevealToggle(
+                                        revealed: _revealed,
+                                        onTap: _toggleRevealed,
+                                      ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        Divider(height: 1, thickness: 0.5, color: vc.border),
                         _FormRow(
                           icon: Icons.credit_card_outlined,
                           label: 'Name',
@@ -304,14 +392,13 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
                             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                             child: Row(
                               children: [
-                                const Icon(Icons.lock_outline_rounded,
-                                    size: 13, color: Color(0xFF999999)),
+                                Icon(Icons.lock_outline_rounded, size: 13, color: vc.muted),
                                 const SizedBox(width: 5),
                                 Text(
                                   'To change your account number, contact support.',
                                   style: GoogleFonts.inter(
                                     fontSize: 12,
-                                    color: const Color(0xFF999999),
+                                    color: vc.muted,
                                   ),
                                 ),
                               ],
@@ -330,25 +417,25 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
                         child: FilledButton(
                           onPressed: (_dirty && !_saving) ? _save : null,
                           style: FilledButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            disabledBackgroundColor: const Color(0xFFE0E0E0),
+                            backgroundColor: vc.onSurface,
+                            disabledBackgroundColor: vc.border,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
                           child: _saving
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
+                                      strokeWidth: 2, color: vc.onPrimary),
                                 )
                               : Text(
                                   'Save Changes',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 16,
-                                    color: _dirty ? Colors.white : const Color(0xFFAAAAAA),
+                                    color: _dirty ? vc.onPrimary : vc.muted,
                                   ),
                                 ),
                         ),
@@ -389,6 +476,7 @@ class _FormRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = HalchalColors.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -396,26 +484,26 @@ class _FormRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: const Color(0xFF333333)),
+              Icon(icon, size: 20, color: vc.onSurface),
               const SizedBox(width: 14),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: Colors.black,
+                      color: vc.onSurface,
                     ),
                   ),
                   if (required)
-                    const Text(
+                    Text(
                       ' *',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
-                        color: Colors.red,
+                        color: vc.error,
                       ),
                     ),
                 ],
@@ -428,16 +516,20 @@ class _FormRow extends StatelessWidget {
                   inputFormatters: inputFormatters,
                   textCapitalization: textCapitalization,
                   validator: validator,
-                  style: const TextStyle(fontSize: 15, color: Colors.black87),
+                  style: TextStyle(fontSize: 15, color: vc.onSurface),
                   decoration: InputDecoration(
                     hintText: placeholder,
-                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 15),
+                    hintStyle: TextStyle(color: vc.muted, fontSize: 15),
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
                     errorBorder: InputBorder.none,
                     focusedErrorBorder: InputBorder.none,
-                    errorStyle: const TextStyle(height: 0, fontSize: 0),
+                    errorStyle: TextStyle(
+                      fontSize: 13,
+                      color: vc.error,
+                      height: 1.4,
+                    ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
@@ -446,7 +538,7 @@ class _FormRow extends StatelessWidget {
           ),
         ),
         if (!isLast)
-          const Divider(height: 1, thickness: 0.5, indent: 50, color: Color(0xFFE5E5E5)),
+          Divider(height: 1, thickness: 0.5, indent: 50, color: vc.border),
       ],
     );
   }
@@ -465,6 +557,7 @@ class _ReadOnlyRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vc = HalchalColors.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -472,25 +565,25 @@ class _ReadOnlyRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: const Color(0xFF333333)),
+              Icon(icon, size: 20, color: vc.onSurface),
               const SizedBox(width: 14),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
-                  color: Colors.black,
+                  color: vc.onSurface,
                 ),
               ),
               const Spacer(),
               Text(
                 value,
-                style: const TextStyle(fontSize: 15, color: Color(0xFF888888)),
+                style: TextStyle(fontSize: 15, color: vc.muted),
               ),
             ],
           ),
         ),
-        const Divider(height: 1, thickness: 0.5, indent: 50, color: Color(0xFFE5E5E5)),
+        Divider(height: 1, thickness: 0.5, indent: 50, color: vc.border),
       ],
     );
   }

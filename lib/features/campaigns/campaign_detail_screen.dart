@@ -8,8 +8,10 @@ import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/creator_profile/creator_profile_providers.dart';
 import '../../core/realtime/campaign_realtime_scope.dart';
+import '../../core/format/money_format.dart';
 import '../../core/layout/app_spacing.dart';
 import 'campaign_providers.dart';
+import '../../core/widgets/primary_action_button.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import '../profile/profile_providers.dart';
@@ -22,18 +24,29 @@ class CampaignDetailScreen extends ConsumerWidget {
   final String id;
 
   String _ctaLabel(Participation? participation) {
-    if (participation == null) return 'Join campaign';
+    if (participation == null) return 'Apply for this campaign';
     switch (participation.summary) {
       case 'joined':
       case 'drafts_incomplete':
-        return 'Continue submission';
-      case 'in_review':
-      case 'action_required':
-      case 'proof_complete':
-      case 'closed':
-        return 'View submission';
+        return 'Submit content';
       default:
         return 'View submission';
+    }
+  }
+
+  String? _ctaSubtitle(Participation? participation, Campaign c) {
+    if (participation != null) return null;
+    return 'Start creating & earn up to ${formatPaise(c.maxPayoutPaise)}';
+  }
+
+  IconData _ctaIcon(Participation? participation) {
+    if (participation == null) return Icons.rocket_launch_rounded;
+    switch (participation.summary) {
+      case 'joined':
+      case 'drafts_incomplete':
+        return Icons.send_rounded;
+      default:
+        return Icons.visibility_rounded;
     }
   }
 
@@ -239,9 +252,13 @@ class CampaignDetailScreen extends ConsumerWidget {
             bottomNavigationBar: SafeArea(
               child: Padding(
                 padding: AppSpacing.bottomActionPadding(context),
-                child: FilledButton(
-                  onPressed: joining ? null : () => _onCta(context, ref, p),
-                  child: Text(joining ? 'Loading…' : cta),
+                child: PrimaryActionButton(
+                  icon: _ctaIcon(p),
+                  label: joining ? 'Loading…' : cta,
+                  subtitle: joining ? null : _ctaSubtitle(p, c),
+                  loading: joining,
+                  vc: vc,
+                  onPressed: () => _onCta(context, ref, p),
                 ),
               ),
             ),

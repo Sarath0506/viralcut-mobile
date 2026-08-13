@@ -30,6 +30,8 @@ abstract final class ViralCutTokenColors {
   static const errorDark = Color(0xFFF87171);
   static const warningLight = Color(0xFFAA4900);
   static const warningDark = Color(0xFFFB923C);
+  static const warningBrightLight = Color(0xFFF59E0B);
+  static const warningBrightDark = Color(0xFFFBBF24);
   static const onPrimaryLight = Color(0xFFFFFFFF);
   static const onPrimaryDark = Color(0xFFFFFFFF);
   static const authGradientStartLight = Color(0xFFF3EEFF);
@@ -58,6 +60,7 @@ abstract final class ViralCutTokenColors {
       'muted' => brightness == Brightness.dark ? mutedDark : mutedLight,
       'error' => brightness == Brightness.dark ? errorDark : errorLight,
       'warning' => brightness == Brightness.dark ? warningDark : warningLight,
+      'warningBright' => brightness == Brightness.dark ? warningBrightDark : warningBrightLight,
       'onPrimary' => brightness == Brightness.dark ? onPrimaryDark : onPrimaryLight,
       'authGradientStart' => brightness == Brightness.dark ? authGradientStartDark : authGradientStartLight,
       'authGradientMid' => brightness == Brightness.dark ? authGradientMidDark : authGradientMidLight,

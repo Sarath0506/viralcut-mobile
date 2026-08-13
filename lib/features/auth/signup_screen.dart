@@ -103,7 +103,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       headerTitle: 'Create account',
       title: 'Welcome to Halchal',
       titleHighlight: 'Halchal',
-      subtitle: 'Join the elite network of digital entrepreneurs.',
+      subtitle: 'Join the network of clippers earning from viral content.',
       footer: const AuthSwitchLink(
         leadText: 'Already have an account? ',
         linkText: 'Log in',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/halchal_colors.dart';
 import '../participation/participation_status_labels.dart';
@@ -35,7 +36,7 @@ class StatusPill extends StatelessWidget {
           ),
           child: Text(
             displayLabel,
-            style: TextStyle(
+            style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: color,

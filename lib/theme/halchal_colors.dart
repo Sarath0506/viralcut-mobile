@@ -21,6 +21,7 @@ class HalchalColors extends ThemeExtension<HalchalColors> {
     required this.muted,
     required this.error,
     required this.warning,
+    required this.warningBright,
     required this.onPrimary,
     required this.authGradientStart,
     required this.authGradientMid,
@@ -42,6 +43,7 @@ class HalchalColors extends ThemeExtension<HalchalColors> {
   final Color muted;
   final Color error;
   final Color warning;
+  final Color warningBright;
   final Color onPrimary;
   final Color authGradientStart;
   final Color authGradientMid;
@@ -99,6 +101,9 @@ class HalchalColors extends ThemeExtension<HalchalColors> {
       warning: isDark
           ? ViralCutTokenColors.warningDark
           : ViralCutTokenColors.warningLight,
+      warningBright: isDark
+          ? ViralCutTokenColors.warningBrightDark
+          : ViralCutTokenColors.warningBrightLight,
       onPrimary: isDark
           ? ViralCutTokenColors.onPrimaryDark
           : ViralCutTokenColors.onPrimaryLight,
@@ -133,6 +138,7 @@ class HalchalColors extends ThemeExtension<HalchalColors> {
     Color? muted,
     Color? error,
     Color? warning,
+    Color? warningBright,
     Color? onPrimary,
     Color? authGradientStart,
     Color? authGradientMid,
@@ -154,6 +160,7 @@ class HalchalColors extends ThemeExtension<HalchalColors> {
       muted: muted ?? this.muted,
       error: error ?? this.error,
       warning: warning ?? this.warning,
+      warningBright: warningBright ?? this.warningBright,
       onPrimary: onPrimary ?? this.onPrimary,
       authGradientStart: authGradientStart ?? this.authGradientStart,
       authGradientMid: authGradientMid ?? this.authGradientMid,
@@ -181,6 +188,7 @@ class HalchalColors extends ThemeExtension<HalchalColors> {
       muted: lerpColor(muted, other.muted),
       error: lerpColor(error, other.error),
       warning: lerpColor(warning, other.warning),
+      warningBright: lerpColor(warningBright, other.warningBright),
       onPrimary: lerpColor(onPrimary, other.onPrimary),
       authGradientStart: lerpColor(authGradientStart, other.authGradientStart),
       authGradientMid: lerpColor(authGradientMid, other.authGradientMid),
