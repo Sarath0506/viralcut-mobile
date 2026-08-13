@@ -4,16 +4,19 @@ import 'package:flutter/services.dart';
 import '../../../theme/token_colors.dart';
 import '../../../theme/halchal_colors.dart';
 import 'auth_ui.dart';
+import 'otp_status_icon.dart';
 
 /// Six separate boxes; focus moves forward on digit, back on delete.
 class OtpPinInput extends StatefulWidget {
   const OtpPinInput({
     super.key,
     required this.onCompleted,
+    required this.status,
     this.enabled = true,
   });
 
   final ValueChanged<String> onCompleted;
+  final OtpStatus status;
   final bool enabled;
 
   @override
@@ -88,52 +91,67 @@ class OtpPinInputState extends State<OtpPinInput> {
   Widget build(BuildContext context) {
     final vc = HalchalColors.of(context);
     final primary = Theme.of(context).colorScheme.primary;
+    final stateColor = switch (widget.status) {
+      OtpStatus.idle => null,
+      OtpStatus.verifying => vc.warning,
+      OtpStatus.verified => vc.money,
+    };
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(_length, (i) {
         final hasFocus = _nodes[i].hasFocus;
         final filled = _controllers[i].text.isNotEmpty;
-        return SizedBox(
-          width: 46,
-          height: 54,
-          child: Focus(
-            onKeyEvent: (node, event) => _onKey(i, event),
-            child: TextField(
-              controller: _controllers[i],
-              focusNode: _nodes[i],
-              enabled: widget.enabled,
-              autofocus: i == 0,
-              textAlign: TextAlign.center,
-              keyboardType: TextInputType.number,
-              maxLength: 1,
-              style: AuthUi.bodyFont(context).copyWith(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: vc.onSurface,
-              ),
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                counterText: '',
-                filled: true,
-                fillColor: vc.surface,
-                contentPadding: EdgeInsets.zero,
-                border: OutlineInputBorder(
+        return Container(
+          decoration: stateColor == null
+              ? null
+              : BoxDecoration(
                   borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
-                  borderSide: BorderSide(color: vc.border),
+                  boxShadow: [
+                    BoxShadow(color: stateColor.withValues(alpha: 0.4), blurRadius: 8),
+                  ],
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
-                  borderSide: BorderSide(
-                    color: filled || hasFocus ? primary : vc.border,
-                    width: hasFocus ? 1.5 : 1,
+          child: SizedBox(
+            width: 46,
+            height: 54,
+            child: Focus(
+              onKeyEvent: (node, event) => _onKey(i, event),
+              child: TextField(
+                controller: _controllers[i],
+                focusNode: _nodes[i],
+                enabled: widget.enabled,
+                autofocus: i == 0,
+                textAlign: TextAlign.center,
+                keyboardType: TextInputType.number,
+                maxLength: 1,
+                style: AuthUi.bodyFont(context).copyWith(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: vc.onSurface,
+                ),
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  counterText: '',
+                  filled: true,
+                  fillColor: vc.surface,
+                  contentPadding: EdgeInsets.zero,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
+                    borderSide: BorderSide(color: vc.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
+                    borderSide: BorderSide(
+                      color: stateColor ?? (filled || hasFocus ? primary : vc.border),
+                      width: hasFocus ? 1.5 : 1,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
+                    borderSide: BorderSide(color: primary, width: 1.5),
                   ),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(ViralCutTokenRadius.md),
-                  borderSide: BorderSide(color: primary, width: 1.5),
-                ),
+                onChanged: (v) => _onChanged(i, v),
               ),
-              onChanged: (v) => _onChanged(i, v),
             ),
           ),
         );

@@ -4,11 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
-import '../../theme/halchal_colors.dart';
 import 'widgets/auth_page_layout.dart';
 import 'widgets/auth_switch_link.dart';
 import 'widgets/auth_ui.dart';
 import 'widgets/otp_pin_input.dart';
+import 'widgets/otp_status_icon.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
   const OtpScreen({super.key});
@@ -19,7 +19,7 @@ class OtpScreen extends ConsumerStatefulWidget {
 
 class _OtpScreenState extends ConsumerState<OtpScreen> {
   final _pinKey = GlobalKey<OtpPinInputState>();
-  bool _verifying = false;
+  OtpStatus _status = OtpStatus.idle;
   bool _resending = false;
 
   String get _phone =>
@@ -74,9 +74,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   }
 
   Future<void> _verify(String code) async {
-    if (_phone.isEmpty || _verifying) return;
+    if (_phone.isEmpty || _status == OtpStatus.verifying) return;
 
-    setState(() => _verifying = true);
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+
+    setState(() => _status = OtpStatus.verifying);
+
     try {
       final session = await ref.read(apiClientProvider).verifyOtp(
             phone: _phone,
@@ -84,17 +87,28 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
             displayName: _isSignup ? _displayName : null,
             email: _isSignup ? _email : null,
           );
+      if (!mounted) return;
+      setState(() => _status = OtpStatus.verified);
+      if (!reduceMotion) {
+        // Last of the 4 staggered checkmarks starts at 660ms and takes
+        // another 500ms to finish (~1160ms total) — hold past that so the
+        // completed state is visible, without lingering too long.
+        await Future.delayed(const Duration(milliseconds: 1800));
+      }
+      if (!mounted) return;
+      // authStateProvider flipping to authed is what actually triggers
+      // navigation (app_router.dart's redirect bounces authed users off
+      // /otp to /dashboard) — calling login() any earlier than this would
+      // have fired that redirect immediately, skipping the reveal above.
       await ref.read(authStateProvider.notifier).login(session);
-      if (mounted) context.go('/dashboard');
     } on ApiException catch (e) {
       if (mounted) {
         _pinKey.currentState?.clear();
+        setState(() => _status = OtpStatus.idle);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
         );
       }
-    } finally {
-      if (mounted) setState(() => _verifying = false);
     }
   }
 
@@ -103,6 +117,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final masked = _phone.length >= 4
         ? '******${_phone.substring(_phone.length - 4)}'
         : _phone;
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
 
     return AuthPageLayout(
       title: 'Enter OTP',
@@ -114,34 +129,38 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         linkText: _isSignup ? 'Log in' : 'Sign up',
         route: _isSignup ? '/login' : '/signup',
       ),
-      form: AuthFormCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            OtpPinInput(
-              key: _pinKey,
-              enabled: !_verifying,
-              onCompleted: _verify,
-            ),
-            if (_verifying) ...[
+      form: AnimatedScale(
+        scale: _status == OtpStatus.verifying ? 1.08 : 1.0,
+        duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 450),
+        curve: Curves.easeOutBack,
+        child: AuthFormCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              OtpPinInput(
+                key: _pinKey,
+                status: _status,
+                enabled: _status == OtpStatus.idle,
+                onCompleted: _verify,
+              ),
               const SizedBox(height: 20),
-              const Center(child: CircularProgressIndicator()),
-            ],
-            const SizedBox(height: 20),
-            Center(
-              child: TextButton(
-                onPressed: _resending || _phone.isEmpty ? null : _resendOtp,
-                child: Text(
-                  _resending ? 'Sending…' : 'Resend OTP',
-                  style: AuthUi.bodyFont(context).copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
+              Center(child: OtpStatusIcon(status: _status)),
+              const SizedBox(height: 20),
+              Center(
+                child: TextButton(
+                  onPressed: _resending || _phone.isEmpty ? null : _resendOtp,
+                  child: Text(
+                    _resending ? 'Sending…' : 'Resend OTP',
+                    style: AuthUi.bodyFont(context).copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -645,6 +645,13 @@ class ApiClient {
         (d) => PayoutMethod.fromJson(d as Map<String, dynamic>),
       );
 
+  /// Full, decrypted account number — fetched on demand only when the user
+  /// taps "reveal", never included in the regular payout methods list.
+  Future<String> revealPayoutMethodAccountNumber(String id) => get(
+        '/payout-methods/$id/reveal',
+        (d) => (d as Map<String, dynamic>)['accountNumber'] as String,
+      );
+
   Future<void> setDefaultPayoutMethod(String id) => patch<void>(
         '/payout-methods/$id/default',
         {},

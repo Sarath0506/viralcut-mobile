@@ -5,7 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../core/layout/app_spacing.dart';
 import '../../../theme/halchal_colors.dart';
+import 'bank_card_preview.dart';
 
 final _ifscPattern = RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$');
 
@@ -33,6 +35,19 @@ class _PayoutMethodFormState extends ConsumerState<PayoutMethodForm> {
   final _accountController = TextEditingController();
   final _ifscController = TextEditingController();
   bool _saving = false;
+  bool _revealed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    for (final c in [_labelController, _holderController, _accountController, _ifscController]) {
+      c.addListener(_onFieldChanged);
+    }
+  }
+
+  void _onFieldChanged() => setState(() {});
+
+  void _toggleRevealed() => setState(() => _revealed = !_revealed);
 
   @override
   void dispose() {
@@ -107,6 +122,23 @@ class _PayoutMethodFormState extends ConsumerState<PayoutMethodForm> {
               ),
             ],
           ),
+          if (_type == 'bank') ...[
+            const SizedBox(height: 16),
+            BankCardPreview(
+              bankName: _labelController.text,
+              holderName: _holderController.text,
+              accountNumber: _accountController.text,
+              ifsc: _ifscController.text,
+              revealed: _revealed,
+            ),
+            if (_accountController.text.trim().isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              BankCardRevealToggle(
+                revealed: _revealed,
+                onTap: _toggleRevealed,
+              ),
+            ],
+          ],
           const SizedBox(height: 16),
           TextFormField(
             controller: _labelController,
@@ -182,10 +214,10 @@ class _PayoutMethodFormState extends ConsumerState<PayoutMethodForm> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: _saving
-                ? const SizedBox(
+                ? SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: vc.onPrimary),
                   )
                 : const Text('Add method'),
           ),
