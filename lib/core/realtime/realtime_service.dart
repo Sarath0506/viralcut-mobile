@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import '../api/api_base_url.dart';
@@ -74,9 +75,19 @@ class RealtimeService {
     listen('creatorProfile:statsUpdated', onCreatorProfileStatsUpdated);
 
     _socket!.on('connect', (_) {
+      debugPrint('[RealtimeService] connected: ${_socket!.id}');
       _missedHeartbeats = 0;
       _rejoinCampaignRooms();
       _startHeartbeat();
+    });
+    _socket!.on('connect_error', (err) {
+      debugPrint('[RealtimeService] connect_error: $err');
+    });
+    _socket!.on('disconnect', (reason) {
+      debugPrint('[RealtimeService] disconnected: $reason');
+    });
+    _socket!.on('reconnect_attempt', (attempt) {
+      debugPrint('[RealtimeService] reconnect_attempt #$attempt');
     });
   }
 
@@ -98,10 +109,12 @@ class RealtimeService {
     Timer(_heartbeatAckTimeout, () {
       if (acked) return;
       _missedHeartbeats++;
+      debugPrint('[RealtimeService] missed heartbeat ($_missedHeartbeats/$_maxMissedHeartbeats)');
       if (_missedHeartbeats < _maxMissedHeartbeats) return;
 
       // Socket reports connected but stopped responding — force a real
       // reconnect rather than trusting the stale `connected` flag.
+      debugPrint('[RealtimeService] forcing reconnect after missed heartbeats');
       _missedHeartbeats = 0;
       _socket?.disconnect();
       _socket?.connect();

@@ -99,11 +99,17 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
           .read(authStorageProvider)
           .getAccessToken()
           .timeout(const Duration(seconds: 5));
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[RealtimeSync] token read failed: $e');
       token = null;
     }
-    if (token == null || !mounted) return;
+    if (token == null) {
+      debugPrint('[RealtimeSync] no token available — realtime will not connect');
+      return;
+    }
+    if (!mounted) return;
 
+    debugPrint('[RealtimeSync] connecting socket…');
     ref.read(realtimeServiceProvider).connect(
           token: token,
           onDeliverableReviewed: _onRealtimeEvent,
