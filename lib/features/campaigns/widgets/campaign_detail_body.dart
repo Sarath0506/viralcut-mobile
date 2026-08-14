@@ -137,6 +137,7 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
                 final isVideo = asset.type == 'video';
                 final label = asset.label?.trim();
                 return GestureDetector(
+                  key: ValueKey(asset.url),
                   onTap: url != null
                       ? () => _openMediaGallery(context, c.referenceAssets, i)
                       : null,
@@ -284,8 +285,16 @@ class _VideoThumbnail extends StatefulWidget {
   State<_VideoThumbnail> createState() => _VideoThumbnailState();
 }
 
-class _VideoThumbnailState extends State<_VideoThumbnail> {
+class _VideoThumbnailState extends State<_VideoThumbnail>
+    with AutomaticKeepAliveClientMixin {
   VideoPlayerController? _controller;
+
+  // Keeps the loaded video frame alive when this tile scrolls out of the
+  // horizontal list's viewport — without this, ListView.separated disposes
+  // and later recreates the widget, forcing the ~2s reload the user saw
+  // every time they scrolled away and back.
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -307,6 +316,7 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final vc = widget.vc;
     final controller = _controller;
     final hasFrame = controller != null && controller.value.isInitialized;
