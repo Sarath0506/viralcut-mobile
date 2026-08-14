@@ -30,7 +30,7 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
   bool _loading = false;
 
   int get _amountPaise => (int.tryParse(_amountController.text) ?? 0) * 100;
-  int get _feePaise => (_amountPaise * 150 ~/ 10000);
+  int get _feePaise => (_amountPaise * 500 ~/ 10000);
   int get _netPaise => _amountPaise - _feePaise;
 
   @override
@@ -411,7 +411,7 @@ class _SummaryTable extends StatelessWidget {
           _Row(label: 'Amount', value: formatPaise(amountPaise), vc: vc),
           const SizedBox(height: 8),
           _Row(
-            label: 'Platform fee (1.5%)',
+            label: 'Platform fee (5%)',
             value: '- ${formatPaise(feePaise)}',
             vc: vc,
             valueColor: vc.muted,
