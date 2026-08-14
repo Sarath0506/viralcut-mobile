@@ -77,24 +77,30 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
     final message = _messageController.text.trim();
     if (subject.length < 3 || message.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add a subject and a few more details before submitting.')),
+        const SnackBar(
+            content: Text(
+                'Add a subject and a few more details before submitting.')),
       );
       return;
     }
 
     setState(() => _submitting = true);
     try {
-      await ref.read(apiClientProvider).createSupportTicket(subject: subject, message: message);
+      await ref
+          .read(apiClientProvider)
+          .createSupportTicket(subject: subject, message: message);
       if (!mounted) return;
       _subjectController.clear();
       _messageController.clear();
       ref.invalidate(supportTicketsProvider);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ticket submitted — we\'ll take a look shortly.')),
+        const SnackBar(
+            content: Text('Ticket submitted — we\'ll take a look shortly.')),
       );
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -108,142 +114,168 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
     return VcScaffold(
       title: 'Support Center',
       showBack: true,
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const SizedBox(height: 4),
-          _SectionLabel('CONTACT US', vc: vc),
-          const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: vc.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: vc.border),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                _ContactInfoTile(
-                  icon: Icons.mail_outline_rounded,
-                  title: 'Email Us',
-                  subtitle: _supportEmail,
-                  onTap: _emailSupport,
-                ),
-                Divider(height: 1, indent: 16, endIndent: 16, color: vc.border),
-                _ContactInfoTile(
-                  icon: Icons.location_on_outlined,
-                  title: 'Headquarters',
-                  subtitle: 'Mutiny Talent Pvt. Ltd.\nHyderabad, Telangana, India',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          _SectionLabel('FREQUENTLY ASKED', vc: vc),
-          const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: vc.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: vc.border),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                for (var i = 0; i < _faqs.length; i++) ...[
-                  _FaqTile(question: _faqs[i].question, answer: _faqs[i].answer),
-                  if (i != _faqs.length - 1)
-                    Divider(height: 1, indent: 16, endIndent: 16, color: vc.border),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          _SectionLabel('RAISE A TICKET', vc: vc),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: vc.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: vc.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Couldn\'t find your answer above? Tell us what\'s going on and we\'ll look into it.',
-                  style: GoogleFonts.inter(fontSize: 13, color: vc.muted, height: 1.45),
-                ),
-                const SizedBox(height: 14),
-                _TicketField(controller: _subjectController, hint: 'Subject', vc: vc, maxLines: 1),
-                const SizedBox(height: 10),
-                _TicketField(controller: _messageController, hint: 'Describe your issue', vc: vc, maxLines: 5),
-                const SizedBox(height: 14),
-                SizedBox(
-                  height: 46,
-                  child: ElevatedButton(
-                    onPressed: _submitting ? null : _submitTicket,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: vc.primary,
-                      foregroundColor: vc.onPrimary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 0,
-                    ),
-                    child: _submitting
-                        ? SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: vc.onPrimary),
-                          )
-                        : Text(
-                            'Submit Ticket',
-                            style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700),
-                          ),
+      body: RefreshIndicator(
+        onRefresh: () async => ref.refresh(supportTicketsProvider.future),
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            const SizedBox(height: 4),
+            _SectionLabel('CONTACT US', vc: vc),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: vc.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: vc.border),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  _ContactInfoTile(
+                    icon: Icons.mail_outline_rounded,
+                    title: 'Email Us',
+                    subtitle: _supportEmail,
+                    onTap: _emailSupport,
                   ),
-                ),
-              ],
+                  Divider(
+                      height: 1, indent: 16, endIndent: 16, color: vc.border),
+                  _ContactInfoTile(
+                    icon: Icons.location_on_outlined,
+                    title: 'Headquarters',
+                    subtitle:
+                        'Mutiny Talent Pvt. Ltd.\nHyderabad, Telangana, India',
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          _SectionLabel('MY TICKETS', vc: vc),
-          const SizedBox(height: 10),
-          tickets.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (_, __) => Text(
-              'Couldn\'t load your tickets.',
-              style: GoogleFonts.inter(fontSize: 13, color: vc.muted),
-            ),
-            data: (items) {
-              if (items.isEmpty) {
-                return Text(
-                  'No tickets yet.',
-                  style: GoogleFonts.inter(fontSize: 13, color: vc.muted),
-                );
-              }
-              return Container(
-                decoration: BoxDecoration(
-                  color: vc.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: vc.border),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    for (var i = 0; i < items.length; i++) ...[
-                      _TicketTile(ticket: items[i]),
-                      if (i != items.length - 1)
-                        Divider(height: 1, indent: 16, endIndent: 16, color: vc.border),
-                    ],
+            const SizedBox(height: 24),
+            _SectionLabel('FREQUENTLY ASKED', vc: vc),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: vc.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: vc.border),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  for (var i = 0; i < _faqs.length; i++) ...[
+                    _FaqTile(
+                        question: _faqs[i].question, answer: _faqs[i].answer),
+                    if (i != _faqs.length - 1)
+                      Divider(
+                          height: 1,
+                          indent: 16,
+                          endIndent: 16,
+                          color: vc.border),
                   ],
-                ),
-              );
-            },
-          ),
-        ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            _SectionLabel('RAISE A TICKET', vc: vc),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: vc.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: vc.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Couldn\'t find your answer above? Tell us what\'s going on and we\'ll look into it.',
+                    style: GoogleFonts.inter(
+                        fontSize: 13, color: vc.muted, height: 1.45),
+                  ),
+                  const SizedBox(height: 14),
+                  _TicketField(
+                      controller: _subjectController,
+                      hint: 'Subject',
+                      vc: vc,
+                      maxLines: 1),
+                  const SizedBox(height: 10),
+                  _TicketField(
+                      controller: _messageController,
+                      hint: 'Describe your issue',
+                      vc: vc,
+                      maxLines: 5),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    height: 46,
+                    child: ElevatedButton(
+                      onPressed: _submitting ? null : _submitTicket,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: vc.primary,
+                        foregroundColor: vc.onPrimary,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: _submitting
+                          ? SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: vc.onPrimary),
+                            )
+                          : Text(
+                              'Submit Ticket',
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14, fontWeight: FontWeight.w700),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            _SectionLabel('MY TICKETS', vc: vc),
+            const SizedBox(height: 10),
+            tickets.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (_, __) => Text(
+                'Couldn\'t load your tickets.',
+                style: GoogleFonts.inter(fontSize: 13, color: vc.muted),
+              ),
+              data: (items) {
+                if (items.isEmpty) {
+                  return Text(
+                    'No tickets yet.',
+                    style: GoogleFonts.inter(fontSize: 13, color: vc.muted),
+                  );
+                }
+                return Container(
+                  decoration: BoxDecoration(
+                    color: vc.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: vc.border),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < items.length; i++) ...[
+                        _TicketTile(ticket: items[i]),
+                        if (i != items.length - 1)
+                          Divider(
+                              height: 1,
+                              indent: 16,
+                              endIndent: 16,
+                              color: vc.border),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -267,7 +299,11 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _TicketField extends StatelessWidget {
-  const _TicketField({required this.controller, required this.hint, required this.vc, required this.maxLines});
+  const _TicketField(
+      {required this.controller,
+      required this.hint,
+      required this.vc,
+      required this.maxLines});
   final TextEditingController controller;
   final String hint;
   final HalchalColors vc;
@@ -284,7 +320,8 @@ class _TicketField extends StatelessWidget {
         hintStyle: GoogleFonts.inter(fontSize: 13.5, color: vc.muted),
         filled: true,
         fillColor: vc.surfaceVariant,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -315,7 +352,8 @@ class _TicketTile extends StatelessWidget {
         collapsedIconColor: vc.muted,
         title: Text(
           ticket.subject,
-          style: GoogleFonts.inter(fontSize: 13.5, fontWeight: FontWeight.w700, color: vc.onSurface),
+          style: GoogleFonts.inter(
+              fontSize: 13.5, fontWeight: FontWeight.w700, color: vc.onSurface),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
@@ -329,7 +367,10 @@ class _TicketTile extends StatelessWidget {
               ),
               child: Text(
                 pillLabel,
-                style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w700, color: pillColor),
+                style: GoogleFonts.inter(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: pillColor),
               ),
             ),
           ),
@@ -337,7 +378,8 @@ class _TicketTile extends StatelessWidget {
         children: [
           Text(
             ticket.message,
-            style: GoogleFonts.inter(fontSize: 13, color: vc.muted, height: 1.45),
+            style:
+                GoogleFonts.inter(fontSize: 13, color: vc.muted, height: 1.45),
           ),
           if (ticket.resolutionNote != null) ...[
             const SizedBox(height: 12),
@@ -353,12 +395,16 @@ class _TicketTile extends StatelessWidget {
                 children: [
                   Text(
                     resolved ? 'Response' : 'Latest update',
-                    style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: vc.onSurface),
+                    style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: vc.onSurface),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     ticket.resolutionNote!,
-                    style: GoogleFonts.inter(fontSize: 12.5, color: vc.muted, height: 1.4),
+                    style: GoogleFonts.inter(
+                        fontSize: 12.5, color: vc.muted, height: 1.4),
                   ),
                 ],
               ),
