@@ -31,7 +31,7 @@ class _Handlers {
     this.onCampaignUpdated,
     this.onCampaignPublished,
     this.onCreatorProfileStatsUpdated,
-    this.onSupportTicketResolved,
+    this.onSupportTicketUpdated,
   });
 
   final RealtimeEventHandler? onDeliverableReviewed;
@@ -43,7 +43,7 @@ class _Handlers {
   final RealtimeEventHandler? onCampaignUpdated;
   final RealtimeEventHandler? onCampaignPublished;
   final RealtimeEventHandler? onCreatorProfileStatsUpdated;
-  final RealtimeEventHandler? onSupportTicketResolved;
+  final RealtimeEventHandler? onSupportTicketUpdated;
 }
 
 class RealtimeService {
@@ -69,7 +69,7 @@ class RealtimeService {
     RealtimeEventHandler? onCampaignUpdated,
     RealtimeEventHandler? onCampaignPublished,
     RealtimeEventHandler? onCreatorProfileStatsUpdated,
-    RealtimeEventHandler? onSupportTicketResolved,
+    RealtimeEventHandler? onSupportTicketUpdated,
     // Called when the server rejects the current token so we can fetch a
     // live one — the socket has no interceptor like REST calls do, so
     // without this it just keeps retrying with the same rejected token.
@@ -85,7 +85,7 @@ class RealtimeService {
       onCampaignUpdated: onCampaignUpdated,
       onCampaignPublished: onCampaignPublished,
       onCreatorProfileStatsUpdated: onCreatorProfileStatsUpdated,
-      onSupportTicketResolved: onSupportTicketResolved,
+      onSupportTicketUpdated: onSupportTicketUpdated,
     );
     _getFreshToken = getFreshToken;
     _openSocket(token);
@@ -127,7 +127,7 @@ class RealtimeService {
     listen('campaign:updated', handlers?.onCampaignUpdated);
     listen('campaign:published', handlers?.onCampaignPublished);
     listen('creatorProfile:statsUpdated', handlers?.onCreatorProfileStatsUpdated);
-    listen('supportTicket:resolved', handlers?.onSupportTicketResolved);
+    listen('supportTicket:updated', handlers?.onSupportTicketUpdated);
 
     _socket!.on('connect', (_) {
       debugPrint('[RealtimeService] connected: ${_socket!.id}');

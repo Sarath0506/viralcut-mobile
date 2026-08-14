@@ -339,7 +339,7 @@ class _TicketTile extends StatelessWidget {
             ticket.message,
             style: GoogleFonts.inter(fontSize: 13, color: vc.muted, height: 1.45),
           ),
-          if (resolved && ticket.resolutionNote != null) ...[
+          if (ticket.resolutionNote != null) ...[
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
@@ -352,7 +352,7 @@ class _TicketTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Response',
+                    resolved ? 'Response' : 'Latest update',
                     style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: vc.onSurface),
                   ),
                   const SizedBox(height: 4),

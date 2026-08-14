@@ -121,7 +121,7 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
           onCampaignUpdated: _onRealtimeEvent,
           onCampaignPublished: _onRealtimeEvent,
           onCreatorProfileStatsUpdated: _onRealtimeEvent,
-          onSupportTicketResolved: _onRealtimeEvent,
+          onSupportTicketUpdated: _onRealtimeEvent,
           getFreshToken: () =>
               ref.read(apiClientProvider).refreshAccessToken(),
         );
