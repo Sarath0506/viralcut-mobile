@@ -165,6 +165,15 @@ class ApiClient {
     }
   }
 
+  /// Forces a session refresh and returns the new access token — used by
+  /// the realtime socket to get a live token when the server rejects a
+  /// stale one, since (unlike REST calls) the socket has no interceptor
+  /// to refresh on auth failure automatically.
+  Future<String?> refreshAccessToken() async {
+    final session = await _refreshSession();
+    return session?.accessToken;
+  }
+
   Future<AuthSession?> _refreshSession() async {
     if (_refreshInFlight != null) {
       return _refreshInFlight;

@@ -20,9 +20,34 @@ const _heartbeatAckTimeout = Duration(seconds: 8);
 /// avoids reacting to a single transient network blip.
 const _maxMissedHeartbeats = 2;
 
+class _Handlers {
+  const _Handlers({
+    this.onDeliverableReviewed,
+    this.onDeliverableLiveProof,
+    this.onDeliverableSubmitted,
+    this.onParticipationJoined,
+    this.onCampaignCreated,
+    this.onCampaignUpdated,
+    this.onCampaignPublished,
+    this.onCreatorProfileStatsUpdated,
+  });
+
+  final RealtimeEventHandler? onDeliverableReviewed;
+  final RealtimeEventHandler? onDeliverableLiveProof;
+  final RealtimeEventHandler? onDeliverableSubmitted;
+  final RealtimeEventHandler? onParticipationJoined;
+  final RealtimeEventHandler? onCampaignCreated;
+  final RealtimeEventHandler? onCampaignUpdated;
+  final RealtimeEventHandler? onCampaignPublished;
+  final RealtimeEventHandler? onCreatorProfileStatsUpdated;
+}
+
 class RealtimeService {
   io.Socket? _socket;
   String? _token;
+  _Handlers? _handlers;
+  Future<String?> Function()? _getFreshToken;
+  bool _refreshingToken = false;
   final _joinedCampaignIds = <String>{};
   Timer? _heartbeatTimer;
   int _missedHeartbeats = 0;
@@ -39,7 +64,26 @@ class RealtimeService {
     RealtimeEventHandler? onCampaignUpdated,
     RealtimeEventHandler? onCampaignPublished,
     RealtimeEventHandler? onCreatorProfileStatsUpdated,
+    // Called when the server rejects the current token so we can fetch a
+    // live one — the socket has no interceptor like REST calls do, so
+    // without this it just keeps retrying with the same rejected token.
+    Future<String?> Function()? getFreshToken,
   }) {
+    _handlers = _Handlers(
+      onDeliverableReviewed: onDeliverableReviewed,
+      onDeliverableLiveProof: onDeliverableLiveProof,
+      onDeliverableSubmitted: onDeliverableSubmitted,
+      onParticipationJoined: onParticipationJoined,
+      onCampaignCreated: onCampaignCreated,
+      onCampaignUpdated: onCampaignUpdated,
+      onCampaignPublished: onCampaignPublished,
+      onCreatorProfileStatsUpdated: onCreatorProfileStatsUpdated,
+    );
+    _getFreshToken = getFreshToken;
+    _openSocket(token);
+  }
+
+  void _openSocket(String token) {
     _token = token;
     disconnect();
 
@@ -55,6 +99,7 @@ class RealtimeService {
           .build(),
     );
 
+    final handlers = _handlers;
     void listen(String event, RealtimeEventHandler? handler) {
       if (handler == null) return;
       _socket!.on(event, (data) {
@@ -65,14 +110,14 @@ class RealtimeService {
       });
     }
 
-    listen('deliverable:reviewed', onDeliverableReviewed);
-    listen('deliverable:live_proof', onDeliverableLiveProof);
-    listen('deliverable:submitted', onDeliverableSubmitted);
-    listen('participation:joined', onParticipationJoined);
-    listen('campaign:created', onCampaignCreated);
-    listen('campaign:updated', onCampaignUpdated);
-    listen('campaign:published', onCampaignPublished);
-    listen('creatorProfile:statsUpdated', onCreatorProfileStatsUpdated);
+    listen('deliverable:reviewed', handlers?.onDeliverableReviewed);
+    listen('deliverable:live_proof', handlers?.onDeliverableLiveProof);
+    listen('deliverable:submitted', handlers?.onDeliverableSubmitted);
+    listen('participation:joined', handlers?.onParticipationJoined);
+    listen('campaign:created', handlers?.onCampaignCreated);
+    listen('campaign:updated', handlers?.onCampaignUpdated);
+    listen('campaign:published', handlers?.onCampaignPublished);
+    listen('creatorProfile:statsUpdated', handlers?.onCreatorProfileStatsUpdated);
 
     _socket!.on('connect', (_) {
       debugPrint('[RealtimeService] connected: ${_socket!.id}');
@@ -82,13 +127,40 @@ class RealtimeService {
     });
     _socket!.on('connect_error', (err) {
       debugPrint('[RealtimeService] connect_error: $err');
+      _reconnectWithFreshToken();
     });
     _socket!.on('disconnect', (reason) {
       debugPrint('[RealtimeService] disconnected: $reason');
+      // "io server disconnect" means the server actively rejected us
+      // (expired/invalid token) — socket.io won't auto-reconnect after
+      // this reason on its own, and even if it did it would keep sending
+      // the same rejected token. Everything else (network drop, etc.) is
+      // already covered by enableReconnection().
+      if (reason == 'io server disconnect') {
+        _reconnectWithFreshToken();
+      }
     });
     _socket!.on('reconnect_attempt', (attempt) {
       debugPrint('[RealtimeService] reconnect_attempt #$attempt');
     });
+  }
+
+  Future<void> _reconnectWithFreshToken() async {
+    final getFreshToken = _getFreshToken;
+    if (getFreshToken == null || _refreshingToken) return;
+
+    _refreshingToken = true;
+    try {
+      final freshToken = await getFreshToken();
+      if (freshToken == null || freshToken == _token) {
+        debugPrint('[RealtimeService] no fresher token available, giving up');
+        return;
+      }
+      debugPrint('[RealtimeService] reconnecting with refreshed token');
+      _openSocket(freshToken);
+    } finally {
+      _refreshingToken = false;
+    }
   }
 
   void _startHeartbeat() {
@@ -139,12 +211,22 @@ class RealtimeService {
     }
   }
 
-  void reconnectIfNeeded() {
-    final token = _token;
-    if (token == null) return;
-    if (_socket == null || !_socket!.connected) {
-      _socket?.connect();
+  /// Called on app resume — the most likely moment for the token to have
+  /// gone stale while backgrounded, so this always tries for a fresh one
+  /// rather than reusing whatever the socket last connected with.
+  Future<void> reconnectIfNeeded() async {
+    if (_token == null) return;
+    if (_socket != null && _socket!.connected) return;
+
+    final getFreshToken = _getFreshToken;
+    if (getFreshToken != null) {
+      final freshToken = await getFreshToken();
+      if (freshToken != null) {
+        _openSocket(freshToken);
+        return;
+      }
     }
+    _socket?.connect();
   }
 
   Map<String, dynamic>? _parsePayload(dynamic data) {
