@@ -115,6 +115,7 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
           onDeliverableReviewed: _onRealtimeEvent,
           onDeliverableLiveProof: _onRealtimeEvent,
           onDeliverableSubmitted: _onRealtimeEvent,
+          onDeliverablePaid: _onRealtimeEvent,
           onParticipationJoined: _onRealtimeEvent,
           onCampaignCreated: _onRealtimeEvent,
           onCampaignUpdated: _onRealtimeEvent,

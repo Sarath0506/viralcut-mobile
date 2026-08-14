@@ -25,6 +25,7 @@ class _Handlers {
     this.onDeliverableReviewed,
     this.onDeliverableLiveProof,
     this.onDeliverableSubmitted,
+    this.onDeliverablePaid,
     this.onParticipationJoined,
     this.onCampaignCreated,
     this.onCampaignUpdated,
@@ -35,6 +36,7 @@ class _Handlers {
   final RealtimeEventHandler? onDeliverableReviewed;
   final RealtimeEventHandler? onDeliverableLiveProof;
   final RealtimeEventHandler? onDeliverableSubmitted;
+  final RealtimeEventHandler? onDeliverablePaid;
   final RealtimeEventHandler? onParticipationJoined;
   final RealtimeEventHandler? onCampaignCreated;
   final RealtimeEventHandler? onCampaignUpdated;
@@ -59,6 +61,7 @@ class RealtimeService {
     RealtimeEventHandler? onDeliverableReviewed,
     RealtimeEventHandler? onDeliverableLiveProof,
     RealtimeEventHandler? onDeliverableSubmitted,
+    RealtimeEventHandler? onDeliverablePaid,
     RealtimeEventHandler? onParticipationJoined,
     RealtimeEventHandler? onCampaignCreated,
     RealtimeEventHandler? onCampaignUpdated,
@@ -73,6 +76,7 @@ class RealtimeService {
       onDeliverableReviewed: onDeliverableReviewed,
       onDeliverableLiveProof: onDeliverableLiveProof,
       onDeliverableSubmitted: onDeliverableSubmitted,
+      onDeliverablePaid: onDeliverablePaid,
       onParticipationJoined: onParticipationJoined,
       onCampaignCreated: onCampaignCreated,
       onCampaignUpdated: onCampaignUpdated,
@@ -113,6 +117,7 @@ class RealtimeService {
     listen('deliverable:reviewed', handlers?.onDeliverableReviewed);
     listen('deliverable:live_proof', handlers?.onDeliverableLiveProof);
     listen('deliverable:submitted', handlers?.onDeliverableSubmitted);
+    listen('deliverable:paid', handlers?.onDeliverablePaid);
     listen('participation:joined', handlers?.onParticipationJoined);
     listen('campaign:created', handlers?.onCampaignCreated);
     listen('campaign:updated', handlers?.onCampaignUpdated);
