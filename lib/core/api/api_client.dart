@@ -718,6 +718,23 @@ class ApiClient {
         (d) => WithdrawalResult.fromJson(d as Map<String, dynamic>),
       );
 
+  Future<SupportTicket> createSupportTicket({
+    required String subject,
+    required String message,
+  }) =>
+      post(
+        '/support/tickets',
+        {'subject': subject, 'message': message},
+        (d) => SupportTicket.fromJson(d as Map<String, dynamic>),
+      );
+
+  Future<List<SupportTicket>> fetchSupportTickets() => get(
+        '/support/tickets',
+        (d) => (d as List<dynamic>)
+            .map((e) => SupportTicket.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+
   Future<Map<String, dynamic>> fetchMe() => get(
         '/users/me',
         (d) => d as Map<String, dynamic>,
@@ -960,5 +977,34 @@ class WithdrawalResult {
       WithdrawalResult(
         netPaise: json['netPaise'] as int,
         feePaise: json['feePaise'] as int,
+      );
+}
+
+class SupportTicket {
+  SupportTicket({
+    required this.id,
+    required this.subject,
+    required this.message,
+    required this.status,
+    this.resolutionNote,
+    this.resolvedAt,
+    required this.createdAt,
+  });
+  final String id;
+  final String subject;
+  final String message;
+  final String status;
+  final String? resolutionNote;
+  final String? resolvedAt;
+  final String createdAt;
+
+  factory SupportTicket.fromJson(Map<String, dynamic> json) => SupportTicket(
+        id: json['id'] as String,
+        subject: json['subject'] as String,
+        message: json['message'] as String,
+        status: json['status'] as String,
+        resolutionNote: json['resolutionNote'] as String?,
+        resolvedAt: json['resolvedAt'] as String?,
+        createdAt: json['createdAt'] as String,
       );
 }

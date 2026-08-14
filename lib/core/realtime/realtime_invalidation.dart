@@ -4,6 +4,7 @@ import '../../features/campaigns/campaign_providers.dart';
 import '../../features/dashboard/dashboard_providers.dart';
 import '../../features/profile/profile_providers.dart';
 import '../../features/submissions/submission_providers.dart';
+import '../../features/support/support_providers.dart';
 import '../../features/wallet/wallet_providers.dart';
 import '../creator_profile/creator_profile_providers.dart';
 import 'participation_realtime.dart';
@@ -62,6 +63,7 @@ void invalidateAppDataCaches(
   ref.invalidate(profileDashboardProvider);
   ref.invalidate(profileActiveSubmissionsProvider);
   ref.invalidate(walletProvider);
+  ref.invalidate(supportTicketsProvider);
 
   if (campaignId != null) {
     ref.invalidate(campaignDetailProvider(campaignId));
