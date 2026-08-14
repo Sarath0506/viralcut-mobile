@@ -10,6 +10,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/campaign/campaign_schedule_label.dart';
 import '../../../core/campaign/media_url.dart';
 import '../../../core/format/money_format.dart';
+import '../../../core/widgets/social_logo_painters.dart';
 import '../../../theme/halchal_colors.dart';
 import 'campaign_shared_widgets.dart';
 
@@ -247,11 +248,10 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
                 subtitle: asset.type == 'youtube'
                     ? 'Watch on YouTube'
                     : 'Open in Drive',
-                icon: asset.type == 'youtube'
-                    ? Icons.play_circle_outline
-                    : Icons.folder_outlined,
-                iconColor:
-                    asset.type == 'youtube' ? const Color(0xFFFF0000) : null,
+                icon: Icons.folder_outlined,
+                leading: asset.type == 'youtube'
+                    ? const SocialLogoBox(platform: 'youtube', size: 34, radius: 11)
+                    : null,
                 onTap: () => _openUrl(context, asset.url),
               ),
             ),
@@ -1051,19 +1051,22 @@ class _LinkRow extends StatelessWidget {
     required this.icon,
     required this.onTap,
     this.subtitle,
-    this.iconColor,
+    this.leading,
   });
 
   final String label;
   final String? subtitle;
   final IconData icon;
-  final Color? iconColor;
   final VoidCallback onTap;
+
+  /// Overrides the default icon-in-a-tinted-box treatment — used for real
+  /// brand logos (e.g. YouTube) that already draw their own shape/color.
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
     final vc = HalchalColors.of(context);
-    final primary = iconColor ?? Theme.of(context).colorScheme.primary;
+    final primary = Theme.of(context).colorScheme.primary;
 
     return Material(
       color: vc.surface,
@@ -1078,15 +1081,16 @@ class _LinkRow extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Icon(icon, color: primary, size: 17),
-              ),
+              leading ??
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Icon(icon, color: primary, size: 17),
+                  ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
