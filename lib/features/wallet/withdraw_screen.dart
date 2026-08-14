@@ -63,6 +63,7 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
         ),
       );
       ref.invalidate(walletProvider);
+      ref.invalidate(walletTransactionsProvider);
       context.pop();
     } on ApiException catch (e) {
       if (!mounted) return;
