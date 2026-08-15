@@ -7,9 +7,8 @@ import '../../../theme/halchal_text_styles.dart';
 enum OtpStatus { idle, verifying, verified }
 
 /// Status readout for the OTP verification flow: a glowing circular lock
-/// badge, a 4-checkmark cascade once verified, and a pill button that
-/// carries the "Verifying…"/"Verified" state — the single loading/status
-/// affordance for the flow (no separate spinner).
+/// badge and a pill button that carries the "Verifying…"/"Verified" state —
+/// the single loading/status affordance for the flow (no separate spinner).
 class OtpStatusIcon extends StatelessWidget {
   const OtpStatusIcon({super.key, required this.status});
 
@@ -29,10 +28,6 @@ class OtpStatusIcon extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _Badge(status: status, color: color, reduceMotion: reduceMotion),
-        if (status == OtpStatus.verified) ...[
-          const SizedBox(height: 12),
-          _CheckmarkRow(color: vc.money, reduceMotion: reduceMotion),
-        ],
         if (status != OtpStatus.idle) ...[
           const SizedBox(height: 16),
           _StatusPill(status: status),
@@ -90,38 +85,6 @@ class _Badge extends StatelessWidget {
               ],
       ),
       child: animatedIcon,
-    );
-  }
-}
-
-class _CheckmarkRow extends StatelessWidget {
-  const _CheckmarkRow({required this.color, required this.reduceMotion});
-
-  static const _checkCount = 4;
-
-  final Color color;
-  final bool reduceMotion;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(_checkCount, (i) {
-        final check = Icon(Icons.check, size: 14, color: color);
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 3),
-          child: reduceMotion
-              ? check
-              : check
-                  .animate(delay: (i * 220).ms)
-                  .scale(
-                    begin: const Offset(0.4, 0.4),
-                    duration: 500.ms,
-                    curve: Curves.elasticOut,
-                  )
-                  .fadeIn(duration: 400.ms),
-        );
-      }),
     );
   }
 }
