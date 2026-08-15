@@ -91,7 +91,7 @@ class _BalanceCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Total earned',
+            'Available balance',
             style: GoogleFonts.inter(
               fontSize: 13,
               fontWeight: FontWeight.w500,
@@ -99,9 +99,9 @@ class _BalanceCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          // Large total earned amount
+          // Large available balance amount
           Text(
-            formatPaise(wallet.lifetimePaise),
+            formatPaise(wallet.availablePaise),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 42,
               fontWeight: FontWeight.w800,
