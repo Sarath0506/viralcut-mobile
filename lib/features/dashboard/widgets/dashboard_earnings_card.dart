@@ -45,7 +45,7 @@ class DashboardEarningsCard extends StatelessWidget {
                             size: 13, color: onDark.withValues(alpha: 0.62)),
                         const SizedBox(width: 5),
                         Text(
-                          'Total earned',
+                          'Available balance',
                           style: GoogleFonts.inter(
                             color: onDark.withValues(alpha: 0.62),
                             fontSize: 12,
@@ -56,7 +56,7 @@ class DashboardEarningsCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      formatPaise(wallet.lifetimePaise),
+                      formatPaise(wallet.availablePaise),
                       style: GoogleFonts.plusJakartaSans(
                         color: vc.moneyBright,
                         fontSize: 28,
