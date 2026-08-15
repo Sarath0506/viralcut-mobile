@@ -4,11 +4,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/campaign/campaign_schedule_label.dart';
 import '../../../core/campaign/media_url.dart';
 import '../../../core/format/money_format.dart';
+import '../../../core/widgets/social_logo_painters.dart';
 import '../../../theme/halchal_colors.dart';
 import 'campaign_shared_widgets.dart';
 
@@ -40,11 +42,11 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
     }
   }
 
-  void _openFullScreenImage(BuildContext context, String url) {
+  void _openMediaGallery(BuildContext context, List<CampaignAsset> assets, int initialIndex) {
     showDialog(
       context: context,
       barrierColor: Colors.black87,
-      builder: (_) => _FullScreenImageViewer(url: url),
+      builder: (_) => _FullScreenMediaGallery(assets: assets, initialIndex: initialIndex),
     );
   }
 
@@ -136,10 +138,9 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
                 final isVideo = asset.type == 'video';
                 final label = asset.label?.trim();
                 return GestureDetector(
+                  key: ValueKey(asset.url),
                   onTap: url != null
-                      ? () => isVideo
-                          ? _openUrl(context, url)
-                          : _openFullScreenImage(context, url)
+                      ? () => _openMediaGallery(context, c.referenceAssets, i)
                       : null,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(14),
@@ -150,7 +151,7 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
                         fit: StackFit.expand,
                         children: [
                           if (isVideo)
-                            _VideoThumbnail(vc: vc, label: null)
+                            _VideoThumbnail(vc: vc, label: asset.label, url: url)
                           else if (url != null)
                             Image.network(
                               url,
@@ -247,11 +248,10 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
                 subtitle: asset.type == 'youtube'
                     ? 'Watch on YouTube'
                     : 'Open in Drive',
-                icon: asset.type == 'youtube'
-                    ? Icons.play_circle_outline
-                    : Icons.folder_outlined,
-                iconColor:
-                    asset.type == 'youtube' ? const Color(0xFFFF0000) : null,
+                icon: Icons.folder_outlined,
+                leading: asset.type == 'youtube'
+                    ? const SocialLogoBox(platform: 'youtube', size: 34, radius: 11)
+                    : null,
                 onTap: () => _openUrl(context, asset.url),
               ),
             ),
@@ -275,41 +275,110 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
   }
 }
 
-class _VideoThumbnail extends StatelessWidget {
-  const _VideoThumbnail({required this.vc, this.label});
+class _VideoThumbnail extends StatefulWidget {
+  const _VideoThumbnail({required this.vc, this.label, this.url});
   final HalchalColors vc;
   final String? label;
+  final String? url;
+
+  @override
+  State<_VideoThumbnail> createState() => _VideoThumbnailState();
+}
+
+class _VideoThumbnailState extends State<_VideoThumbnail>
+    with AutomaticKeepAliveClientMixin {
+  VideoPlayerController? _controller;
+
+  // Keeps the loaded video frame alive when this tile scrolls out of the
+  // horizontal list's viewport — without this, ListView.separated disposes
+  // and later recreates the widget, forcing the ~2s reload the user saw
+  // every time they scrolled away and back.
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    final url = widget.url;
+    if (url == null) return;
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    _controller = controller;
+    controller.initialize().then((_) {
+      if (mounted) setState(() {});
+    }).catchError((_) {});
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+    final vc = widget.vc;
+    final controller = _controller;
+    final hasFrame = controller != null && controller.value.isInitialized;
+
     return Container(
       color: vc.surface,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: vc.primary.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.play_arrow_rounded, color: vc.primary, size: 22),
-          ),
-          if (label != null && label!.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              label!,
-              style: TextStyle(
-                fontSize: 10,
-                color: vc.muted,
-                fontWeight: FontWeight.w500,
+          if (hasFrame)
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: controller.value.size.width,
+                height: controller.value.size.height,
+                child: VideoPlayer(controller),
               ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
-          ],
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: hasFrame ? 0.1 : 0),
+                  Colors.black.withValues(alpha: hasFrame ? 0.55 : 0),
+                ],
+              ),
+            ),
+          ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: hasFrame ? Colors.black45 : vc.primary.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.play_arrow_rounded,
+                  color: hasFrame ? Colors.white : vc.primary,
+                  size: 22,
+                ),
+              ),
+              if (widget.label != null && widget.label!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  widget.label!,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: hasFrame ? Colors.white : vc.muted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );
@@ -982,19 +1051,22 @@ class _LinkRow extends StatelessWidget {
     required this.icon,
     required this.onTap,
     this.subtitle,
-    this.iconColor,
+    this.leading,
   });
 
   final String label;
   final String? subtitle;
   final IconData icon;
-  final Color? iconColor;
   final VoidCallback onTap;
+
+  /// Overrides the default icon-in-a-tinted-box treatment — used for real
+  /// brand logos (e.g. YouTube) that already draw their own shape/color.
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
     final vc = HalchalColors.of(context);
-    final primary = iconColor ?? Theme.of(context).colorScheme.primary;
+    final primary = Theme.of(context).colorScheme.primary;
 
     return Material(
       color: vc.surface,
@@ -1009,15 +1081,16 @@ class _LinkRow extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Icon(icon, color: primary, size: 17),
-              ),
+              leading ??
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Icon(icon, color: primary, size: 17),
+                  ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -1057,8 +1130,104 @@ class _LinkRow extends StatelessWidget {
   }
 }
 
-class _FullScreenImageViewer extends StatelessWidget {
-  const _FullScreenImageViewer({required this.url});
+/// Swipeable full-screen viewer for a campaign's reference assets — opens on
+/// whichever tile was tapped and lets the viewer swipe to adjacent images/
+/// videos without closing and reopening each one individually.
+class _FullScreenMediaGallery extends StatefulWidget {
+  const _FullScreenMediaGallery({required this.assets, required this.initialIndex});
+
+  final List<CampaignAsset> assets;
+  final int initialIndex;
+
+  @override
+  State<_FullScreenMediaGallery> createState() => _FullScreenMediaGalleryState();
+}
+
+class _FullScreenMediaGalleryState extends State<_FullScreenMediaGallery> {
+  late final PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.assets.length,
+            onPageChanged: (i) => setState(() => _currentIndex = i),
+            itemBuilder: (context, i) {
+              final asset = widget.assets[i];
+              final url = resolveCampaignMediaUrl(asset.url);
+              if (url == null) {
+                return const Center(
+                  child: Icon(Icons.broken_image_outlined, color: Colors.white54, size: 64),
+                );
+              }
+              return asset.type == 'video'
+                  ? _GalleryVideoPage(url: url, isActive: i == _currentIndex)
+                  : _GalleryImagePage(url: url);
+            },
+          ),
+          if (widget.assets.length > 1)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 12,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(widget.assets.length, (i) {
+                  final active = i == _currentIndex;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: active ? 18 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: active ? Colors.white : Colors.white38,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 12,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 20),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GalleryImagePage extends StatelessWidget {
+  const _GalleryImagePage({required this.url});
 
   final String url;
 
@@ -1066,46 +1235,133 @@ class _FullScreenImageViewer extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => Navigator.of(context).pop(),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Stack(
-          children: [
-            Center(
-              child: InteractiveViewer(
-                minScale: 0.5,
-                maxScale: 4.0,
-                child: Image.network(
-                  url,
-                  fit: BoxFit.contain,
-                  loadingBuilder: (_, child, progress) => progress == null
-                      ? child
-                      : const Center(child: CircularProgressIndicator()),
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.broken_image_outlined,
-                    color: Colors.white54,
-                    size: 64,
-                  ),
-                ),
-              ),
+      child: Center(
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: Image.network(
+            url,
+            fit: BoxFit.contain,
+            loadingBuilder: (_, child, progress) =>
+                progress == null ? child : const Center(child: CircularProgressIndicator()),
+            errorBuilder: (_, __, ___) => const Icon(
+              Icons.broken_image_outlined,
+              color: Colors.white54,
+              size: 64,
             ),
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 8,
-              right: 12,
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.close, color: Colors.white, size: 20),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _GalleryVideoPage extends StatefulWidget {
+  const _GalleryVideoPage({required this.url, required this.isActive});
+
+  final String url;
+  final bool isActive;
+
+  @override
+  State<_GalleryVideoPage> createState() => _GalleryVideoPageState();
+}
+
+class _GalleryVideoPageState extends State<_GalleryVideoPage> {
+  late final VideoPlayerController _controller;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      ..initialize().then((_) {
+        if (!mounted) return;
+        setState(() {});
+        if (widget.isActive) _controller.play();
+      }).catchError((_) {
+        if (mounted) setState(() => _failed = true);
+      });
+  }
+
+  @override
+  void didUpdateWidget(covariant _GalleryVideoPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive != oldWidget.isActive && _controller.value.isInitialized) {
+      // Only the page currently on screen should play — swiping away pauses
+      // it so audio doesn't keep running behind the newly visible page.
+      widget.isActive ? _controller.play() : _controller.pause();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _togglePlayback() {
+    setState(() {
+      _controller.value.isPlaying ? _controller.pause() : _controller.play();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Center(
+          child: _failed
+              ? const Icon(
+                  Icons.error_outline,
+                  color: Colors.white54,
+                  size: 64,
+                )
+              : _controller.value.isInitialized
+                  ? GestureDetector(
+                      onTap: _togglePlayback,
+                      child: AspectRatio(
+                        aspectRatio: _controller.value.aspectRatio,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            VideoPlayer(_controller),
+                            if (!_controller.value.isPlaying)
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black45,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.play_arrow_rounded,
+                                  color: Colors.white,
+                                  size: 36,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : const CircularProgressIndicator(),
+        ),
+        if (_controller.value.isInitialized)
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: MediaQuery.of(context).padding.bottom + 16,
+            child: VideoProgressIndicator(
+              _controller,
+              allowScrubbing: true,
+              padding: EdgeInsets.zero,
+              colors: const VideoProgressColors(
+                playedColor: Colors.white,
+                bufferedColor: Colors.white30,
+                backgroundColor: Colors.white12,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

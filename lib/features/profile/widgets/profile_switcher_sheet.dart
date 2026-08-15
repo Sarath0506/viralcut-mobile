@@ -85,7 +85,7 @@ class _ProfileSwitcherSheetState extends ConsumerState<ProfileSwitcherSheet> {
               const SizedBox(height: 4),
               Text(
                 _showAddForm
-                    ? 'Add another social handle to submit content under'
+                    ? 'Add another profile to submit content under'
                     : 'Content you submit will be attributed to the active profile',
                 style: GoogleFonts.inter(fontSize: 12.5, color: vc.muted),
               ),
@@ -253,15 +253,12 @@ class _AddProfileForm extends ConsumerStatefulWidget {
 
 class _AddProfileFormState extends ConsumerState<_AddProfileForm> {
   final _formKey = GlobalKey<FormState>();
-  String _platform = _platforms.first.key;
-  final _handleController = TextEditingController();
-  final _labelController = TextEditingController();
+  final _nameController = TextEditingController();
   bool _saving = false;
 
   @override
   void dispose() {
-    _handleController.dispose();
-    _labelController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -269,10 +266,13 @@ class _AddProfileFormState extends ConsumerState<_AddProfileForm> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _saving = true);
     try {
+      final name = _nameController.text.trim();
+      // Platform is a technical default only — actual platform-specific
+      // linking happens separately via Connected Accounts.
       await ref.read(apiClientProvider).createCreatorProfile(
-            platform: _platform,
-            handle: _handleController.text.trim().replaceFirst('@', ''),
-            label: _labelController.text.trim(),
+            platform: _platforms.first.key,
+            handle: name,
+            label: name,
           );
       ref.invalidate(creatorProfilesProvider);
       if (mounted) widget.onDone();
@@ -292,44 +292,17 @@ class _AddProfileFormState extends ConsumerState<_AddProfileForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _platforms.map((p) {
-              final selected = _platform == p.key;
-              return ChoiceChip(
-                avatar: Icon(p.icon, size: 16),
-                label: Text(p.label),
-                selected: selected,
-                onSelected: (_) => setState(() => _platform = p.key),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 14),
           TextFormField(
-            controller: _handleController,
+            controller: _nameController,
             decoration: InputDecoration(
-              labelText: 'Handle',
-              hintText: '@yourhandle',
+              labelText: 'Profile name',
+              hintText: 'e.g. My Meme Page',
               filled: true,
               fillColor: vc.surface,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
             validator: (v) =>
-                (v == null || v.trim().replaceFirst('@', '').isEmpty)
-                    ? 'Enter a handle'
-                    : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _labelController,
-            decoration: InputDecoration(
-              labelText: 'Nickname (optional)',
-              hintText: 'e.g. Meme page',
-              filled: true,
-              fillColor: vc.surface,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            ),
+                (v == null || v.trim().isEmpty) ? 'Enter a profile name' : null,
           ),
           const SizedBox(height: 18),
           Row(

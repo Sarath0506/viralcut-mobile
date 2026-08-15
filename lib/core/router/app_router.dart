@@ -21,6 +21,7 @@ import '../../features/splash/splash_screen.dart';
 import '../../features/submissions/participation_detail_screen.dart';
 import '../../features/submissions/performance_screen.dart';
 import '../../features/submissions/submissions_screen.dart';
+import '../../features/support/raise_ticket_screen.dart';
 import '../../features/support/support_screen.dart';
 import '../../features/legal/legal_screen.dart';
 import '../../features/wallet/bank_details_screen.dart';
@@ -143,7 +144,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const BankDetailsScreen(),
       ),
       GoRoute(path: '/legal/terms', builder: (_, __) => const TermsScreen()),
-      GoRoute(path: '/legal/privacy', builder: (_, __) => const PrivacyScreen()),
+      GoRoute(
+          path: '/legal/privacy', builder: (_, __) => const PrivacyScreen()),
       GoRoute(
         path: '/profile/edit',
         builder: (_, __) => const EditProfileScreen(),
@@ -163,6 +165,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/support',
         builder: (_, __) => const SupportScreen(),
+      ),
+      GoRoute(
+        path: '/support/raise-ticket',
+        builder: (_, __) => const RaiseTicketScreen(),
       ),
     ],
   );

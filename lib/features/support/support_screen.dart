@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -89,10 +90,19 @@ class SupportScreen extends StatelessWidget {
                   onTap: _emailSupport,
                 ),
                 Divider(height: 1, indent: 16, endIndent: 16, color: vc.border),
-                _ContactInfoTile(
+                const _ContactInfoTile(
                   icon: Icons.location_on_outlined,
                   title: 'Headquarters',
-                  subtitle: 'Mutiny Talent Pvt. Ltd.\nHyderabad, Telangana, India',
+                  subtitle:
+                      'Mutiny Talent Pvt. Ltd.\nHyderabad, Telangana, India',
+                ),
+                Divider(height: 1, indent: 16, endIndent: 16, color: vc.border),
+                _ContactInfoTile(
+                  icon: Icons.confirmation_num_outlined,
+                  title: 'Raise a Ticket',
+                  subtitle: 'Submit a support request and track its status',
+                  showChevron: true,
+                  onTap: () async => context.push('/support/raise-ticket'),
                 ),
               ],
             ),
@@ -118,9 +128,11 @@ class SupportScreen extends StatelessWidget {
             child: Column(
               children: [
                 for (var i = 0; i < _faqs.length; i++) ...[
-                  _FaqTile(question: _faqs[i].question, answer: _faqs[i].answer),
+                  _FaqTile(
+                      question: _faqs[i].question, answer: _faqs[i].answer),
                   if (i != _faqs.length - 1)
-                    Divider(height: 1, indent: 16, endIndent: 16, color: vc.border),
+                    Divider(
+                        height: 1, indent: 16, endIndent: 16, color: vc.border),
                 ],
               ],
             ),
@@ -137,12 +149,14 @@ class _ContactInfoTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.onTap,
+    this.showChevron = false,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final Future<void> Function()? onTap;
+  final bool showChevron;
 
   @override
   Widget build(BuildContext context) {
@@ -186,6 +200,10 @@ class _ContactInfoTile extends StatelessWidget {
               ],
             ),
           ),
+          if (showChevron) ...[
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right_rounded, color: vc.muted, size: 20),
+          ],
         ],
       ),
     );

@@ -51,7 +51,7 @@ class DashboardScreen extends ConsumerWidget {
               DashboardEarningsCard(
                 wallet: data.wallet,
                 clipsUnderReview: data.clipsUnderReview,
-                onWithdraw: () => context.go('/wallet'),
+                onWithdraw: () => context.push('/withdraw'),
               ),
               const SizedBox(height: 12),
               _OverallLeaderboardLink(
