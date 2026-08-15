@@ -228,8 +228,17 @@ class _TicketTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final vc = HalchalColors.of(context);
     final resolved = ticket.status == 'resolved';
-    final pillColor = resolved ? vc.moneyBright : vc.warningBright;
-    final pillLabel = resolved ? 'Resolved' : 'Under investigation';
+    final reviewing = !resolved && ticket.resolutionNote != null;
+    final pillColor = resolved
+        ? vc.moneyBright
+        : reviewing
+            ? vc.primary
+            : vc.warningBright;
+    final pillLabel = resolved
+        ? 'Resolved'
+        : reviewing
+            ? 'Under Review'
+            : 'Under investigation';
 
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
