@@ -90,10 +90,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       if (!mounted) return;
       setState(() => _status = OtpStatus.verified);
       if (!reduceMotion) {
-        // Last of the 4 staggered checkmarks starts at 660ms and takes
-        // another 500ms to finish (~1160ms total) — hold past that so the
-        // completed state is visible, without lingering too long.
-        await Future.delayed(const Duration(milliseconds: 1800));
+        // Brief hold so the "Verified" state is visible before navigating
+        // away — without this, the router's reactive redirect (triggered
+        // by login() below) fires instantly and the state never renders.
+        await Future.delayed(const Duration(milliseconds: 900));
       }
       if (!mounted) return;
       // authStateProvider flipping to authed is what actually triggers
