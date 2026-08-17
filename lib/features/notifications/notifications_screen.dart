@@ -10,6 +10,12 @@ import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import '../profile/profile_providers.dart';
 
+// Bottom-nav tab routes living inside the app's ShellRoute. Pushing one of
+// these with context.push (instead of go) stacks a second page with the
+// same route-derived key on top of the tab's already-mounted instance,
+// which trips a GlobalKey collision assertion in the Navigator.
+const _shellTabRoutes = {'/dashboard', '/campaigns', '/submissions', '/wallet', '/profile'};
+
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
@@ -30,7 +36,11 @@ class NotificationsScreen extends ConsumerWidget {
       ref.invalidate(unreadNotificationCountProvider);
     }
     if (n.link != null && n.link!.isNotEmpty && context.mounted) {
-      context.push(n.link!);
+      if (_shellTabRoutes.contains(n.link)) {
+        context.go(n.link!);
+      } else {
+        context.push(n.link!);
+      }
     }
   }
 
