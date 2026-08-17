@@ -735,6 +735,13 @@ class ApiClient {
             .toList(),
       );
 
+  Future<List<Faq>> fetchFaqs() => get(
+        '/faqs',
+        (d) => (d as List<dynamic>)
+            .map((e) => Faq.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+
   Future<Map<String, dynamic>> fetchMe() => get(
         '/users/me',
         (d) => d as Map<String, dynamic>,
@@ -1006,5 +1013,18 @@ class SupportTicket {
         resolutionNote: json['resolutionNote'] as String?,
         resolvedAt: json['resolvedAt'] as String?,
         createdAt: json['createdAt'] as String,
+      );
+}
+
+class Faq {
+  Faq({required this.id, required this.question, required this.answer});
+  final String id;
+  final String question;
+  final String answer;
+
+  factory Faq.fromJson(Map<String, dynamic> json) => Faq(
+        id: json['id'] as String,
+        question: json['question'] as String,
+        answer: json['answer'] as String,
       );
 }
