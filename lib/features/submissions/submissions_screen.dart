@@ -123,7 +123,13 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen>
                       animation: listEntranceController,
                       child: SubmissionListCard(
                         item: p,
-                        onTap: () => context.push('/participations/${p.id}'),
+                        // Nothing submitted yet — the campaign detail page
+                        // (cover, payout, brief, Submit content CTA) is more
+                        // useful than the near-empty submission tracker.
+                        onTap: () =>
+                            (p.summary == 'joined' || p.summary == 'drafts_incomplete')
+                                ? context.push('/campaigns/${p.campaignId}')
+                                : context.push('/participations/${p.id}'),
                       ),
                     );
                   },
