@@ -170,25 +170,7 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
                             )
                           else
                             _assetPlaceholder(vc, 108, 140),
-                          if (isVideo)
-                            Positioned(
-                              top: 8,
-                              left: 8,
-                              child: Container(
-                                width: 26,
-                                height: 26,
-                                decoration: const BoxDecoration(
-                                  color: Colors.black45,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.play_arrow_rounded,
-                                  color: Colors.white,
-                                  size: 15,
-                                ),
-                              ),
-                            ),
-                          if (label != null && label.isNotEmpty)
+                          if (!isVideo && label != null && label.isNotEmpty)
                             Positioned(
                               left: 0,
                               right: 0,
@@ -301,11 +283,15 @@ class _VideoThumbnailState extends State<_VideoThumbnail>
     super.initState();
     final url = widget.url;
     if (url == null) return;
+    debugPrint('[_VideoThumbnail] initializing $url');
     final controller = VideoPlayerController.networkUrl(Uri.parse(url));
     _controller = controller;
-    controller.initialize().then((_) {
+    controller.initialize().timeout(const Duration(seconds: 10)).then((_) {
+      debugPrint('[_VideoThumbnail] initialized $url');
       if (mounted) setState(() {});
-    }).catchError((_) {});
+    }).catchError((e) {
+      debugPrint('[_VideoThumbnail] failed to initialize $url: $e');
+    });
   }
 
   @override

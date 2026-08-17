@@ -1,47 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
+import 'support_providers.dart';
 
 const _supportEmail = 'Support@halchalapp.com';
 
-const _faqs = <({String question, String answer})>[
-  (
-    question: 'When do I get paid for my views?',
-    answer:
-        'Once your live post is approved, view counts refresh periodically and your earnings move to "Pending" first. They become withdrawable once the brand\'s review window closes for that submission.',
-  ),
-  (
-    question: 'Why was my draft or live proof rejected?',
-    answer:
-        'Check the rejection reason on the submission\'s details page — it\'s left by the brand reviewer. Common causes are missing the product, not following the content brief, or a private/unreachable post link.',
-  ),
-  (
-    question: 'How long does KYC verification take?',
-    answer:
-        'Most KYC submissions are reviewed within 1-2 business days. You\'ll get a notification the moment it\'s approved or if we need a clearer document.',
-  ),
-  (
-    question: 'Why do I need to add bank details before withdrawing?',
-    answer:
-        'We need your account holder name, account number (or UPI ID), and IFSC code to actually send the payout to the right place. This is a one-time setup — after that, withdrawals just need an amount.',
-  ),
-  (
-    question: 'Can I use the same login on two accounts?',
-    answer:
-        'No — each account is tied to one phone number and there\'s no account-switcher today. If you manage more than one creator profile, sign up with a separate phone number for each and log out/in to switch.',
-  ),
-  (
-    question: 'A campaign I joined got paused — what happens to my submission?',
-    answer:
-        'Nothing is lost. Pausing is temporary and only stops new submissions; your existing drafts, reviews, and live proof keep whatever stage they were already in.',
-  ),
-];
-
-class SupportScreen extends StatelessWidget {
+class SupportScreen extends ConsumerWidget {
   const SupportScreen({super.key});
 
   Future<void> _emailSupport() async {
@@ -54,8 +23,9 @@ class SupportScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final vc = HalchalColors.of(context);
+    final faqs = ref.watch(faqsProvider);
 
     return VcScaffold(
       title: 'Support Center',
@@ -118,24 +88,35 @@ class SupportScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: vc.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: vc.border),
+          faqs.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: CircularProgressIndicator()),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                for (var i = 0; i < _faqs.length; i++) ...[
-                  _FaqTile(
-                      question: _faqs[i].question, answer: _faqs[i].answer),
-                  if (i != _faqs.length - 1)
-                    Divider(
-                        height: 1, indent: 16, endIndent: 16, color: vc.border),
-                ],
-              ],
+            error: (_, __) => Text(
+              'Couldn\'t load FAQs.',
+              style: GoogleFonts.inter(fontSize: 13, color: vc.muted),
             ),
+            data: (items) {
+              if (items.isEmpty) return const SizedBox.shrink();
+              return Container(
+                decoration: BoxDecoration(
+                  color: vc.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: vc.border),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var i = 0; i < items.length; i++) ...[
+                      _FaqTile(question: items[i].question, answer: items[i].answer),
+                      if (i != items.length - 1)
+                        Divider(height: 1, indent: 16, endIndent: 16, color: vc.border),
+                    ],
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),
