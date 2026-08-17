@@ -64,6 +64,7 @@ void invalidateAppDataCaches(
   ref.invalidate(profileActiveSubmissionsProvider);
   ref.invalidate(walletProvider);
   ref.invalidate(supportTicketsProvider);
+  ref.invalidate(faqsProvider);
 
   if (campaignId != null) {
     ref.invalidate(campaignDetailProvider(campaignId));

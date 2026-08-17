@@ -10,5 +10,6 @@ final supportTicketsProvider = FutureProvider<List<SupportTicket>>((ref) async {
 });
 
 final faqsProvider = FutureProvider<List<Faq>>((ref) async {
+  watchAppRealtimeTick(ref);
   return ref.read(apiClientProvider).fetchFaqs();
 });
