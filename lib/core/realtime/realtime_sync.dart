@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/auth_provider.dart';
+import '../push/push_providers.dart';
 import 'realtime_invalidation.dart';
 import 'realtime_providers.dart';
 
@@ -35,6 +36,7 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
         }
         _connect();
         _startPolling();
+        ref.read(pushNotificationServiceProvider).init(ref);
       } else if (next == AuthStatus.unauthed) {
         ref.read(realtimeServiceProvider).disconnect();
         _stopPolling();
@@ -46,6 +48,7 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _connect();
         _startPolling();
+        ref.read(pushNotificationServiceProvider).init(ref);
       });
     }
   }
