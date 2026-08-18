@@ -27,6 +27,8 @@ dependencies:
   package_info_plus: ^8.1.2
   video_player: ^2.9.2
   flutter_svg: ^2.0.17
+  firebase_core: ^4.13.0
+  firebase_messaging: ^16.5.0
 
 dev_dependencies:
   flutter_test:
