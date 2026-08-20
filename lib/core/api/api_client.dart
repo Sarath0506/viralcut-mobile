@@ -192,7 +192,12 @@ class ApiClient {
     try {
       refresh = await _storage.getRefreshToken().timeout(const Duration(seconds: 5));
     } catch (_) {
-      refresh = null;
+      // The read itself failed or timed out (e.g. a slow Keychain unlock
+      // right after app resume) — this says nothing about whether a valid
+      // refresh token actually exists, so don't wipe the session over it.
+      // A clean read that genuinely finds nothing (no exception, refresh
+      // stays null) still falls through to the real logout below.
+      return null;
     }
     if (refresh == null) {
       await _onSessionExpired?.call();
@@ -213,8 +218,21 @@ class ApiClient {
       );
       await _onSessionRefreshed?.call(session);
       return session;
+    } on DioException catch (e) {
+      // Only a genuine rejection from the server means the refresh token
+      // is actually invalid/expired — log out. A network-level failure
+      // (very common right after app resume, before connectivity is fully
+      // back) says nothing about the token's validity, so don't wipe the
+      // session over it; just fail this attempt and let the next trigger
+      // retry with what's still a perfectly good refresh token.
+      final envelope = _errorEnvelopeFromResponse(e.response?.data);
+      if (e.response?.statusCode == 401 || envelope?.code == 'UNAUTHORIZED') {
+        await _onSessionExpired?.call();
+      }
+      return null;
     } catch (_) {
-      await _onSessionExpired?.call();
+      // Non-network failure (e.g. malformed response) — treat the same as
+      // a network hiccup, not a token rejection.
       return null;
     }
   }
