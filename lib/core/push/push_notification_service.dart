@@ -45,7 +45,13 @@ class PushNotificationService {
     if (!_listenersAttached) {
       _listenersAttached = true;
 
-      await messaging.requestPermission(alert: true, badge: true, sound: true);
+      final settings = await messaging.requestPermission(alert: true, badge: true, sound: true);
+      // authorizationStatus is the actual answer — denied/notDetermined here
+      // means the OS will silently drop every notification we send, even
+      // though FCM itself reports the send as successful. There's no way to
+      // re-prompt on Android/iOS after a denial; the user has to grant it
+      // manually in system Settings.
+      debugPrint('[Push] permission status: ${settings.authorizationStatus}');
 
       messaging.onTokenRefresh.listen((newToken) {
         final client = _apiClient;
