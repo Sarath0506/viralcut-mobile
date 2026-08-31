@@ -252,19 +252,79 @@ class CampaignDetailScreen extends ConsumerWidget {
             bottomNavigationBar: SafeArea(
               child: Padding(
                 padding: AppSpacing.bottomActionPadding(context),
-                child: PrimaryActionButton(
-                  icon: _ctaIcon(p),
-                  label: joining ? 'Loading…' : cta,
-                  subtitle: joining ? null : _ctaSubtitle(p, c),
-                  loading: joining,
-                  vc: vc,
-                  onPressed: () => _onCta(context, ref, p),
-                ),
+                child: (p == null && c.intakeClosed)
+                    ? _IntakeClosedNotice(vc: vc)
+                    : PrimaryActionButton(
+                        icon: _ctaIcon(p),
+                        label: joining ? 'Loading…' : cta,
+                        subtitle: joining ? null : _ctaSubtitle(p, c),
+                        loading: joining,
+                        vc: vc,
+                        onPressed: () => _onCta(context, ref, p),
+                      ),
               ),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+/// Shown in place of the "Apply" CTA once a campaign's budget pool has
+/// crossed its intake threshold — the backend would reject a join attempt
+/// at this point anyway, so this avoids showing an actionable-looking
+/// button that always fails.
+class _IntakeClosedNotice extends StatelessWidget {
+  const _IntakeClosedNotice({required this.vc});
+
+  final HalchalColors vc;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: vc.warning.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: vc.warning.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: vc.warning.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Icon(Icons.hourglass_bottom_rounded, color: vc.warning, size: 17),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Slots filled',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: vc.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  "This campaign's pool is nearly full — not accepting new clippers right now.",
+                  style: GoogleFonts.inter(fontSize: 12, color: vc.muted, height: 1.3),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -48,6 +48,7 @@ class Campaign {
     required this.poolRemainingPercent,
     required this.budgetPaise,
     required this.budgetUsedPaise,
+    required this.newClipperIntakeStatus,
     required this.brief,
     required this.platform,
     required this.platforms,
@@ -75,6 +76,7 @@ class Campaign {
   final int poolRemainingPercent;
   final int budgetPaise;
   final int budgetUsedPaise;
+  final String newClipperIntakeStatus;
   final String brief;
   final String platform;
   final List<String> platforms;
@@ -108,6 +110,8 @@ class Campaign {
 
   bool get isPoolAlmostFull => poolPercent >= 70;
 
+  bool get intakeClosed => newClipperIntakeStatus == 'closed_at_threshold';
+
   String? get displayBrief => resolveCampaignDisplayBrief(
         brief: brief,
         briefHook: briefHook,
@@ -133,6 +137,7 @@ class Campaign {
             (100 - (json['poolPercent'] as int? ?? 0)),
         budgetPaise: json['budgetPaise'] as int? ?? 0,
         budgetUsedPaise: json['budgetUsedPaise'] as int? ?? 0,
+        newClipperIntakeStatus: json['newClipperIntakeStatus'] as String? ?? 'open',
         brief: json['brief'] as String? ?? '',
         platform: json['platform'] as String? ?? 'instagram_reel',
         platforms: (json['platforms'] as List<dynamic>? ?? [])
