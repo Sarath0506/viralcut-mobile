@@ -47,15 +47,34 @@ class AuthNotifier extends StateNotifier<AuthStatus> {
   }
 
   Future<void> onSessionRefreshed(AuthSession session) async {
-    await _ref.read(authStorageProvider).saveTokens(
-          accessToken: session.accessToken,
-          refreshToken: session.refreshToken,
-        );
+    // Same hang risk as the reads guarded in _init() above (signing-identity
+    // switches between builds can wedge the Keychain platform channel) — a
+    // stuck write here previously blocked the whole refresh-and-retry chain
+    // until callers' own 45s deadlines fired, surfacing as a misleading
+    // "Request timed out" instead of the real auth problem.
+    try {
+      await _ref
+          .read(authStorageProvider)
+          .saveTokens(
+            accessToken: session.accessToken,
+            refreshToken: session.refreshToken,
+          )
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // Fall through — still reflect the refreshed session in memory so the
+      // app can proceed; a later request will re-trigger a refresh if the
+      // write genuinely never landed.
+    }
     state = AuthStatus.authed;
   }
 
   Future<void> onSessionExpired() async {
-    await _ref.read(authStorageProvider).clear();
+    try {
+      await _ref.read(authStorageProvider).clear().timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // Keychain delete hung/failed — still drop to unauthed so the user
+      // sees a login screen instead of a hung request.
+    }
     state = AuthStatus.unauthed;
   }
 
@@ -70,7 +89,7 @@ class AuthNotifier extends StateNotifier<AuthStatus> {
       // Clear local tokens even when API is down.
     }
     await Future.wait([
-      _ref.read(authStorageProvider).clear(),
+      _ref.read(authStorageProvider).clear().timeout(const Duration(seconds: 5)).catchError((_) {}),
       _ref.read(activeCreatorProfileIdProvider.notifier).clear(),
     ]);
     state = AuthStatus.unauthed;
