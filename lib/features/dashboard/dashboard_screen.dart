@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../core/api/api_base_url.dart';
 import '../../core/layout/app_spacing.dart';
 import '../../core/layout/list_entrance.dart';
 import 'dashboard_providers.dart';
@@ -186,19 +185,6 @@ class _DashboardError extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text('$error', textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            Text(
-              'Cannot reach API at $kApiBaseUrl',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Physical phone: use your PC IP, not 10.0.2.2.\n'
-              'flutter run --dart-define=API_BASE_URL=http://192.168.x.x:3001',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
             const SizedBox(height: 16),
             FilledButton(onPressed: onRetry, child: const Text('Retry')),
           ],
