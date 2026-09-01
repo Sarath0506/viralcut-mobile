@@ -252,19 +252,121 @@ class CampaignDetailScreen extends ConsumerWidget {
             bottomNavigationBar: SafeArea(
               child: Padding(
                 padding: AppSpacing.bottomActionPadding(context),
-                child: PrimaryActionButton(
-                  icon: _ctaIcon(p),
-                  label: joining ? 'Loading…' : cta,
-                  subtitle: joining ? null : _ctaSubtitle(p, c),
-                  loading: joining,
-                  vc: vc,
-                  onPressed: () => _onCta(context, ref, p),
-                ),
+                child: (p == null && c.intakeClosed)
+                    ? _IntakeClosedNotice(vc: vc, poolPercent: c.poolPercent)
+                    : PrimaryActionButton(
+                        icon: _ctaIcon(p),
+                        label: joining ? 'Loading…' : cta,
+                        subtitle: joining ? null : _ctaSubtitle(p, c),
+                        loading: joining,
+                        vc: vc,
+                        onPressed: () => _onCta(context, ref, p),
+                      ),
               ),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+/// Shown in place of the "Apply" CTA once a campaign's budget pool has
+/// crossed its intake threshold — the backend would reject a join attempt
+/// at this point anyway, so this avoids showing an actionable-looking
+/// button that always fails.
+class _IntakeClosedNotice extends StatelessWidget {
+  const _IntakeClosedNotice({required this.vc, required this.poolPercent});
+
+  final HalchalColors vc;
+  final int poolPercent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            vc.warning.withValues(alpha: 0.22),
+            vc.warning.withValues(alpha: 0.06),
+          ],
+        ),
+        border: Border.all(color: vc.warning.withValues(alpha: 0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: vc.warning.withValues(alpha: 0.18),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: vc.warning,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: vc.warning.withValues(alpha: 0.4),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: const Icon(Icons.lock_clock_rounded, color: Colors.white, size: 19),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Slots filled',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: vc.onSurface,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: vc.warning.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '$poolPercent% full',
+                        style: GoogleFonts.inter(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: vc.warning,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  "Budget pool is nearly spent — new clippers aren't being accepted right now.",
+                  style: GoogleFonts.inter(fontSize: 12, color: vc.muted, height: 1.35),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
