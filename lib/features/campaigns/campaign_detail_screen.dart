@@ -253,7 +253,7 @@ class CampaignDetailScreen extends ConsumerWidget {
               child: Padding(
                 padding: AppSpacing.bottomActionPadding(context),
                 child: (p == null && c.intakeClosed)
-                    ? _IntakeClosedNotice(vc: vc)
+                    ? _IntakeClosedNotice(vc: vc, poolPercent: c.poolPercent)
                     : PrimaryActionButton(
                         icon: _ctaIcon(p),
                         label: joining ? 'Loading…' : cta,
@@ -276,49 +276,91 @@ class CampaignDetailScreen extends ConsumerWidget {
 /// at this point anyway, so this avoids showing an actionable-looking
 /// button that always fails.
 class _IntakeClosedNotice extends StatelessWidget {
-  const _IntakeClosedNotice({required this.vc});
+  const _IntakeClosedNotice({required this.vc, required this.poolPercent});
 
   final HalchalColors vc;
+  final int poolPercent;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       decoration: BoxDecoration(
-        color: vc.warning.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: vc.warning.withValues(alpha: 0.4)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            vc.warning.withValues(alpha: 0.22),
+            vc.warning.withValues(alpha: 0.06),
+          ],
+        ),
+        border: Border.all(color: vc.warning.withValues(alpha: 0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: vc.warning.withValues(alpha: 0.18),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: vc.warning.withValues(alpha: 0.2),
+              color: vc.warning,
               shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: vc.warning.withValues(alpha: 0.4),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             alignment: Alignment.center,
-            child: Icon(Icons.hourglass_bottom_rounded, color: vc.warning, size: 17),
+            child: const Icon(Icons.lock_clock_rounded, color: Colors.white, size: 19),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 13),
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Slots filled',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: vc.onSurface,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'Slots filled',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: vc.onSurface,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: vc.warning.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '$poolPercent% full',
+                        style: GoogleFonts.inter(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: vc.warning,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
-                  "This campaign's pool is nearly full — not accepting new clippers right now.",
-                  style: GoogleFonts.inter(fontSize: 12, color: vc.muted, height: 1.3),
+                  "Budget pool is nearly spent — new clippers aren't being accepted right now.",
+                  style: GoogleFonts.inter(fontSize: 12, color: vc.muted, height: 1.35),
                 ),
               ],
             ),
