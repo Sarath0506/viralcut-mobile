@@ -41,6 +41,14 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- app_links already handles halchal:// deep links directly (see
+                 ConnectedAccountsScreen) — without this, Flutter's engine
+                 ALSO forwards the same URI to GoRouter as a page
+                 navigation, which fails and flashes a Page Not Found
+                 screen even though the actual handling succeeds. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
