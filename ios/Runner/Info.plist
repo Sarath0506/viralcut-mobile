@@ -2,6 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- app_links already handles halchal:// deep links directly (see
+	     ConnectedAccountsScreen) — without this, Flutter's engine ALSO
+	     forwards the same URI to GoRouter as a page navigation, which fails
+	     ("no routes for location: halchal://...") and flashes a Page Not
+	     Found screen even though the actual handling succeeds. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>https</string>
