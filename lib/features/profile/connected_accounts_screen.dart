@@ -1,6 +1,10 @@
+import 'dart:async';
+
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
@@ -14,6 +18,9 @@ const _platforms = [
     key: 'instagram',
     label: 'Instagram',
     hint: '@username or profile URL',
+    // Business/Creator accounts only — Instagram's Graph API rejects personal
+    // accounts entirely, so the manual @handle entry stays as a fallback.
+    oauth: true,
   ),
   _PlatformMeta(
     key: 'youtube',
@@ -32,10 +39,12 @@ class _PlatformMeta {
     required this.key,
     required this.label,
     required this.hint,
+    this.oauth = false,
   });
   final String key;
   final String label;
   final String hint;
+  final bool oauth;
 }
 
 class ConnectedAccountsScreen extends ConsumerStatefulWidget {
@@ -47,21 +56,128 @@ class ConnectedAccountsScreen extends ConsumerStatefulWidget {
 }
 
 class _ConnectedAccountsScreenState
-    extends ConsumerState<ConnectedAccountsScreen> {
+    extends ConsumerState<ConnectedAccountsScreen> with WidgetsBindingObserver {
   final _controllers = <String, TextEditingController>{};
   final _stats = <String, Map<String, dynamic>?>{};
   final _connecting = <String, bool>{};
   final _disconnecting = <String, bool>{};
   final _pending = <String>{};
+  final _manualEntry = <String>{}; // platforms currently showing the manual @handle fallback
   bool _initialized = false;
+  StreamSubscription<Uri>? _linkSub;
 
   TextEditingController _ctrl(String key) =>
       _controllers.putIfAbsent(key, () => TextEditingController());
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Instagram's OAuth consent screen opens in a browser and redirects back
+    // here via this custom scheme once the user approves (or cancels).
+    _linkSub = AppLinks().uriLinkStream.listen(
+          _handleInstagramCallback,
+          onError: (_) {},
+        );
+  }
+
+  @override
   void dispose() {
+    _linkSub?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     for (final c in _controllers.values) { c.dispose(); }
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    // Safety net: if the user backed out of the Instagram browser without
+    // the deep link ever firing (e.g. just closed it), don't leave the
+    // "Connect" button stuck spinning forever.
+    if (_connecting['instagram'] != true) return;
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted && _connecting['instagram'] == true) {
+        setState(() => _connecting['instagram'] = false);
+      }
+    });
+  }
+
+  void _handleInstagramCallback(Uri uri) {
+    if (uri.scheme != 'halchal' || uri.host != 'instagram-callback') return;
+    final activeProfile = ref.read(activeCreatorProfileProvider);
+    if (activeProfile == null) return;
+
+    final status = uri.queryParameters['status'];
+    final transactionId = uri.queryParameters['transactionId'];
+    if (status == 'ready' && transactionId != null) {
+      _completeInstagramOAuth(transactionId, activeProfile.id);
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _connecting['instagram'] = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          uri.queryParameters['error'] == 'OAUTH_CANCELLED'
+              ? 'Instagram connection cancelled.'
+              : 'Instagram connection failed. Please try again.',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _startInstagramOAuth(String profileId) async {
+    setState(() => _connecting['instagram'] = true);
+    try {
+      final start = await ref.read(apiClientProvider).startInstagramOAuth(profileId);
+      final launched = await launchUrl(
+        Uri.parse(start.authorizationUrl),
+        mode: LaunchMode.inAppBrowserView,
+      );
+      if (!launched) throw Exception('launch failed');
+      // _connecting['instagram'] stays true (shows a spinner) while the user
+      // is in the Instagram browser — _handleInstagramCallback or the
+      // lifecycle safety net above clears it once they return.
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _connecting['instagram'] = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _connecting['instagram'] = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open Instagram. Please try again.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _completeInstagramOAuth(String transactionId, String profileId) async {
+    try {
+      await ref.read(apiClientProvider).completeInstagramOAuth(profileId, transactionId);
+      _initialized = false;
+      ref.invalidate(creatorProfilesProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Instagram connected!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
+      );
+    } finally {
+      if (mounted) setState(() => _connecting['instagram'] = false);
+    }
   }
 
   String? _lastProfileId;
@@ -272,8 +388,11 @@ class _ConnectedAccountsScreenState
                     isDisconnecting: _disconnecting[p.key] ?? false,
                     // Show syncing whenever connected but stats haven't loaded yet
                     isPending: _isConnected(p.key) && _stats[p.key] == null,
+                    showManualEntry: !p.oauth || _manualEntry.contains(p.key),
                     onConnect: () => _connect(p.key, activeProfile.id),
                     onDisconnect: () => _disconnect(p.key, activeProfile.id),
+                    onConnectOAuth: () => _startInstagramOAuth(activeProfile.id),
+                    onShowManualEntry: () => setState(() => _manualEntry.add(p.key)),
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -295,8 +414,11 @@ class _PlatformCard extends StatelessWidget {
     required this.isConnecting,
     required this.isDisconnecting,
     required this.isPending,
+    required this.showManualEntry,
     required this.onConnect,
     required this.onDisconnect,
+    required this.onConnectOAuth,
+    required this.onShowManualEntry,
   });
 
   final _PlatformMeta meta;
@@ -306,8 +428,11 @@ class _PlatformCard extends StatelessWidget {
   final bool isConnecting;
   final bool isDisconnecting;
   final bool isPending;
+  final bool showManualEntry;
   final VoidCallback onConnect;
   final VoidCallback onDisconnect;
+  final VoidCallback onConnectOAuth;
+  final VoidCallback onShowManualEntry;
 
   bool get _hasStats => stats != null && stats!.isNotEmpty;
 
@@ -446,8 +571,50 @@ class _PlatformCard extends StatelessWidget {
               ),
             ),
 
-          // ── Input row (always show when not connected) ──
-          if (!isConnected)
+          // ── OAuth connect (Instagram, before falling back to manual entry) ──
+          if (!isConnected && meta.oauth && !showManualEntry)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    height: 40,
+                    child: isConnecting
+                        ? const Center(
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Color(0xFF7C3AED)),
+                            ),
+                          )
+                        : FilledButton(
+                            onPressed: onConnectOAuth,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF7C3AED),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: Text('Connect with Instagram',
+                                style: GoogleFonts.inter(
+                                    fontSize: 12, fontWeight: FontWeight.w700)),
+                          ),
+                  ),
+                  if (!isConnecting)
+                    TextButton(
+                      onPressed: onShowManualEntry,
+                      child: Text(
+                        'Connect manually instead',
+                        style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+          // ── Input row (manual @handle/URL entry) ──
+          if (!isConnected && showManualEntry)
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
               child: Row(

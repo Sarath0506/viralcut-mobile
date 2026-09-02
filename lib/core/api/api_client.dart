@@ -543,6 +543,27 @@ class ApiClient {
   Future<void> disconnectProfileSocial(String profileId, String platform) =>
       delete<void>('/creator/profiles/$profileId/social/$platform', (_) {});
 
+  /// Starts the Instagram Business Login OAuth handshake — returns the URL
+  /// to open in a browser and a transactionId to redeem once Instagram
+  /// redirects back (see [completeInstagramOAuth]).
+  Future<InstagramOAuthStart> startInstagramOAuth(String profileId) => post(
+        '/creator/profiles/$profileId/social/instagram/oauth/start',
+        {},
+        (d) => InstagramOAuthStart.fromJson(d as Map<String, dynamic>),
+      );
+
+  /// Redeems a completed OAuth transaction (the deep-link handler calls this
+  /// once `halchal://instagram-callback` fires with `status=ready`).
+  Future<Map<String, dynamic>> completeInstagramOAuth(
+    String profileId,
+    String transactionId,
+  ) =>
+      post(
+        '/creator/profiles/$profileId/social/instagram/oauth/$transactionId/complete',
+        {},
+        (d) => d as Map<String, dynamic>,
+      );
+
   Future<OverallLeaderboard> fetchOverallLeaderboard() => get(
         '/creator/leaderboard',
         (d) => OverallLeaderboard.fromJson(d as Map<String, dynamic>),
@@ -861,6 +882,17 @@ class ApiClient {
         '/users/me/device-token',
         {'token': token, 'platform': platform},
         (_) {},
+      );
+}
+
+class InstagramOAuthStart {
+  InstagramOAuthStart({required this.authorizationUrl, required this.transactionId});
+  final String authorizationUrl;
+  final String transactionId;
+
+  factory InstagramOAuthStart.fromJson(Map<String, dynamic> json) => InstagramOAuthStart(
+        authorizationUrl: json['authorizationUrl'] as String,
+        transactionId: json['transactionId'] as String,
       );
 }
 
