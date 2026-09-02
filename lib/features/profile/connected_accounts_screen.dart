@@ -132,9 +132,12 @@ class _ConnectedAccountsScreenState
     setState(() => _connecting['instagram'] = true);
     try {
       final start = await ref.read(apiClientProvider).startInstagramOAuth(profileId);
+      // externalApplication (full Safari), not inAppBrowserView —
+      // SFSafariViewController is unreliable at handing custom-scheme
+      // redirects back to the app; full Safari does this consistently.
       final launched = await launchUrl(
         Uri.parse(start.authorizationUrl),
-        mode: LaunchMode.inAppBrowserView,
+        mode: LaunchMode.externalApplication,
       );
       if (!launched) throw Exception('launch failed');
       // _connecting['instagram'] stays true (shows a spinner) while the user
