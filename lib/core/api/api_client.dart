@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 
 import '../auth/auth_storage.dart';
 import '../campaign/campaign_models.dart';
@@ -131,10 +132,35 @@ class ApiClient {
   }
 
   final Dio _dio;
+  // Deliberately bare (no interceptors) and separate from _dio. The refresh
+  // POST is issued from inside _dio's own QueuedInterceptorsWrapper.onError
+  // callback (while handling some other request's 401) — if it reused
+  // _dio, its own 401 response would need to go through that same
+  // interceptor queue to be handled, but that queue is busy awaiting THIS
+  // very call. QueuedInterceptorsWrapper processes error callbacks strictly
+  // one at a time, so that's a real deadlock: the outer callback can't
+  // finish until this resolves, and this can't be handled until the outer
+  // callback returns. It only ever "resolved" via the 45s hard timeout
+  // forcibly abandoning the wait — which is why refresh looked instant in
+  // the server logs but took exactly 45s client-side, every time.
+  late final Dio _refreshDio = Dio(_dio.options);
   final AuthStorage _storage;
   final SessionRefreshedCallback? _onSessionRefreshed;
   final SessionExpiredCallback? _onSessionExpired;
   Future<AuthSession?>? _refreshInFlight;
+
+  /// Set the moment a refresh definitively fails (dead refresh token).
+  /// _refreshInFlight only dedupes callers that are genuinely concurrent —
+  /// on app resume, ~20 requests can 401 at once, and Dio's
+  /// QueuedInterceptorsWrapper processes their retry-and-refresh handling
+  /// one at a time, not in parallel. Without this, each one independently
+  /// repeats the full refresh-attempt-and-Keychain-clear cycle after the
+  /// previous one has already finished and cleared _refreshInFlight — ~20
+  /// sequential ~5s cycles is enough to blow past any single request's own
+  /// 45s deadline. This short cooldown lets everything after the first one
+  /// fail fast instead.
+  DateTime? _sessionKnownExpiredUntil;
+  static const _sessionExpiredCooldown = Duration(seconds: 10);
 
   Future<Response<dynamic>?> _tryRefreshAndRetry(DioException error) async {
     final status = error.response?.statusCode;
@@ -178,6 +204,10 @@ class ApiClient {
     if (_refreshInFlight != null) {
       return _refreshInFlight;
     }
+    final expiredUntil = _sessionKnownExpiredUntil;
+    if (expiredUntil != null && DateTime.now().isBefore(expiredUntil)) {
+      return null;
+    }
 
     _refreshInFlight = _doRefreshSession();
     try {
@@ -200,12 +230,13 @@ class ApiClient {
       return null;
     }
     if (refresh == null) {
+      _sessionKnownExpiredUntil = DateTime.now().add(_sessionExpiredCooldown);
       await _onSessionExpired?.call();
       return null;
     }
 
     try {
-      final response = await _dio
+      final response = await _refreshDio
           .post<dynamic>(
             '/auth/refresh',
             data: {'refreshToken': refresh},
@@ -216,6 +247,7 @@ class ApiClient {
         response,
         (data) => AuthSession.fromJson(data as Map<String, dynamic>),
       );
+      _sessionKnownExpiredUntil = null;
       await _onSessionRefreshed?.call(session);
       return session;
     } on DioException catch (e) {
@@ -227,6 +259,7 @@ class ApiClient {
       // retry with what's still a perfectly good refresh token.
       final envelope = _errorEnvelopeFromResponse(e.response?.data);
       if (e.response?.statusCode == 401 || envelope?.code == 'UNAUTHORIZED') {
+        _sessionKnownExpiredUntil = DateTime.now().add(_sessionExpiredCooldown);
         await _onSessionExpired?.call();
       }
       return null;
@@ -262,12 +295,19 @@ class ApiClient {
   }
 
   ApiException _mapDioError(DioException e) {
-    final isEmulatorHost = kApiBaseUrl.contains('10.0.2.2');
-    final deviceHint = isEmulatorHost
-        ? 'On a real phone, run:\n'
-            'flutter run --dart-define=API_BASE_URL=http://YOUR_PC_IP:3001\n'
-            '(same Wi‑Fi, API running on PC)'
-        : 'Check API is running at $kApiBaseUrl and firewall allows port 3001.';
+    // The dev-workflow hint (which host/port to point at) is only useful to
+    // someone running this build locally — a real user hitting a network
+    // error has no way to act on "check the firewall allows port 3001".
+    String debugHint(String base) {
+      if (!kDebugMode) return base;
+      final isEmulatorHost = kApiBaseUrl.contains('10.0.2.2');
+      final hint = isEmulatorHost
+          ? 'On a real phone, run:\n'
+              'flutter run --dart-define=API_BASE_URL=http://YOUR_PC_IP:3001\n'
+              '(same Wi‑Fi, API running on PC)'
+          : 'Check API is running at $kApiBaseUrl and firewall allows port 3001.';
+      return '$base\n$hint';
+    }
 
     final envelope = _errorEnvelopeFromResponse(e.response?.data);
     if (envelope != null) {
@@ -280,12 +320,12 @@ class ApiClient {
       case DioExceptionType.receiveTimeout:
         return ApiException(
           'NETWORK_TIMEOUT',
-          'Cannot reach the API (timed out).\n$deviceHint',
+          debugHint('Cannot reach the server. Please check your connection and try again.'),
         );
       case DioExceptionType.connectionError:
         return ApiException(
           'NETWORK_ERROR',
-          'Cannot connect to the API.\n$deviceHint',
+          debugHint('Cannot connect to the server. Please check your connection and try again.'),
         );
       default:
         final status = e.response?.statusCode;
@@ -297,7 +337,7 @@ class ApiClient {
         }
         return ApiException(
           'NETWORK_ERROR',
-          'Network error. $deviceHint',
+          debugHint('Network error. Please check your connection and try again.'),
         );
     }
   }
