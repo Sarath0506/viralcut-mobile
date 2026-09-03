@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../core/api/api_base_url.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/creator_profile/creator_profile_providers.dart';
@@ -388,14 +387,6 @@ class _ProfileError extends StatelessWidget {
                   ? (error as ApiException).message
                   : '$error',
               textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'API: $kApiBaseUrl\n'
-              'On a physical phone use your PC LAN IP:\n'
-              'flutter run --dart-define=API_BASE_URL=http://192.168.x.x:3001',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
             FilledButton(onPressed: onRetry, child: const Text('Retry')),
