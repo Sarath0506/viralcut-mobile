@@ -91,7 +91,7 @@ class _BalanceCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Available balance',
+            'Total earned',
             style: GoogleFonts.inter(
               fontSize: 13,
               fontWeight: FontWeight.w500,
@@ -99,7 +99,12 @@ class _BalanceCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          // Large available balance amount
+          // Large available balance amount — label reads "Total earned" now,
+          // but this stays bound to availablePaise, not lifetimePaise: with
+          // payouts run manually for now, this is "what's been marked paid
+          // out so far" (moves up from Pending as admin marks withdrawals
+          // paid), not the running lifetime-earnings figure shown in the
+          // Earnings overview tiles below.
           Text(
             formatPaise(wallet.availablePaise),
             style: GoogleFonts.plusJakartaSans(

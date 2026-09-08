@@ -132,15 +132,33 @@ class _BottomNav extends StatelessWidget {
                           color: selected ? primary : vc.muted,
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          d.label,
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: selected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            color: selected ? primary : vc.muted,
-                            height: 1.1,
+                        // FittedBox + maxLines: 1 + softWrap: false —
+                        // without these, this Text's default wrap
+                        // behavior breaks a single word like "Campaigns"
+                        // or "Submissions" mid-character (a lone "s"
+                        // dropping to its own line) whenever the scaled
+                        // text doesn't fit this tab's narrow column width
+                        // — seen on narrower Android phones and on any
+                        // device with a larger system font-size setting,
+                        // since nothing here (or anywhere in the app)
+                        // clamps the OS text-scale factor. FittedBox
+                        // shrinks the whole label uniformly to fit
+                        // instead, so it always reads as one word, just
+                        // slightly smaller when space is tight.
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            d.label,
+                            maxLines: 1,
+                            softWrap: false,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: selected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: selected ? primary : vc.muted,
+                              height: 1.1,
+                            ),
                           ),
                         ),
                       ],

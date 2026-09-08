@@ -11,11 +11,17 @@ import '../../core/layout/app_spacing.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import 'wallet_providers.dart';
-import 'widgets/payout_method_form.dart';
 
 final payoutMethodsProvider = FutureProvider<List<PayoutMethod>>((ref) async {
   return ref.read(apiClientProvider).fetchPayoutMethods();
 });
+
+/// Payouts are being run manually for now, not through this in-app flow —
+/// flip back to false once that changes. Locking here (the destination
+/// page) rather than only disabling the buttons that link here means every
+/// entry point (dashboard card, wallet tab, a direct deep link) is
+/// consistently locked regardless of which one was tapped.
+const bool _withdrawalsLocked = true;
 
 class WithdrawScreen extends ConsumerStatefulWidget {
   const WithdrawScreen({super.key});
@@ -77,6 +83,10 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_withdrawalsLocked) {
+      return const _WithdrawLockedView();
+    }
+
     final wallet = ref.watch(walletProvider);
     final methods = ref.watch(payoutMethodsProvider);
     final vc = HalchalColors.of(context);
@@ -229,7 +239,7 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
                       ),
                       GestureDetector(
                         onTap: () => context
-                            .push('/wallet/payout-methods')
+                            .push('/wallet/bank-details')
                             .then((_) => ref.invalidate(payoutMethodsProvider)),
                         child: Text(
                           'Manage',
@@ -250,18 +260,49 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
                       )),
                 ] else ...[
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: vc.surface,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: vc.border),
                     ),
-                    child: PayoutMethodForm(
-                      title: 'Add a payout method to withdraw',
-                      onSaved: (method) {
-                        ref.invalidate(payoutMethodsProvider);
-                        setState(() => _methodId = method.id);
-                      },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.account_balance_outlined, color: vc.primary, size: 20),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Add your bank details',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: vc.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Money can only be withdrawn to a bank account — add yours (with PAN) to continue.',
+                          style: GoogleFonts.inter(fontSize: 13, height: 1.4, color: vc.muted),
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () => context
+                                .push('/wallet/bank-details')
+                                .then((_) => ref.invalidate(payoutMethodsProvider)),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: const Text('Add bank details'),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -311,6 +352,80 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _WithdrawLockedView extends ConsumerWidget {
+  const _WithdrawLockedView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final wallet = ref.watch(walletProvider);
+    final vc = HalchalColors.of(context);
+
+    return VcScaffold(
+      title: 'Withdraw',
+      showBack: true,
+      body: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: vc.primary.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.lock_outline_rounded, color: vc.primary, size: 32),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Payouts are handled manually',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: vc.onSurface,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'We\'re currently processing payouts manually rather than through in-app withdrawal. Your earnings are safe and tracked — we\'ll reach out when it\'s time to pay out.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(fontSize: 13, height: 1.5, color: vc.muted),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: vc.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: vc.border),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'Total earned',
+                    style: GoogleFonts.inter(fontSize: 12, color: vc.muted),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    formatPaise(wallet.valueOrNull?.lifetimePaise ?? 0),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: vc.moneyBright,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

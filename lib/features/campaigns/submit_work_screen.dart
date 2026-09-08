@@ -16,8 +16,10 @@ import '../../core/layout/app_spacing.dart';
 import '../../core/validation/drive_url.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
+import '../marketplace/marketplace_providers.dart';
+import '../marketplace/widgets/marketplace_video_tile.dart';
 
-enum _SubmitMethod { drive, device }
+enum _SubmitMethod { drive, device, marketplace }
 
 class SubmitWorkScreen extends ConsumerStatefulWidget {
   const SubmitWorkScreen({super.key, required this.campaignId});
@@ -34,6 +36,8 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
   final _expandedHistory = <String>{};
   final _uploadedUrls = <String, String>{};
   final _uploadingIds = <String>{};
+  final _marketplaceOptIn = <String>{};
+  final _repostingIds = <String>{};
   bool _loading = false;
   late final AnimationController _entrance;
 
@@ -107,6 +111,7 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
         await api.submitDeliverableDraft(
           deliverableId: d.id,
           draftDriveUrl: url,
+          listedInMarketplace: _marketplaceOptIn.contains(d.id),
         );
       }
       ref.invalidate(participationSubmitProvider(widget.campaignId));
@@ -118,6 +123,26 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
       _showSnack(e.message);
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _repost(Participation p, String sourceDeliverableId) async {
+    final creatorProfileId = p.creatorProfile?.id;
+    if (creatorProfileId == null) return;
+    setState(() => _repostingIds.add(sourceDeliverableId));
+    try {
+      await ref
+          .read(apiClientProvider)
+          .repostMarketplaceListing(sourceDeliverableId, creatorProfileId);
+      ref.invalidate(participationSubmitProvider(widget.campaignId));
+      ref.invalidate(campaignParticipationProvider(widget.campaignId));
+      if (!mounted) return;
+      _showSnack('Reposted — pending review');
+      context.go('/participations/${p.id}');
+    } on ApiException catch (e) {
+      _showSnack(e.message);
+    } finally {
+      if (mounted) setState(() => _repostingIds.remove(sourceDeliverableId));
     }
   }
 
@@ -244,6 +269,18 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
                             onPickFile: () => _pickAndUpload(d),
                             onRemoveUpload: () => setState(() => _uploadedUrls.remove(d.id)),
                             onChanged: () => setState(() {}),
+                            listedInMarketplace: _marketplaceOptIn.contains(d.id),
+                            onToggleMarketplace: (value) => setState(() {
+                              if (value) {
+                                _marketplaceOptIn.add(d.id);
+                              } else {
+                                _marketplaceOptIn.remove(d.id);
+                              }
+                            }),
+                            campaignId: p.campaignId,
+                            creatorProfileId: p.creatorProfile?.id,
+                            repostingIds: _repostingIds,
+                            onRepost: (sourceId) => _repost(p, sourceId),
                             vc: vc,
                           ),
                         ),
@@ -320,6 +357,12 @@ class _DeliverableSubmitCard extends StatefulWidget {
     required this.onPickFile,
     required this.onRemoveUpload,
     required this.onChanged,
+    required this.listedInMarketplace,
+    required this.onToggleMarketplace,
+    required this.campaignId,
+    required this.creatorProfileId,
+    required this.repostingIds,
+    required this.onRepost,
     required this.vc,
   });
 
@@ -332,6 +375,12 @@ class _DeliverableSubmitCard extends StatefulWidget {
   final VoidCallback onPickFile;
   final VoidCallback onRemoveUpload;
   final VoidCallback onChanged;
+  final bool listedInMarketplace;
+  final ValueChanged<bool> onToggleMarketplace;
+  final String campaignId;
+  final String? creatorProfileId;
+  final Set<String> repostingIds;
+  final ValueChanged<String> onRepost;
   final HalchalColors vc;
 
   @override
@@ -441,17 +490,30 @@ class _DeliverableSubmitCardState extends State<_DeliverableSubmitCard> {
           child: _method == _SubmitMethod.device
               ? Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child: widget.uploadedUrl != null
-                      ? _UploadedFileRow(
-                          url: widget.uploadedUrl!,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      widget.uploadedUrl != null
+                          ? _UploadedFileRow(
+                              url: widget.uploadedUrl!,
+                              vc: vc,
+                              onRemove: widget.onRemoveUpload,
+                            )
+                          : _DropZone(
+                              isUploading: widget.isUploading,
+                              vc: vc,
+                              onTap: widget.onPickFile,
+                            ),
+                      if (kClipMarketplaceEnabled) ...[
+                        const SizedBox(height: 12),
+                        _MarketplaceOptInRow(
+                          value: widget.listedInMarketplace,
+                          onChanged: widget.onToggleMarketplace,
                           vc: vc,
-                          onRemove: widget.onRemoveUpload,
-                        )
-                      : _DropZone(
-                          isUploading: widget.isUploading,
-                          vc: vc,
-                          onTap: widget.onPickFile,
                         ),
+                      ],
+                    ],
+                  ),
                 )
               : null,
         ),
@@ -465,7 +527,6 @@ class _DeliverableSubmitCardState extends State<_DeliverableSubmitCard> {
           vc: vc,
           icon: const _DriveLogo(size: 24),
           title: 'Submit Google Drive link',
-          badge: 'Recommended',
           subtitle: 'Paste a public Google Drive link to your content',
           child: _method == _SubmitMethod.drive
               ? Padding(
@@ -538,7 +599,120 @@ class _DeliverableSubmitCardState extends State<_DeliverableSubmitCard> {
                 )
               : null,
         ),
+
+        const SizedBox(height: 10),
+
+        // Reuse an already-approved clip from the marketplace (third) —
+        // hidden until we have Instagram's permissions for reposting.
+        if (kClipMarketplaceEnabled && widget.creatorProfileId != null)
+          _MethodCard(
+            selected: _method == _SubmitMethod.marketplace,
+            onTap: () => setState(() => _method = _SubmitMethod.marketplace),
+            vc: vc,
+            icon: Icon(Icons.storefront_outlined, color: vc.money, size: 24),
+            title: 'Reuse from Marketplace',
+            subtitle: 'Repost another clipper\'s approved clip and split earnings',
+            child: _method == _SubmitMethod.marketplace
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: _MarketplaceReuseSection(
+                      campaignId: widget.campaignId,
+                      creatorProfileId: widget.creatorProfileId!,
+                      platform: d.platform,
+                      repostingIds: widget.repostingIds,
+                      onRepost: widget.onRepost,
+                      vc: vc,
+                    ),
+                  )
+                : null,
+          ),
       ],
+    );
+  }
+}
+
+class _MarketplaceReuseSection extends ConsumerWidget {
+  const _MarketplaceReuseSection({
+    required this.campaignId,
+    required this.creatorProfileId,
+    required this.platform,
+    required this.repostingIds,
+    required this.onRepost,
+    required this.vc,
+  });
+
+  final String campaignId;
+  final String creatorProfileId;
+  final String platform;
+  final Set<String> repostingIds;
+  final ValueChanged<String> onRepost;
+  final HalchalColors vc;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final listings = ref.watch(
+      marketplaceListingsProvider((campaignId, creatorProfileId)),
+    );
+
+    return listings.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => Text('$e', style: TextStyle(fontSize: 12, color: vc.muted)),
+      data: (items) {
+        final matching = items.where((l) => l.platform == platform).toList();
+        if (matching.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              'No approved clips are available to repost for this format yet.',
+              style: TextStyle(fontSize: 12.5, color: vc.muted),
+            ),
+          );
+        }
+        final preview = matching.take(3).toList();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                for (var i = 0; i < preview.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  SizedBox(
+                    width: 92,
+                    child: MarketplaceVideoTile(
+                      listing: preview[i],
+                      busy: repostingIds.contains(preview[i].sourceDeliverableId),
+                      onRepost: () => onRepost(preview[i].sourceDeliverableId),
+                      vc: vc,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton(
+              onPressed: () => context.push(
+                Uri(
+                  path: '/campaigns/$campaignId/marketplace',
+                  queryParameters: {'creatorProfileId': creatorProfileId},
+                ).toString(),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: vc.primary,
+                side: BorderSide(color: vc.primary.withValues(alpha: 0.4)),
+                minimumSize: const Size.fromHeight(40),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Show all'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -550,7 +724,6 @@ class _MethodCard extends StatelessWidget {
     required this.vc,
     required this.icon,
     required this.title,
-    this.badge,
     required this.subtitle,
     this.child,
   });
@@ -560,7 +733,6 @@ class _MethodCard extends StatelessWidget {
   final HalchalColors vc;
   final Widget icon;
   final String title;
-  final String? badge;
   final String subtitle;
   final Widget? child;
 
@@ -600,34 +772,12 @@ class _MethodCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                  fontSize: 13.5, fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                          if (badge != null) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: vc.money.withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(badge!,
-                                  style: GoogleFonts.inter(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      color: vc.money)),
-                            ),
-                          ],
-                        ],
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                            fontSize: 13.5, fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 2),
                       Text(subtitle,
@@ -777,6 +927,65 @@ class _UploadedFileRow extends StatelessWidget {
           GestureDetector(
             onTap: onRemove,
             child: Icon(Icons.close_rounded, size: 18, color: vc.muted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MarketplaceOptInRow extends StatelessWidget {
+  const _MarketplaceOptInRow({
+    required this.value,
+    required this.onChanged,
+    required this.vc,
+  });
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final HalchalColors vc;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: vc.money.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: vc.money.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.storefront_outlined, size: 16, color: vc.money),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'List in the Marketplace',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: vc.onSurface,
+                  ),
+                ),
+              ),
+              Switch(
+                value: value,
+                activeThumbColor: vc.money,
+                onChanged: onChanged,
+              ),
+            ],
+          ),
+          Text(
+            'Once approved, other clippers can repost this clip and split '
+            'earnings with you.',
+            style: GoogleFonts.inter(
+              fontSize: 11.5,
+              color: vc.muted,
+              height: 1.4,
+            ),
           ),
         ],
       ),

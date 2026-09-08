@@ -45,7 +45,7 @@ class DashboardEarningsCard extends StatelessWidget {
                             size: 13, color: onDark.withValues(alpha: 0.62)),
                         const SizedBox(width: 5),
                         Text(
-                          'Available balance',
+                          'Total earned',
                           style: GoogleFonts.inter(
                             color: onDark.withValues(alpha: 0.62),
                             fontSize: 12,
@@ -56,7 +56,7 @@ class DashboardEarningsCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      formatPaise(wallet.availablePaise),
+                      formatPaise(wallet.lifetimePaise),
                       style: GoogleFonts.plusJakartaSans(
                         color: vc.moneyBright,
                         fontSize: 28,
@@ -181,47 +181,50 @@ class _WithdrawButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vc = HalchalColors.of(context);
-
     return Material(
       color: onDark.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
-        onTap: onPressed,
+        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payouts are being processed manually for now')),
+        ),
         borderRadius: BorderRadius.circular(14),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 44),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              Icon(Icons.account_balance_outlined, color: onDark, size: 18),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Withdraw',
-                      style: GoogleFonts.inter(
-                        color: onDark,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+        child: Opacity(
+          opacity: 0.55,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 44),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Icon(Icons.account_balance_outlined, color: onDark, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Withdraw',
+                        style: GoogleFonts.inter(
+                          color: onDark,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Transfer to bank',
-                      style: GoogleFonts.inter(
-                        color: onDark.withValues(alpha: 0.62),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                      const SizedBox(height: 2),
+                      Text(
+                        'Processed manually for now',
+                        style: GoogleFonts.inter(
+                          color: onDark.withValues(alpha: 0.62),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              Icon(Icons.arrow_forward, color: vc.primary, size: 18),
-            ],
+                Icon(Icons.lock_outline_rounded, color: onDark, size: 18),
+              ],
+            ),
           ),
         ),
       ),

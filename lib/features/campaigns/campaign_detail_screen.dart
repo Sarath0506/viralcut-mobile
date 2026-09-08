@@ -94,6 +94,22 @@ class CampaignDetailScreen extends ConsumerWidget {
           }
         }
         if (!context.mounted) return;
+        if (e.code == 'BANK_DETAILS_REQUIRED') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.message),
+              action: SnackBarAction(
+                label: 'Add details',
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  context.push('/wallet/bank-details');
+                },
+              ),
+              duration: const Duration(seconds: 6),
+            ),
+          );
+          return;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message)),
         );
