@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -132,9 +135,27 @@ class _ConnectedAccountsScreenState
     setState(() => _connecting['instagram'] = true);
     try {
       final start = await ref.read(apiClientProvider).startInstagramOAuth(profileId);
-      // externalApplication (full Safari), not inAppBrowserView —
+      if (Platform.isIOS) {
+        // ASWebAuthenticationSession, not externalApplication — Instagram
+        // registers www.instagram.com as an iOS Universal Link domain, so
+        // handing the authorize URL to "the external app" means iOS opens
+        // the native Instagram app itself (when installed) instead of a
+        // browser. Instagram's app then fails with a generic error since
+        // this isn't a real Meta SDK integration. ASWebAuthenticationSession
+        // is Apple's purpose-built OAuth API and is isolated from that
+        // automatic Universal Link takeover, while still reliably handing
+        // the halchal:// redirect back to us as its return value.
+        final result = await FlutterWebAuth2.authenticate(
+          url: start.authorizationUrl,
+          callbackUrlScheme: 'halchal',
+        );
+        _handleInstagramCallback(Uri.parse(result));
+        return;
+      }
+      // externalApplication (full Chrome), not inAppBrowserView —
       // SFSafariViewController is unreliable at handing custom-scheme
-      // redirects back to the app; full Safari does this consistently.
+      // redirects back to the app; full Chrome does this consistently on
+      // Android, which doesn't have iOS's Universal Link takeover issue.
       final launched = await launchUrl(
         Uri.parse(start.authorizationUrl),
         mode: LaunchMode.externalApplication,
@@ -149,12 +170,17 @@ class _ConnectedAccountsScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _connecting['instagram'] = false);
+      final cancelled = e is PlatformException && e.code == 'CANCELED';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open Instagram. Please try again.'),
+        SnackBar(
+          content: Text(
+            cancelled
+                ? 'Instagram connection cancelled.'
+                : 'Could not open Instagram. Please try again.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
