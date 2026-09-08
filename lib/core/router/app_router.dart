@@ -11,6 +11,7 @@ import '../../features/campaigns/leaderboard_screen.dart';
 import '../../features/campaigns/submit_work_screen.dart';
 import '../../features/dashboard/dashboard_shell.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/marketplace/marketplace_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/profile/connected_accounts_screen.dart';
@@ -24,10 +25,13 @@ import '../../features/submissions/submissions_screen.dart';
 import '../../features/support/raise_ticket_screen.dart';
 import '../../features/support/support_screen.dart';
 import '../../features/legal/legal_screen.dart';
+import '../../features/verification/verification_gate_screen.dart';
+import '../../features/verification/verification_waiting_screen.dart';
 import '../../features/wallet/bank_details_screen.dart';
 import '../../features/wallet/payout_methods_screen.dart';
 import '../../features/wallet/wallet_screen.dart';
 import '../../features/wallet/withdraw_screen.dart';
+import '../../features/profile/profile_providers.dart';
 import '../auth/auth_provider.dart';
 import '../format/phone_format.dart';
 import 'auth_router_refresh.dart';
@@ -63,6 +67,24 @@ final routerProvider = Provider<GoRouter>((ref) {
           path.startsWith('/otp');
       if (!isAuthed && !isPublicRoute) return '/splash';
       if (isAuthed && isPublicRoute) return '/dashboard';
+
+      // New-signup verification gate — see verification_gate_screen.dart.
+      // `profileMeProvider` may still be loading right after login; in that
+      // brief window we let the requested route through rather than guess,
+      // and the refreshListenable (auth_router_refresh.dart) re-runs this
+      // once it resolves so the redirect below still lands.
+      final isVerificationFlowRoute = path == '/verification' || path == '/verification/waiting';
+      if (isAuthed && !isVerificationFlowRoute) {
+        final me = ref.read(profileMeProvider).valueOrNull;
+        final requiresGate = me?['requiresOnboardingGate'] as bool? ?? false;
+        final gateCleared = me?['onboardingGateCleared'] as bool? ?? true;
+        if (requiresGate && !gateCleared) return '/verification';
+      }
+      if (isAuthed && isVerificationFlowRoute) {
+        final me = ref.read(profileMeProvider).valueOrNull;
+        final gateCleared = me?['onboardingGateCleared'] as bool? ?? false;
+        if (gateCleared) return '/dashboard';
+      }
       return null;
     },
     routes: [
@@ -74,6 +96,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, __) => const SignupScreen()),
       GoRoute(path: '/otp', builder: (_, __) => const OtpScreen()),
+      GoRoute(
+        path: '/verification',
+        builder: (_, __) => const VerificationGateScreen(),
+      ),
+      GoRoute(
+        path: '/verification/waiting',
+        builder: (_, __) => const VerificationWaitingScreen(),
+      ),
       ShellRoute(
         builder: (_, __, child) => DashboardShell(child: child),
         routes: [
@@ -113,6 +143,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/campaigns/:id/leaderboard',
         builder: (_, state) =>
             LeaderboardScreen(campaignId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/campaigns/:id/marketplace',
+        builder: (_, state) => MarketplaceScreen(
+          campaignId: state.pathParameters['id']!,
+          creatorProfileId: state.uri.queryParameters['creatorProfileId']!,
+        ),
       ),
       GoRoute(
         path: '/leaderboard',

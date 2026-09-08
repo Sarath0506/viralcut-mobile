@@ -14,6 +14,7 @@ import '../../core/participation/participation_status_labels.dart';
 import '../../core/participation/rejection_history.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
+import '../marketplace/marketplace_providers.dart';
 
 class ParticipationDetailScreen extends ConsumerStatefulWidget {
   const ParticipationDetailScreen({super.key, required this.id});
@@ -112,6 +113,29 @@ class _ParticipationDetailScreenState
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               children: [
                 _CampaignSummaryCard(participation: p, vc: vc),
+                if (kClipMarketplaceEnabled && p.creatorProfile != null) ...[
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => context.push(
+                      Uri(
+                        path: '/campaigns/${p.campaignId}/marketplace',
+                        queryParameters: {
+                          'creatorProfileId': p.creatorProfile!.id,
+                        },
+                      ).toString(),
+                    ),
+                    icon: const Icon(Icons.storefront_outlined, size: 16),
+                    label: const Text('Browse Marketplace'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: vc.primary,
+                      side: BorderSide(color: vc.primary.withValues(alpha: 0.4)),
+                      minimumSize: const Size.fromHeight(44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 ...p.deliverables.map(
                   (d) => Padding(
@@ -158,7 +182,7 @@ class _CampaignSummaryCard extends StatelessWidget {
         .format(DateTime.parse(participation.joinedAt).toLocal());
     final subtitle = participation.creatorProfile != null
         ? '@${participation.creatorProfile!.handle}'
-        : participation.campaign.title;
+        : participation.campaign.displayBrand;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -188,7 +212,7 @@ class _CampaignSummaryCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  participation.campaign.displayBrand,
+                  participation.campaign.title,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -528,8 +552,8 @@ class _DeliverableSubmissionCard extends StatelessWidget {
           _TipsExpandable(vc: vc),
         ],
 
-        // Submit live proof (approved)
-        if (deliverable.isApproved) ...[
+        // Submit live proof (approved, or resubmitting after a proof rejection)
+        if (deliverable.isApproved || deliverable.isProofRejected) ...[
           const SizedBox(height: 14),
           Container(
             width: double.infinity,
@@ -629,7 +653,11 @@ class _DeliverableSubmissionCard extends StatelessWidget {
                 const SizedBox(height: 14),
                 _PrimaryActionButton(
                   icon: Icons.send_rounded,
-                  label: loading ? 'Submitting...' : 'Submit for payout',
+                  label: loading
+                      ? 'Submitting...'
+                      : deliverable.isProofRejected
+                          ? 'Resubmit for payout'
+                          : 'Submit for payout',
                   loading: loading,
                   vc: vc,
                   onPressed: () =>

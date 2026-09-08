@@ -26,24 +26,30 @@ class _Handlers {
     this.onDeliverableLiveProof,
     this.onDeliverableSubmitted,
     this.onDeliverablePaid,
+    this.onDeliverableMetricsUpdated,
     this.onParticipationJoined,
     this.onCampaignCreated,
     this.onCampaignUpdated,
     this.onCampaignPublished,
     this.onCreatorProfileStatsUpdated,
     this.onSupportTicketUpdated,
+    this.onOnboardingVerificationUpdated,
+    this.onKycStatusUpdated,
   });
 
   final RealtimeEventHandler? onDeliverableReviewed;
   final RealtimeEventHandler? onDeliverableLiveProof;
   final RealtimeEventHandler? onDeliverableSubmitted;
   final RealtimeEventHandler? onDeliverablePaid;
+  final RealtimeEventHandler? onDeliverableMetricsUpdated;
   final RealtimeEventHandler? onParticipationJoined;
   final RealtimeEventHandler? onCampaignCreated;
   final RealtimeEventHandler? onCampaignUpdated;
   final RealtimeEventHandler? onCampaignPublished;
   final RealtimeEventHandler? onCreatorProfileStatsUpdated;
   final RealtimeEventHandler? onSupportTicketUpdated;
+  final RealtimeEventHandler? onOnboardingVerificationUpdated;
+  final RealtimeEventHandler? onKycStatusUpdated;
 }
 
 class RealtimeService {
@@ -64,12 +70,15 @@ class RealtimeService {
     RealtimeEventHandler? onDeliverableLiveProof,
     RealtimeEventHandler? onDeliverableSubmitted,
     RealtimeEventHandler? onDeliverablePaid,
+    RealtimeEventHandler? onDeliverableMetricsUpdated,
     RealtimeEventHandler? onParticipationJoined,
     RealtimeEventHandler? onCampaignCreated,
     RealtimeEventHandler? onCampaignUpdated,
     RealtimeEventHandler? onCampaignPublished,
     RealtimeEventHandler? onCreatorProfileStatsUpdated,
     RealtimeEventHandler? onSupportTicketUpdated,
+    RealtimeEventHandler? onOnboardingVerificationUpdated,
+    RealtimeEventHandler? onKycStatusUpdated,
     // Called when the server rejects the current token so we can fetch a
     // live one — the socket has no interceptor like REST calls do, so
     // without this it just keeps retrying with the same rejected token.
@@ -80,12 +89,15 @@ class RealtimeService {
       onDeliverableLiveProof: onDeliverableLiveProof,
       onDeliverableSubmitted: onDeliverableSubmitted,
       onDeliverablePaid: onDeliverablePaid,
+      onDeliverableMetricsUpdated: onDeliverableMetricsUpdated,
       onParticipationJoined: onParticipationJoined,
       onCampaignCreated: onCampaignCreated,
       onCampaignUpdated: onCampaignUpdated,
       onCampaignPublished: onCampaignPublished,
       onCreatorProfileStatsUpdated: onCreatorProfileStatsUpdated,
       onSupportTicketUpdated: onSupportTicketUpdated,
+      onOnboardingVerificationUpdated: onOnboardingVerificationUpdated,
+      onKycStatusUpdated: onKycStatusUpdated,
     );
     _getFreshToken = getFreshToken;
     _openSocket(token);
@@ -122,12 +134,15 @@ class RealtimeService {
     listen('deliverable:live_proof', handlers?.onDeliverableLiveProof);
     listen('deliverable:submitted', handlers?.onDeliverableSubmitted);
     listen('deliverable:paid', handlers?.onDeliverablePaid);
+    listen('deliverable:metrics_updated', handlers?.onDeliverableMetricsUpdated);
     listen('participation:joined', handlers?.onParticipationJoined);
     listen('campaign:created', handlers?.onCampaignCreated);
     listen('campaign:updated', handlers?.onCampaignUpdated);
     listen('campaign:published', handlers?.onCampaignPublished);
     listen('creatorProfile:statsUpdated', handlers?.onCreatorProfileStatsUpdated);
     listen('supportTicket:updated', handlers?.onSupportTicketUpdated);
+    listen('onboarding:verification_updated', handlers?.onOnboardingVerificationUpdated);
+    listen('kyc:status_updated', handlers?.onKycStatusUpdated);
 
     _socket!.on('connect', (_) {
       debugPrint('[RealtimeService] connected: ${_socket!.id}');

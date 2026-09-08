@@ -226,10 +226,14 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
                     ? asset.label!
                     : asset.type == 'youtube'
                         ? 'YouTube reference'
-                        : 'Drive reference',
+                        : asset.type == 'upload'
+                            ? 'Source video'
+                            : 'Drive reference',
                 subtitle: asset.type == 'youtube'
                     ? 'Watch on YouTube'
-                    : 'Open in Drive',
+                    : asset.type == 'upload'
+                        ? 'Open video'
+                        : 'Open in Drive',
                 icon: Icons.folder_outlined,
                 leading: asset.type == 'youtube'
                     ? const SocialLogoBox(platform: 'youtube', size: 34, radius: 11)

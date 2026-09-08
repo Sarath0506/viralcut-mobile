@@ -268,14 +268,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     onTap: () => showProfileSwitcherSheet(context),
                   ),
                   _SettingsRow(
-                    icon: Icons.verified_user_outlined,
-                    iconColor: isVerified ? vc.moneyBright : vc.warning,
-                    label: 'KYC status',
-                    badge: kycStatus.toUpperCase(),
-                    badgeColor: isVerified ? vc.moneyBright : vc.warning,
-                    onTap: () => context.push('/profile/kyc'),
-                  ),
-                  _SettingsRow(
                     icon: Icons.account_balance_outlined,
                     iconColor: vc.primary,
                     label: 'Bank details',
@@ -286,6 +278,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     iconColor: vc.primary,
                     label: 'Payout methods',
                     onTap: () => context.push('/wallet/payout-methods'),
+                    locked: true,
                   ),
                 ],
               ),
@@ -738,69 +731,58 @@ class _SettingsRow extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.label,
-    this.badge,
-    this.badgeColor,
     this.trailing,
     required this.onTap,
+    this.locked = false,
   });
 
   final IconData icon;
   final Color iconColor;
   final String label;
-  final String? badge;
-  final Color? badgeColor;
   final Widget? trailing;
   final VoidCallback onTap;
+  final bool locked;
 
   @override
   Widget build(BuildContext context) {
     final vc = HalchalColors.of(context);
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(icon, size: 17, color: iconColor),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: vc.onSurface,
-                ),
-              ),
-            ),
-            if (badge != null) ...[
+    return Opacity(
+      opacity: locked ? 0.5 : 1,
+      child: InkWell(
+        onTap: locked
+            ? () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Manage this from Bank details')),
+                )
+            : onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  color: (badgeColor ?? vc.warning).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(9),
                 ),
+                child: Icon(icon, size: 17, color: iconColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
                 child: Text(
-                  badge!,
+                  label,
                   style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: badgeColor ?? vc.warning,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: vc.onSurface,
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
+              locked
+                  ? Icon(Icons.lock_outline_rounded, size: 18, color: vc.muted)
+                  : trailing ?? Icon(Icons.chevron_right_rounded, color: vc.muted),
             ],
-            trailing ?? Icon(Icons.chevron_right_rounded, color: vc.muted),
-          ],
+          ),
         ),
       ),
     );

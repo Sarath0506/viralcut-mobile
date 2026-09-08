@@ -6,12 +6,11 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
-import '../../core/layout/app_spacing.dart';
 import '../../theme/halchal_colors.dart';
-import 'widgets/bank_card_preview.dart';
 import 'withdraw_screen.dart';
 
 final _ifscPattern = RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$');
+final _panPattern = RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]$');
 
 class BankDetailsScreen extends ConsumerStatefulWidget {
   const BankDetailsScreen({super.key});
@@ -26,6 +25,7 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
   final _accountCtrl = TextEditingController();
   final _ifscCtrl = TextEditingController();
   final _bankNameCtrl = TextEditingController();
+  final _panCtrl = TextEditingController();
   final _upiCtrl = TextEditingController();
 
   bool _saving = false;
@@ -39,13 +39,10 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
   PayoutMethod? _existingBank;
   PayoutMethod? _existingUpi;
 
-  bool get _hasAccountNumber =>
-      _existingBank != null || _accountCtrl.text.trim().isNotEmpty;
-
   @override
   void initState() {
     super.initState();
-    for (final c in [_nameCtrl, _accountCtrl, _ifscCtrl, _bankNameCtrl, _upiCtrl]) {
+    for (final c in [_nameCtrl, _accountCtrl, _ifscCtrl, _bankNameCtrl, _panCtrl, _upiCtrl]) {
       c.addListener(_onChanged);
     }
     _loadExisting();
@@ -68,6 +65,7 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
         _nameCtrl.text = bank.accountHolderName;
         _ifscCtrl.text = bank.ifscCode ?? '';
         _bankNameCtrl.text = bank.bankName ?? bank.label;
+        _panCtrl.text = bank.panNumber ?? '';
       }
       if (upi != null) {
         _upiCtrl.text = upi.accountMasked;
@@ -85,7 +83,7 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
 
   @override
   void dispose() {
-    for (final c in [_nameCtrl, _accountCtrl, _ifscCtrl, _bankNameCtrl, _upiCtrl]) {
+    for (final c in [_nameCtrl, _accountCtrl, _ifscCtrl, _bankNameCtrl, _panCtrl, _upiCtrl]) {
       c.dispose();
     }
     super.dispose();
@@ -152,6 +150,7 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
       _accountCtrl.clear();
       _ifscCtrl.clear();
       _bankNameCtrl.clear();
+      _panCtrl.clear();
       _upiCtrl.clear();
       setState(() {
         _existingBank = null;
@@ -177,15 +176,17 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
       final name = _nameCtrl.text.trim();
       final ifsc = _ifscCtrl.text.trim().toUpperCase();
       final account = _accountCtrl.text.trim();
+      final pan = _panCtrl.text.trim().toUpperCase();
       final upi = _upiCtrl.text.trim();
 
       if (_existingBank != null) {
-        // Update existing bank method (name/IFSC/bankName only — account stays)
+        // Update existing bank method (name/IFSC/bankName/PAN only — account stays)
         await ref.read(apiClientProvider).updatePayoutMethod(
               _existingBank!.id,
               accountHolderName: name,
               ifscCode: ifsc.isNotEmpty ? ifsc : null,
               bankName: bankName.isNotEmpty ? bankName : null,
+              panNumber: pan.isNotEmpty ? pan : null,
               label: bankName.isNotEmpty ? bankName : null,
             );
       } else {
@@ -196,6 +197,7 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
               accountHolderName: name,
               account: account,
               ifscCode: ifsc.isNotEmpty ? ifsc : null,
+              panNumber: pan,
               bankName: bankName.isNotEmpty ? bankName : null,
             );
       }
@@ -272,57 +274,6 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
                   Expanded(
                     child: ListView(
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.screenHorizontal,
-                            AppSpacing.md,
-                            AppSpacing.screenHorizontal,
-                            AppSpacing.md,
-                          ),
-                          child: Column(
-                            children: [
-                              BankCardPreview(
-                                bankName: _bankNameCtrl.text,
-                                holderName: _nameCtrl.text,
-                                accountNumber: _existingBank != null
-                                    ? (_revealed && _fullAccountNumber != null
-                                        ? _fullAccountNumber!
-                                        : _existingBank!.accountMasked)
-                                    : _accountCtrl.text,
-                                ifsc: _ifscCtrl.text,
-                                revealed: _revealed,
-                              ),
-                              if (_hasAccountNumber) ...[
-                                const SizedBox(height: AppSpacing.sm),
-                                _revealing
-                                    ? Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          SizedBox(
-                                            width: 14,
-                                            height: 14,
-                                            child: CircularProgressIndicator(
-                                                strokeWidth: 2, color: vc.muted),
-                                          ),
-                                          const SizedBox(width: AppSpacing.xs),
-                                          Text(
-                                            'Loading full account number…',
-                                            style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: vc.muted),
-                                          ),
-                                        ],
-                                      )
-                                    : BankCardRevealToggle(
-                                        revealed: _revealed,
-                                        onTap: _toggleRevealed,
-                                      ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        Divider(height: 1, thickness: 0.5, color: vc.border),
                         _FormRow(
                           icon: Icons.credit_card_outlined,
                           label: 'Name',
@@ -349,7 +300,24 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
                           _ReadOnlyRow(
                             icon: Icons.tag_rounded,
                             label: 'Account No.',
-                            value: _existingBank!.accountMasked,
+                            value: _revealed && _fullAccountNumber != null
+                                ? _fullAccountNumber!
+                                : _existingBank!.accountMasked,
+                            trailing: _revealing
+                                ? SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: vc.muted),
+                                  )
+                                : IconButton(
+                                    icon: Icon(
+                                      _revealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                      size: 18,
+                                      color: vc.muted,
+                                    ),
+                                    onPressed: _toggleRevealed,
+                                    tooltip: _revealed ? 'Hide account number' : 'Show account number',
+                                  ),
                           ),
                         _FormRow(
                           icon: Icons.account_balance_outlined,
@@ -376,6 +344,19 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
                               ? null
                               : (v) =>
                                   (v == null || v.trim().length < 2) ? 'Required' : null,
+                        ),
+                        _FormRow(
+                          icon: Icons.badge_outlined,
+                          label: 'PAN',
+                          required: true,
+                          controller: _panCtrl,
+                          placeholder: 'e.g. ABCPV1234D',
+                          textCapitalization: TextCapitalization.characters,
+                          inputFormatters: [_UpperCaseFormatter()],
+                          validator: (v) {
+                            final s = v?.trim().toUpperCase() ?? '';
+                            return _panPattern.hasMatch(s) ? null : 'Enter valid PAN';
+                          },
                         ),
                         _FormRow(
                           icon: Icons.phone_android_outlined,
@@ -417,8 +398,6 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
                         child: FilledButton(
                           onPressed: (_dirty && !_saving) ? _save : null,
                           style: FilledButton.styleFrom(
-                            backgroundColor: vc.onSurface,
-                            disabledBackgroundColor: vc.border,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
@@ -435,7 +414,6 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
                                   style: GoogleFonts.plusJakartaSans(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 16,
-                                    color: _dirty ? vc.onPrimary : vc.muted,
                                   ),
                                 ),
                         ),
@@ -549,11 +527,13 @@ class _ReadOnlyRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.trailing,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -580,6 +560,10 @@ class _ReadOnlyRow extends StatelessWidget {
                 value,
                 style: TextStyle(fontSize: 15, color: vc.muted),
               ),
+              if (trailing != null) ...[
+                const SizedBox(width: 8),
+                trailing!,
+              ],
             ],
           ),
         ),

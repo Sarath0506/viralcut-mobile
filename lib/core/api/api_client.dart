@@ -7,6 +7,7 @@ import '../auth/auth_storage.dart';
 import '../campaign/campaign_models.dart';
 import '../campaign/leaderboard_models.dart';
 import '../creator_profile/creator_profile.dart';
+import '../marketplace/marketplace_models.dart';
 import '../notifications/notification_models.dart';
 import '../participation/participation_models.dart';
 import '../update/app_version_models.dart';
@@ -14,6 +15,7 @@ import 'api_base_url.dart';
 
 export '../campaign/campaign_models.dart';
 export '../campaign/leaderboard_models.dart';
+export '../marketplace/marketplace_models.dart';
 export '../notifications/notification_models.dart';
 export '../participation/participation_models.dart';
 export '../update/app_version_models.dart';
@@ -108,9 +110,13 @@ class ApiClient {
     _dio.interceptors.add(
       QueuedInterceptorsWrapper(
         onError: (error, handler) async {
-          final resolved = await _tryRefreshAndRetry(error);
+          final (resolved, replacement) = await _tryRefreshAndRetry(error);
           if (resolved != null) {
             handler.resolve(resolved);
+            return;
+          }
+          if (replacement != null) {
+            handler.reject(replacement);
             return;
           }
           handler.next(error);
@@ -149,6 +155,18 @@ class ApiClient {
   final SessionExpiredCallback? _onSessionExpired;
   Future<AuthSession?>? _refreshInFlight;
 
+  /// Set by _doRefreshSession() to say WHY its most recent run returned
+  /// null: true for a transient failure (dropped DB connection, network
+  /// blip — the refresh token itself is still perfectly valid), false for
+  /// a genuine rejection (the refresh token is actually dead, and
+  /// _onSessionExpired has already been called). Read immediately after
+  /// awaiting _refreshSession() in _tryRefreshAndRetry, while it's still
+  /// guaranteed fresh for that exact attempt — every caller sharing one
+  /// in-flight refresh sees the one real outcome, since this is set
+  /// before _doRefreshSession's Future completes and reset at the top of
+  /// every new attempt.
+  bool _lastRefreshFailureWasTransient = false;
+
   /// Set the moment a refresh definitively fails (dead refresh token).
   /// _refreshInFlight only dedupes callers that are genuinely concurrent —
   /// on app resume, ~20 requests can 401 at once, and Dio's
@@ -162,33 +180,77 @@ class ApiClient {
   DateTime? _sessionKnownExpiredUntil;
   static const _sessionExpiredCooldown = Duration(seconds: 10);
 
-  Future<Response<dynamic>?> _tryRefreshAndRetry(DioException error) async {
+  /// Returns (a successful retry response, null) on success, or
+  /// (null, a replacement error) when the original request should fail
+  /// with a DIFFERENT error than the one it actually got — specifically,
+  /// when refresh failed for a transient reason (see
+  /// _lastRefreshFailureWasTransient) rather than a genuine session
+  /// rejection: the original request's raw 401 "Unauthorized" would
+  /// otherwise surface unchanged and read like a real, permanent auth
+  /// failure on whatever screen triggered it, when the session is
+  /// actually still perfectly valid. (null, null) means "don't touch this
+  /// error, propagate it as-is" — including the genuine-expiry case,
+  /// where the user is already being logged out via _onSessionExpired and
+  /// the original 401 is an accurate description of what's happening.
+  Future<(Response<dynamic>?, DioException?)> _tryRefreshAndRetry(
+    DioException error,
+  ) async {
     final status = error.response?.statusCode;
-    if (status != 401) return null;
+    if (status != 401) return (null, null);
 
     final extra = error.requestOptions.extra;
     if (extra[ApiRequestExtra.auth] == false ||
         extra[ApiRequestExtra.skipRefresh] == true ||
         extra[ApiRequestExtra.isRetry] == true) {
-      return null;
+      return (null, null);
     }
 
     final envelope = _errorEnvelopeFromResponse(error.response?.data);
-    if (envelope?.code != 'UNAUTHORIZED') return null;
+    if (envelope?.code != 'UNAUTHORIZED') return (null, null);
 
     final session = await _refreshSession();
-    if (session == null) return null;
+    if (session == null) {
+      if (_lastRefreshFailureWasTransient) {
+        return (null, _transientSessionCheckError(error));
+      }
+      return (null, null);
+    }
 
     final options = error.requestOptions;
     options.extra[ApiRequestExtra.isRetry] = true;
     options.headers['Authorization'] = 'Bearer ${session.accessToken}';
     try {
-      return await _dio.fetch<dynamic>(options).timeout(_requestDeadline);
+      final response = await _dio.fetch<dynamic>(options).timeout(_requestDeadline);
+      return (response, null);
     } on DioException {
-      return null;
+      return (null, null);
     } on TimeoutException {
-      return null;
+      return (null, null);
     }
+  }
+
+  /// Swaps in an honest, retriable message in place of the original
+  /// request's raw backend "Unauthorized" — used only when refresh itself
+  /// failed for a reason that says nothing about the session's actual
+  /// validity (a dropped DB connection, a network blip), not a genuine
+  /// token rejection.
+  DioException _transientSessionCheckError(DioException original) {
+    return DioException(
+      requestOptions: original.requestOptions,
+      response: Response<dynamic>(
+        requestOptions: original.requestOptions,
+        statusCode: original.response?.statusCode,
+        data: {
+          'success': false,
+          'error': {
+            'code': 'CONNECTION_ERROR',
+            'message': "Couldn't verify your session — check your connection and try again.",
+          },
+        },
+      ),
+      type: DioExceptionType.badResponse,
+      error: original.error,
+    );
   }
 
   /// Forces a session refresh and returns the new access token — used by
@@ -218,6 +280,8 @@ class ApiClient {
   }
 
   Future<AuthSession?> _doRefreshSession() async {
+    _lastRefreshFailureWasTransient = false;
+
     String? refresh;
     try {
       refresh = await _storage.getRefreshToken().timeout(const Duration(seconds: 5));
@@ -227,6 +291,7 @@ class ApiClient {
       // refresh token actually exists, so don't wipe the session over it.
       // A clean read that genuinely finds nothing (no exception, refresh
       // stays null) still falls through to the real logout below.
+      _lastRefreshFailureWasTransient = true;
       return null;
     }
     if (refresh == null) {
@@ -261,11 +326,14 @@ class ApiClient {
       if (e.response?.statusCode == 401 || envelope?.code == 'UNAUTHORIZED') {
         _sessionKnownExpiredUntil = DateTime.now().add(_sessionExpiredCooldown);
         await _onSessionExpired?.call();
+      } else {
+        _lastRefreshFailureWasTransient = true;
       }
       return null;
     } catch (_) {
       // Non-network failure (e.g. malformed response) — treat the same as
       // a network hiccup, not a token rejection.
+      _lastRefreshFailureWasTransient = true;
       return null;
     }
   }
@@ -514,6 +582,28 @@ class ApiClient {
         (d) => Participation.fromJson(d as Map<String, dynamic>),
       );
 
+  Future<List<MarketplaceListing>> fetchMarketplaceListings(
+    String campaignId,
+    String creatorProfileId,
+  ) =>
+      get(
+        '/creator/campaigns/$campaignId/marketplace',
+        (d) => (d as List<dynamic>)
+            .map((e) => MarketplaceListing.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        query: {'creatorProfileId': creatorProfileId},
+      );
+
+  Future<MarketplaceRepostResult> repostMarketplaceListing(
+    String sourceDeliverableId,
+    String creatorProfileId,
+  ) =>
+      post(
+        '/creator/marketplace/listings/$sourceDeliverableId/repost',
+        {'creatorProfileId': creatorProfileId},
+        (d) => MarketplaceRepostResult.fromJson(d as Map<String, dynamic>),
+      );
+
   Future<Participation> fetchParticipationByCampaign(
     String campaignId,
     String creatorProfileId,
@@ -634,10 +724,15 @@ class ApiClient {
   Future<void> submitDeliverableDraft({
     required String deliverableId,
     required String draftDriveUrl,
+    bool? listedInMarketplace,
   }) =>
       patch<void>(
         '/creator/deliverables/$deliverableId/draft',
-        {'draftDriveUrl': draftDriveUrl},
+        {
+          'draftDriveUrl': draftDriveUrl,
+          if (listedInMarketplace != null)
+            'listedInMarketplace': listedInMarketplace,
+        },
         (_) {},
       );
 
@@ -686,22 +781,6 @@ class ApiClient {
     );
   }
 
-  Future<Map<String, int>> refreshDeliverableViews(String deliverableId) async {
-    final resp = await _dio.post<Map<String, dynamic>>(
-      '/creator/deliverables/$deliverableId/refresh-views',
-      options: Options(receiveTimeout: const Duration(seconds: 150)),
-    );
-    final body = resp.data ?? {};
-    final data = (body['data'] as Map<String, dynamic>?) ?? body;
-    return {
-      'viewCount':    data['viewCount']    as int? ?? 0,
-      'reach':        data['reach']        as int? ?? 0,
-      'likeCount':    data['likeCount']    as int? ?? 0,
-      'commentCount': data['commentCount'] as int? ?? 0,
-      'shareCount':   data['shareCount']   as int? ?? 0,
-    };
-  }
-
   Future<WalletData> fetchWallet({String? creatorProfileId}) => get(
         '/wallet',
         (d) => WalletData.fromJson(d as Map<String, dynamic>),
@@ -732,6 +811,7 @@ class ApiClient {
     required String account,
     String? ifscCode,
     String? bankName,
+    String? panNumber,
   }) =>
       post(
         '/payout-methods',
@@ -742,6 +822,7 @@ class ApiClient {
           'account': account,
           if (ifscCode != null) 'ifscCode': ifscCode,
           if (bankName != null) 'bankName': bankName,
+          if (panNumber != null) 'panNumber': panNumber,
         },
         (d) => PayoutMethod.fromJson(d as Map<String, dynamic>),
       );
@@ -751,6 +832,7 @@ class ApiClient {
     String? accountHolderName,
     String? ifscCode,
     String? bankName,
+    String? panNumber,
     String? label,
   }) =>
       patch(
@@ -759,6 +841,7 @@ class ApiClient {
           if (accountHolderName != null) 'accountHolderName': accountHolderName,
           if (ifscCode != null) 'ifscCode': ifscCode,
           if (bankName != null) 'bankName': bankName,
+          if (panNumber != null) 'panNumber': panNumber,
           if (label != null) 'label': label,
         },
         (d) => PayoutMethod.fromJson(d as Map<String, dynamic>),
@@ -880,6 +963,44 @@ class ApiClient {
     });
     final resp = await _dio.post<Map<String, dynamic>>(
       '/users/me/kyc',
+      data: formData,
+    );
+    return (resp.data?['data'] as Map<String, dynamic>?) ?? {};
+  }
+
+  Future<Map<String, dynamic>> submitPan({
+    required String filePath,
+    required String fileName,
+    required String mimeType,
+  }) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        filePath,
+        filename: fileName,
+        contentType: DioMediaType.parse(mimeType),
+      ),
+    });
+    final resp = await _dio.post<Map<String, dynamic>>(
+      '/users/me/pan',
+      data: formData,
+    );
+    return (resp.data?['data'] as Map<String, dynamic>?) ?? {};
+  }
+
+  Future<Map<String, dynamic>> submitAadhaar({
+    required String filePath,
+    required String fileName,
+    required String mimeType,
+  }) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        filePath,
+        filename: fileName,
+        contentType: DioMediaType.parse(mimeType),
+      ),
+    });
+    final resp = await _dio.post<Map<String, dynamic>>(
+      '/users/me/aadhaar',
       data: formData,
     );
     return (resp.data?['data'] as Map<String, dynamic>?) ?? {};
@@ -1042,6 +1163,7 @@ class PayoutMethod {
     required this.accountMasked,
     this.ifscCode,
     this.bankName,
+    this.panNumber,
     required this.isDefault,
   });
   final String id;
@@ -1051,6 +1173,7 @@ class PayoutMethod {
   final String accountMasked;
   final String? ifscCode;
   final String? bankName;
+  final String? panNumber;
   final bool isDefault;
 
   factory PayoutMethod.fromJson(Map<String, dynamic> json) => PayoutMethod(
@@ -1061,6 +1184,7 @@ class PayoutMethod {
         accountMasked: json['accountMasked'] as String,
         ifscCode: json['ifscCode'] as String?,
         bankName: json['bankName'] as String?,
+        panNumber: json['panNumber'] as String?,
         isDefault: json['isDefault'] as bool? ?? false,
       );
 }

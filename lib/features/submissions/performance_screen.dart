@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/api_client.dart';
-import '../../core/auth/auth_provider.dart';
 import '../../core/participation/participation_models.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
@@ -26,32 +25,44 @@ class PerformanceScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(participationDetailProvider(participationId));
 
-    return detail.when(
-      loading: () => const VcScaffold(
+    // Every automatic background metrics push (and the 5-minute sweep, and
+    // the manual refresh button) invalidates this provider, which briefly
+    // re-enters a "loading" AsyncValue state even though we already have
+    // good data on screen. Checking hasValue first — instead of a plain
+    // .when(loading: ...) — keeps showing that last-known data through a
+    // routine background refetch, so the screen updates its numbers in
+    // place instead of blanking to a full-screen spinner every few
+    // minutes. The spinner is reserved for the genuine first load, when
+    // there's no value yet at all.
+    if (detail.hasValue) {
+      final p = detail.value!;
+      final deliverable = p.deliverables.firstWhere(
+        (d) => d.id == deliverableId,
+        orElse: () => p.deliverables.first,
+      );
+      return VcScaffold(
         title: 'Performance & Earnings',
         showBack: true,
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, _) => VcScaffold(
+        body: _PerformanceBody(
+          participation: p,
+          deliverable: deliverable,
+          onRefresh: () => ref.invalidate(participationDetailProvider(participationId)),
+        ),
+      );
+    }
+
+    if (detail.hasError) {
+      return VcScaffold(
         title: 'Performance & Earnings',
         showBack: true,
-        body: Center(child: Text('$e')),
-      ),
-      data: (p) {
-        final deliverable = p.deliverables.firstWhere(
-          (d) => d.id == deliverableId,
-          orElse: () => p.deliverables.first,
-        );
-        return VcScaffold(
-          title: 'Performance & Earnings',
-          showBack: true,
-          body: _PerformanceBody(
-            participation: p,
-            deliverable: deliverable,
-            onRefresh: () => ref.invalidate(participationDetailProvider(participationId)),
-          ),
-        );
-      },
+        body: Center(child: Text('${detail.error}')),
+      );
+    }
+
+    return const VcScaffold(
+      title: 'Performance & Earnings',
+      showBack: true,
+      body: Center(child: CircularProgressIndicator()),
     );
   }
 }
@@ -72,43 +83,14 @@ class _PerformanceBody extends ConsumerStatefulWidget {
 }
 
 class _PerformanceBodyState extends ConsumerState<_PerformanceBody> {
-  bool _refreshing = false;
-  int? _localViews;
-  int? _localReach;
-  int? _localLikes;
-  int? _localComments;
-  int? _localShares;
-  int? _localEstimated;
-
-  Future<void> _refreshViews() async {
-    setState(() => _refreshing = true);
-    try {
-      final result = await ref
-          .read(apiClientProvider)
-          .refreshDeliverableViews(widget.deliverable.id);
-      setState(() {
-        _localViews     = result['viewCount'] ?? 0;
-        _localReach     = result['reach'] ?? 0;
-        _localLikes     = result['likeCount'] ?? 0;
-        _localComments  = result['commentCount'] ?? 0;
-        _localShares    = result['shareCount'] ?? 0;
-        // recalculate estimated from new views
-        final rate = widget.deliverable.ratePer1kPaise;
-        final max  = widget.participation.campaign.maxPayoutPaise ?? 999999999;
-        _localEstimated = rate > 0
-            ? ((_localViews! / 1000) * rate).floor().clamp(0, max)
-            : 0;
-      });
-      widget.onRefresh();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not refresh: $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _refreshing = false);
-    }
-  }
+  // Note: this deliberately holds no local override state for the stats
+  // themselves (no _localViews/_localReach/etc.) — Flutter reuses this
+  // State object across rebuilds rather than recreating it, so any such
+  // override would silently keep shadowing widget.deliverable's real,
+  // live value forever after a rebuild — including every automatic update
+  // (the deliverable:metrics_updated realtime push, or the 5-minute
+  // background sweep). Always reading straight from widget.deliverable is
+  // what makes those automatic updates actually reach the screen.
 
   @override
   Widget build(BuildContext context) {
@@ -116,12 +98,12 @@ class _PerformanceBodyState extends ConsumerState<_PerformanceBody> {
     final d = widget.deliverable;
     final c = widget.participation.campaign;
 
-    final views     = _localViews     ?? d.viewCount;
-    final reach     = _localReach     ?? d.reach;
-    final likes     = _localLikes     ?? d.likeCount;
-    final comments  = _localComments  ?? d.commentCount;
-    final shares    = _localShares    ?? d.shareCount;
-    final estimated = _localEstimated ?? d.estimatedPaise;
+    final views     = d.viewCount;
+    final reach     = d.reach;
+    final likes     = d.likeCount;
+    final comments  = d.commentCount;
+    final shares    = d.shareCount;
+    final estimated = d.estimatedPaise;
     final rate      = d.ratePer1kPaise;
     final rateDisplay = rate > 0
         ? '₹${(rate / 100).toStringAsFixed(2)} / 1K views'
@@ -133,7 +115,7 @@ class _PerformanceBodyState extends ConsumerState<_PerformanceBody> {
         : null;
 
     return RefreshIndicator(
-      onRefresh: _refreshViews,
+      onRefresh: () async => widget.onRefresh(),
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -397,34 +379,6 @@ class _PerformanceBodyState extends ConsumerState<_PerformanceBody> {
                         vc: vc,
                       ),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // Refresh views button
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: _refreshing ? null : _refreshViews,
-                    icon: _refreshing
-                        ? SizedBox(
-                            width: 13,
-                            height: 13,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 1.5, color: vc.muted),
-                          )
-                        : Icon(Icons.refresh_rounded,
-                            size: 15, color: vc.muted),
-                    label: Text(
-                      _refreshing ? 'Fetching views...' : 'Refresh views',
-                      style: GoogleFonts.inter(
-                          fontSize: 12, color: vc.muted),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      minimumSize: Size.zero,
-                    ),
                   ),
                 ),
               ],

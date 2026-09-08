@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/profile/profile_providers.dart';
+import '../../features/submissions/submission_providers.dart';
 import '../auth/auth_provider.dart';
 import '../push/push_providers.dart';
 import 'realtime_invalidation.dart';
@@ -95,6 +97,33 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
     invalidateAppDataCaches(ref, payload: payload);
   }
 
+  /// A metrics-only update (views/likes/comments/shares changed, nothing
+  /// else) is deliberately handled separately from _onRealtimeEvent — it
+  /// fires once per active deliverable on every background sweep pass, so
+  /// routing it through invalidateAppDataCaches's blanket "bump the
+  /// realtime tick, invalidate a dozen unrelated providers" would refetch
+  /// every open screen (dashboard, wallet, campaigns list, etc.) once per
+  /// tracked deliverable a creator has — a "screen keeps reloading" storm
+  /// for anyone tracking more than one live proof at once. Invalidating
+  /// only the one specific participation this update is actually about
+  /// keeps the performance screen live without touching anything else.
+  void _onMetricsUpdated(Map<String, dynamic> payload) {
+    final participationId = payload['participationId'] as String?;
+    if (participationId == null) return;
+    ref.invalidate(participationDetailProvider(participationId));
+  }
+
+  /// Shared by both onboarding:verification_updated (Instagram review) and
+  /// kyc:status_updated (the older, separate id_proof KYC flow) — both are
+  /// just "an admin reviewed something on profileMeProvider", so both just
+  /// need a refetch. Lets a signup stuck on the verification waiting
+  /// screen, or a creator on the KYC status screen, move on the instant an
+  /// admin decides, instead of sitting there until the 5-minute poll
+  /// fallback happens to catch it.
+  void _onOnboardingVerificationUpdated(Map<String, dynamic> payload) {
+    ref.invalidate(profileMeProvider);
+  }
+
   Future<void> _connect() async {
     String? token;
     try {
@@ -119,12 +148,15 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
           onDeliverableLiveProof: _onRealtimeEvent,
           onDeliverableSubmitted: _onRealtimeEvent,
           onDeliverablePaid: _onRealtimeEvent,
+          onDeliverableMetricsUpdated: _onMetricsUpdated,
           onParticipationJoined: _onRealtimeEvent,
           onCampaignCreated: _onRealtimeEvent,
           onCampaignUpdated: _onRealtimeEvent,
           onCampaignPublished: _onRealtimeEvent,
           onCreatorProfileStatsUpdated: _onRealtimeEvent,
           onSupportTicketUpdated: _onRealtimeEvent,
+          onOnboardingVerificationUpdated: _onOnboardingVerificationUpdated,
+          onKycStatusUpdated: _onOnboardingVerificationUpdated,
           getFreshToken: () =>
               ref.read(apiClientProvider).refreshAccessToken(),
         );
