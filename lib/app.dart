@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/realtime/realtime_sync.dart';
 import 'core/router/app_router.dart';
+import 'core/widgets/root_scaffold_messenger.dart';
 import 'theme/theme_provider.dart';
 import 'theme/halchal_theme.dart';
 
@@ -18,6 +19,7 @@ class HalchalApp extends ConsumerWidget {
       child: MaterialApp.router(
         title: 'Halchal',
         debugShowCheckedModeBanner: false,
+        scaffoldMessengerKey: rootScaffoldMessengerKey,
         theme: HalchalTheme.light,
         darkTheme: HalchalTheme.dark,
         themeMode: themeMode,

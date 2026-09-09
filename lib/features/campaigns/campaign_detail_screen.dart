@@ -12,6 +12,7 @@ import '../../core/format/money_format.dart';
 import '../../core/layout/app_spacing.dart';
 import 'campaign_providers.dart';
 import '../../core/widgets/primary_action_button.dart';
+import '../../core/widgets/root_scaffold_messenger.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import '../profile/profile_providers.dart';
@@ -108,13 +109,21 @@ class CampaignDetailScreen extends ConsumerWidget {
           }
           if (!context.mounted) return;
           if (e.code == 'BANK_DETAILS_REQUIRED') {
-            ScaffoldMessenger.of(context).showSnackBar(
+            // rootScaffoldMessengerKey, not ScaffoldMessenger.of(context) —
+            // this screen's providers refetch on realtime ticks (including
+            // ones from totally unrelated activity elsewhere in the app),
+            // and a rebuild landing in the same window as this SnackBar's
+            // duration timer permanently breaks it if it's tied to this
+            // screen's own context. The root-level messenger is scoped to
+            // the whole app's lifetime, so it can't be affected by this
+            // screen rebuilding.
+            rootScaffoldMessengerKey.currentState?.showSnackBar(
               SnackBar(
                 content: Text(e.message),
                 action: SnackBarAction(
                   label: 'Add details',
                   onPressed: () {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    rootScaffoldMessengerKey.currentState?.hideCurrentSnackBar();
                     context.push('/wallet/bank-details');
                   },
                 ),
@@ -123,7 +132,7 @@ class CampaignDetailScreen extends ConsumerWidget {
             );
             return;
           }
-          ScaffoldMessenger.of(context).showSnackBar(
+          rootScaffoldMessengerKey.currentState?.showSnackBar(
             SnackBar(content: Text(e.message)),
           );
         }
