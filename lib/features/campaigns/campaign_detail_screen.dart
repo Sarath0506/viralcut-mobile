@@ -256,8 +256,7 @@ class CampaignDetailScreen extends ConsumerWidget {
       data: (c) {
         final p = participation.valueOrNull;
         final cta = _ctaLabel(p);
-        final joining = (participation.isLoading && p == null) ||
-            ref.watch(_joinInFlightProvider);
+        final joining = participation.isLoading && p == null;
 
         return CampaignRealtimeScope(
           campaignId: id,
