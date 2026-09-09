@@ -227,9 +227,19 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
                 status: instagramReviewStatus,
                 failureReason: instagramRejectionReason,
                 verifiedNote: 'Reviewed by our team',
-                pendingOverrideLabel: instagramHandleConnected ? 'Connected — awaiting review' : null,
-                child: (instagramReviewStatus == 'not_started' || instagramReviewStatus == 'rejected') &&
-                        !instagramHandleConnected
+                // A rejected status keeps instagramHandleConnected true
+                // (the old — now-rejected — connection is still linked), so
+                // this must not override the "Rejected" badge in that case.
+                pendingOverrideLabel: (instagramHandleConnected && instagramReviewStatus != 'rejected')
+                    ? 'Connected — awaiting review'
+                    : null,
+                // Rejected always gets the button back, regardless of
+                // instagramHandleConnected — reconnecting (same or a
+                // different account) is exactly how a rejected clipper is
+                // meant to retry; the backend resets the review status back
+                // to pending once a new connection completes.
+                child: (instagramReviewStatus == 'rejected') ||
+                        (instagramReviewStatus == 'not_started' && !instagramHandleConnected)
                     ? SizedBox(
                         width: double.infinity,
                         child: FilledButton(
@@ -249,7 +259,11 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2, color: Colors.white),
                                 )
-                              : const Text('Connect with Instagram'),
+                              : Text(
+                                  instagramReviewStatus == 'rejected'
+                                      ? 'Reconnect Instagram'
+                                      : 'Connect with Instagram',
+                                ),
                         ),
                       )
                     : null,
