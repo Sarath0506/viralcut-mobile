@@ -105,7 +105,7 @@ class CampaignDetailScreen extends ConsumerWidget {
                   context.push('/wallet/bank-details');
                 },
               ),
-              duration: const Duration(seconds: 6),
+              duration: const Duration(seconds: 2),
             ),
           );
           return;
