@@ -242,6 +242,7 @@ class CampaignDetailScreen extends ConsumerWidget {
     final vc = HalchalColors.of(context);
 
     return campaign.when(
+      skipLoadingOnRefresh: true,
       loading: () => const VcScaffold(
         title: 'Campaign',
         showBack: true,
