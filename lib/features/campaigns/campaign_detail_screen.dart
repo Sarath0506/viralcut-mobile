@@ -110,13 +110,21 @@ class CampaignDetailScreen extends ConsumerWidget {
           if (!context.mounted) return;
           if (e.code == 'BANK_DETAILS_REQUIRED') {
             // rootScaffoldMessengerKey, not ScaffoldMessenger.of(context) —
-            // this screen's providers refetch on realtime ticks (including
-            // ones from totally unrelated activity elsewhere in the app),
-            // and a rebuild landing in the same window as this SnackBar's
-            // duration timer permanently breaks it if it's tied to this
-            // screen's own context. The root-level messenger is scoped to
-            // the whole app's lifetime, so it can't be affected by this
-            // screen rebuilding.
+            // this screen's providers refetch on realtime ticks, and a
+            // rebuild landing in the same window as this SnackBar being
+            // shown can tie its lifecycle to a Scaffold that no longer
+            // matches what's on screen.
+            //
+            // The duration param alone isn't enough to guarantee dismissal
+            // either: Flutter's ScaffoldMessengerState only ever creates its
+            // internal auto-dismiss Timer from inside its own build() method,
+            // gated on `ModalRoute.of(context) == null || route.isCurrent`
+            // (see flutter/lib/src/material/scaffold.dart). Confirmed live
+            // (via debug logging) that this snackbar's entrance animation
+            // completes but that gate silently never lets the Timer get
+            // created — no error, it just never auto-dismisses. Managing
+            // the dismiss ourselves with a plain Future.delayed sidesteps
+            // that internal gating entirely.
             rootScaffoldMessengerKey.currentState?.showSnackBar(
               SnackBar(
                 content: Text(e.message),
@@ -130,6 +138,9 @@ class CampaignDetailScreen extends ConsumerWidget {
                 duration: const Duration(seconds: 2),
               ),
             );
+            Future.delayed(const Duration(seconds: 2), () {
+              rootScaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+            });
             return;
           }
           rootScaffoldMessengerKey.currentState?.showSnackBar(
