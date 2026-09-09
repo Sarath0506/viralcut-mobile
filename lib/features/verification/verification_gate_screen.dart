@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -68,6 +71,8 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
   }
 
   void _handleInstagramCallback(Uri uri) {
+    // ignore: avoid_print
+    print('[DEBUG][verification] _handleInstagramCallback: $uri');
     if (uri.scheme != 'halchal' || uri.host != 'instagram-callback') return;
     final activeProfile = ref.read(activeCreatorProfileProvider);
     if (activeProfile == null) return;
@@ -99,23 +104,50 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
     try {
       final start =
           await ref.read(apiClientProvider).startInstagramOAuth(activeProfile.id);
+      // ignore: avoid_print
+      print('[DEBUG][verification] startInstagramOAuth ok: transactionId=${start.transactionId}, url=${start.authorizationUrl}');
+      if (Platform.isIOS) {
+        // ASWebAuthenticationSession, not externalApplication — see
+        // connected_accounts_screen.dart for the full explanation (Universal
+        // Link takeover into the native Instagram app on iOS otherwise).
+        // preferEphemeral: true avoids a stale/shared Safari session
+        // fighting the backend's force_authentication=1.
+        final result = await FlutterWebAuth2.authenticate(
+          url: start.authorizationUrl,
+          callbackUrlScheme: 'halchal',
+          options: const FlutterWebAuth2Options(preferEphemeral: true),
+        );
+        // ignore: avoid_print
+        print('[DEBUG][verification] FlutterWebAuth2.authenticate returned: $result');
+        _handleInstagramCallback(Uri.parse(result));
+        return;
+      }
       final launched = await launchUrl(
         Uri.parse(start.authorizationUrl),
         mode: LaunchMode.externalApplication,
       );
       if (!launched) throw Exception('launch failed');
     } on ApiException catch (e) {
+      // ignore: avoid_print
+      print('[DEBUG][verification] startInstagramOAuth ApiException: code=${e.code}, message=${e.message}');
       if (!mounted) return;
       setState(() => _connectingInstagram = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
       );
-    } catch (_) {
+    } catch (e) {
+      // ignore: avoid_print
+      print('[DEBUG][verification] _startInstagramOAuth caught: ${e.runtimeType}: $e');
       if (!mounted) return;
       setState(() => _connectingInstagram = false);
+      final cancelled = e is PlatformException && e.code == 'CANCELED';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open Instagram. Please try again.'),
+        SnackBar(
+          content: Text(
+            cancelled
+                ? 'Instagram connection cancelled.'
+                : 'Could not open Instagram. Please try again.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );

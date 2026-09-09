@@ -107,6 +107,8 @@ class _ConnectedAccountsScreenState
   }
 
   void _handleInstagramCallback(Uri uri) {
+    // ignore: avoid_print
+    print('[DEBUG] _handleInstagramCallback: $uri');
     if (uri.scheme != 'halchal' || uri.host != 'instagram-callback') return;
     final activeProfile = ref.read(activeCreatorProfileProvider);
     if (activeProfile == null) return;
@@ -135,6 +137,8 @@ class _ConnectedAccountsScreenState
     setState(() => _connecting['instagram'] = true);
     try {
       final start = await ref.read(apiClientProvider).startInstagramOAuth(profileId);
+      // ignore: avoid_print
+      print('[DEBUG] startInstagramOAuth ok: transactionId=${start.transactionId}, url=${start.authorizationUrl}');
       if (Platform.isIOS) {
         // ASWebAuthenticationSession, not externalApplication — Instagram
         // registers www.instagram.com as an iOS Universal Link domain, so
@@ -158,6 +162,8 @@ class _ConnectedAccountsScreenState
           // our callback.
           options: const FlutterWebAuth2Options(preferEphemeral: true),
         );
+        // ignore: avoid_print
+        print('[DEBUG] FlutterWebAuth2.authenticate returned: $result');
         _handleInstagramCallback(Uri.parse(result));
         return;
       }
@@ -174,12 +180,16 @@ class _ConnectedAccountsScreenState
       // is in the Instagram browser — _handleInstagramCallback or the
       // lifecycle safety net above clears it once they return.
     } on ApiException catch (e) {
+      // ignore: avoid_print
+      print('[DEBUG] startInstagramOAuth ApiException: code=${e.code}, message=${e.message}');
       if (!mounted) return;
       setState(() => _connecting['instagram'] = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
       );
     } catch (e) {
+      // ignore: avoid_print
+      print('[DEBUG] _startInstagramOAuth caught: ${e.runtimeType}: $e');
       if (!mounted) return;
       setState(() => _connecting['instagram'] = false);
       final cancelled = e is PlatformException && e.code == 'CANCELED';
