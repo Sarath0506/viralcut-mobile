@@ -148,6 +148,15 @@ class _ConnectedAccountsScreenState
         final result = await FlutterWebAuth2.authenticate(
           url: start.authorizationUrl,
           callbackUrlScheme: 'halchal',
+          // preferEphemeral: true — no shared Safari cookies. The backend
+          // already sends force_authentication=1 (always show a fresh
+          // Instagram login), so a shared session that's stale/mismatched
+          // could be fighting that. A fully isolated session removes any
+          // cookie state to conflict with — confirmed live: without this,
+          // Instagram's own page consistently failed with a generic
+          // "Something went wrong" on a real device before ever reaching
+          // our callback.
+          options: const FlutterWebAuth2Options(preferEphemeral: true),
         );
         _handleInstagramCallback(Uri.parse(result));
         return;
