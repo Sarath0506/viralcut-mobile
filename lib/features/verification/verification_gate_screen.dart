@@ -71,8 +71,6 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
   }
 
   void _handleInstagramCallback(Uri uri) {
-    // ignore: avoid_print
-    print('[DEBUG][verification] _handleInstagramCallback: $uri');
     if (uri.scheme != 'halchal' || uri.host != 'instagram-callback') return;
     final activeProfile = ref.read(activeCreatorProfileProvider);
     if (activeProfile == null) return;
@@ -104,8 +102,6 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
     try {
       final start =
           await ref.read(apiClientProvider).startInstagramOAuth(activeProfile.id);
-      // ignore: avoid_print
-      print('[DEBUG][verification] startInstagramOAuth ok: transactionId=${start.transactionId}, url=${start.authorizationUrl}');
       if (Platform.isIOS) {
         // ASWebAuthenticationSession, not externalApplication — see
         // connected_accounts_screen.dart for the full explanation (Universal
@@ -117,8 +113,6 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
           callbackUrlScheme: 'halchal',
           options: const FlutterWebAuth2Options(preferEphemeral: true),
         );
-        // ignore: avoid_print
-        print('[DEBUG][verification] FlutterWebAuth2.authenticate returned: $result');
         _handleInstagramCallback(Uri.parse(result));
         return;
       }
@@ -128,16 +122,12 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
       );
       if (!launched) throw Exception('launch failed');
     } on ApiException catch (e) {
-      // ignore: avoid_print
-      print('[DEBUG][verification] startInstagramOAuth ApiException: code=${e.code}, message=${e.message}');
       if (!mounted) return;
       setState(() => _connectingInstagram = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
       );
     } catch (e) {
-      // ignore: avoid_print
-      print('[DEBUG][verification] _startInstagramOAuth caught: ${e.runtimeType}: $e');
       if (!mounted) return;
       setState(() => _connectingInstagram = false);
       final cancelled = e is PlatformException && e.code == 'CANCELED';
