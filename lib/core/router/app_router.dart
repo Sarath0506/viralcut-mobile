@@ -45,6 +45,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     navigatorKey: _rootKey,
     initialLocation: '/splash',
     refreshListenable: refreshListenable,
+    // go_router's own default error screen links "Home" to a bare '/',
+    // which isn't a registered route either (the app's real entry point is
+    // '/splash') — that chains into a second "Page Not Found" instead of
+    // recovering. '/splash' re-runs the redirect above with fresh auth
+    // state, so it always lands somewhere valid.
+    errorBuilder: (context, state) => _NotFoundScreen(uri: state.uri),
     redirect: (context, state) {
       final authStatus = ref.read(authStateProvider);
       final path = state.matchedLocation;
@@ -213,3 +219,29 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(router.dispose);
   return router;
 });
+
+class _NotFoundScreen extends StatelessWidget {
+  const _NotFoundScreen({required this.uri});
+
+  final Uri uri;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Page not found')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("We couldn't find $uri"),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => context.go('/splash'),
+              child: const Text('Go home'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
