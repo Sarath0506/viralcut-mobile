@@ -13,7 +13,8 @@
     <application
         android:label="Halchal"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true">
         <!-- Without an explicit default channel, background/killed-state FCM
              notifications fall back to an ad-hoc "Miscellaneous" channel that
              some OEM Android builds (aggressive battery/notification
