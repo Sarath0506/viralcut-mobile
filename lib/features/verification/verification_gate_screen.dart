@@ -148,6 +148,11 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
     try {
       await ref.read(apiClientProvider).completeInstagramOAuth(profileId, transactionId);
       ref.invalidate(creatorProfilesProvider);
+      // The reconnect path (rejected -> pending) changes instagramReviewStatus,
+      // which lives on profileMeProvider, not creatorProfilesProvider — without
+      // this, awaitingReview below keeps evaluating against the stale
+      // pre-reconnect status and the screen never advances to the waiting page.
+      ref.invalidate(profileMeProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
