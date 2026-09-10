@@ -8,7 +8,6 @@ import '../../core/format/money_format.dart';
 import '../../core/layout/app_spacing.dart';
 import '../../core/layout/list_entrance.dart';
 import '../../theme/halchal_colors.dart';
-import '../profile/profile_providers.dart';
 import 'wallet_providers.dart';
 
 class WalletScreen extends ConsumerWidget {
@@ -18,16 +17,12 @@ class WalletScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final wallet = ref.watch(walletProvider);
     final transactions = ref.watch(walletTransactionsProvider);
-    final me = ref.watch(profileMeProvider);
 
     return wallet.when(
       skipLoadingOnRefresh: true,
       loading: () => const ScreenLoader(),
       error: (e, _) => Center(child: Text('$e')),
       data: (w) {
-        final kycStatus = me.valueOrNull?['kycStatus'] as String? ?? 'pending';
-
-
         return RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(walletProvider);
@@ -50,9 +45,6 @@ class WalletScreen extends ConsumerWidget {
                 onViewClips: () => context.go('/submissions'),
               ),
               const SizedBox(height: 16),
-              if (kycStatus != 'verified')
-                _KycWarningCard(kycStatus: kycStatus),
-              if (kycStatus != 'verified') const SizedBox(height: 16),
               _EarningsOverview(wallet: w),
               const SizedBox(height: 24),
               _TransactionSection(transactions: transactions),
@@ -240,43 +232,6 @@ class _BalanceCard extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _KycWarningCard extends StatelessWidget {
-  const _KycWarningCard({required this.kycStatus});
-
-  final String kycStatus;
-
-  @override
-  Widget build(BuildContext context) {
-    final vc = HalchalColors.of(context);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: vc.warning.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: vc.warning.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.info_outline_rounded, size: 20, color: vc.warning),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              kycStatus == 'under_review'
-                  ? 'Your KYC is under review. Withdrawals will be enabled once verified.'
-                  : 'Complete KYC to unlock withdrawals. Withdrawals are not blocked in v1.',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: vc.warning,
-                height: 1.4,
-              ),
             ),
           ),
         ],

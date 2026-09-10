@@ -12,11 +12,17 @@ import '../../core/format/money_format.dart';
 import '../../core/layout/app_spacing.dart';
 import 'campaign_providers.dart';
 import '../../core/widgets/primary_action_button.dart';
+import '../../core/widgets/root_scaffold_messenger.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import '../profile/profile_providers.dart';
 import '../profile/widgets/profile_switcher_sheet.dart';
 import 'widgets/campaign_detail_body.dart';
+
+/// True while a join-campaign request is in flight — guards against a
+/// second tap of the CTA button re-entering _onCta before the first
+/// request has returned.
+final _joinInFlightProvider = StateProvider<bool>((ref) => false);
 
 class CampaignDetailScreen extends ConsumerWidget {
   const CampaignDetailScreen({super.key, required this.id});
@@ -74,45 +80,75 @@ class CampaignDetailScreen extends ConsumerWidget {
         return;
       }
 
+      // Without this, the button stays tappable while the join request is
+      // in flight — a second tap before the first request returns re-enters
+      // this whole block, so e.g. two BANK_DETAILS_REQUIRED errors land back
+      // to back and each shows its own snackbar, resetting the countdown and
+      // making a single 2-second snackbar look like it never goes away.
+      if (ref.read(_joinInFlightProvider)) return;
+      ref.read(_joinInFlightProvider.notifier).state = true;
       try {
-        await ref.read(apiClientProvider).joinCampaign(id, activeProfile.id);
-        ref.invalidate(campaignParticipationProvider(id));
-        if (!context.mounted) return;
-        context.push('/campaigns/$id/submit');
-      } on ApiException catch (e) {
-        if (e.code == 'ALREADY_JOINED') {
-          try {
-            final existing = await ref
-                .read(apiClientProvider)
-                .fetchParticipationByCampaign(id, activeProfile.id);
-            ref.invalidate(campaignParticipationProvider(id));
-            if (!context.mounted) return;
-            context.push('/campaigns/${existing.campaignId}/submit');
-            return;
-          } on ApiException {
-            // Fall through to the original error message.
+        try {
+          await ref.read(apiClientProvider).joinCampaign(id, activeProfile.id);
+          ref.invalidate(campaignParticipationProvider(id));
+          if (!context.mounted) return;
+          context.push('/campaigns/$id/submit');
+        } on ApiException catch (e) {
+          if (e.code == 'ALREADY_JOINED') {
+            try {
+              final existing = await ref
+                  .read(apiClientProvider)
+                  .fetchParticipationByCampaign(id, activeProfile.id);
+              ref.invalidate(campaignParticipationProvider(id));
+              if (!context.mounted) return;
+              context.push('/campaigns/${existing.campaignId}/submit');
+              return;
+            } on ApiException {
+              // Fall through to the original error message.
+            }
           }
-        }
-        if (!context.mounted) return;
-        if (e.code == 'BANK_DETAILS_REQUIRED') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(e.message),
-              action: SnackBarAction(
-                label: 'Add details',
-                onPressed: () {
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                  context.push('/wallet/bank-details');
-                },
+          if (!context.mounted) return;
+          if (e.code == 'BANK_DETAILS_REQUIRED') {
+            // rootScaffoldMessengerKey, not ScaffoldMessenger.of(context) —
+            // this screen's providers refetch on realtime ticks, and a
+            // rebuild landing in the same window as this SnackBar being
+            // shown can tie its lifecycle to a Scaffold that no longer
+            // matches what's on screen.
+            //
+            // The duration param alone isn't enough to guarantee dismissal
+            // either: Flutter's ScaffoldMessengerState only ever creates its
+            // internal auto-dismiss Timer from inside its own build() method,
+            // gated on `ModalRoute.of(context) == null || route.isCurrent`
+            // (see flutter/lib/src/material/scaffold.dart). Confirmed live
+            // (via debug logging) that this snackbar's entrance animation
+            // completes but that gate silently never lets the Timer get
+            // created — no error, it just never auto-dismisses. Managing
+            // the dismiss ourselves with a plain Future.delayed sidesteps
+            // that internal gating entirely.
+            rootScaffoldMessengerKey.currentState?.showSnackBar(
+              SnackBar(
+                content: Text(e.message),
+                action: SnackBarAction(
+                  label: 'Add details',
+                  onPressed: () {
+                    rootScaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+                    context.push('/wallet/bank-details');
+                  },
+                ),
+                duration: const Duration(seconds: 2),
               ),
-              duration: const Duration(seconds: 6),
-            ),
+            );
+            Future.delayed(const Duration(seconds: 2), () {
+              rootScaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+            });
+            return;
+          }
+          rootScaffoldMessengerKey.currentState?.showSnackBar(
+            SnackBar(content: Text(e.message)),
           );
-          return;
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
+      } finally {
+        ref.read(_joinInFlightProvider.notifier).state = false;
       }
       return;
     }
@@ -226,6 +262,7 @@ class CampaignDetailScreen extends ConsumerWidget {
     final vc = HalchalColors.of(context);
 
     return campaign.when(
+      skipLoadingOnRefresh: true,
       loading: () => const VcScaffold(
         title: 'Campaign',
         showBack: true,

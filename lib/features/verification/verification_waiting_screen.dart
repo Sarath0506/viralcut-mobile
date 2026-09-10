@@ -43,6 +43,19 @@ class VerificationWaitingScreen extends ConsumerWidget {
       if (status == 'rejected') context.go('/verification');
     });
 
+    // ref.listen above only fires on a live transition while this screen is
+    // already open. Someone reopening the app after already being rejected
+    // (no live transition to catch) would otherwise be stuck seeing "Under
+    // review" forever, with no path back to reconnect — check the current
+    // value too, not just future changes.
+    final currentInstagramStatus =
+        me.valueOrNull?['onboarding']?['instagramReviewStatus'] as String?;
+    if (currentInstagramStatus == 'rejected') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) context.go('/verification');
+      });
+    }
+
     if (profiles.hasValue && !instagramHandleConnected) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) context.go('/verification');

@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -99,6 +102,20 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
     try {
       final start =
           await ref.read(apiClientProvider).startInstagramOAuth(activeProfile.id);
+      if (Platform.isIOS) {
+        // ASWebAuthenticationSession, not externalApplication — see
+        // connected_accounts_screen.dart for the full explanation (Universal
+        // Link takeover into the native Instagram app on iOS otherwise).
+        // preferEphemeral: true avoids a stale/shared Safari session
+        // fighting the backend's force_authentication=1.
+        final result = await FlutterWebAuth2.authenticate(
+          url: start.authorizationUrl,
+          callbackUrlScheme: 'halchal',
+          options: const FlutterWebAuth2Options(preferEphemeral: true),
+        );
+        _handleInstagramCallback(Uri.parse(result));
+        return;
+      }
       final launched = await launchUrl(
         Uri.parse(start.authorizationUrl),
         mode: LaunchMode.externalApplication,
@@ -110,12 +127,17 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _connectingInstagram = false);
+      final cancelled = e is PlatformException && e.code == 'CANCELED';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open Instagram. Please try again.'),
+        SnackBar(
+          content: Text(
+            cancelled
+                ? 'Instagram connection cancelled.'
+                : 'Could not open Instagram. Please try again.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -205,9 +227,19 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
                 status: instagramReviewStatus,
                 failureReason: instagramRejectionReason,
                 verifiedNote: 'Reviewed by our team',
-                pendingOverrideLabel: instagramHandleConnected ? 'Connected — awaiting review' : null,
-                child: (instagramReviewStatus == 'not_started' || instagramReviewStatus == 'rejected') &&
-                        !instagramHandleConnected
+                // A rejected status keeps instagramHandleConnected true
+                // (the old — now-rejected — connection is still linked), so
+                // this must not override the "Rejected" badge in that case.
+                pendingOverrideLabel: (instagramHandleConnected && instagramReviewStatus != 'rejected')
+                    ? 'Connected — awaiting review'
+                    : null,
+                // Rejected always gets the button back, regardless of
+                // instagramHandleConnected — reconnecting (same or a
+                // different account) is exactly how a rejected clipper is
+                // meant to retry; the backend resets the review status back
+                // to pending once a new connection completes.
+                child: (instagramReviewStatus == 'rejected') ||
+                        (instagramReviewStatus == 'not_started' && !instagramHandleConnected)
                     ? SizedBox(
                         width: double.infinity,
                         child: FilledButton(
@@ -227,7 +259,11 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2, color: Colors.white),
                                 )
-                              : const Text('Connect with Instagram'),
+                              : Text(
+                                  instagramReviewStatus == 'rejected'
+                                      ? 'Reconnect Instagram'
+                                      : 'Connect with Instagram',
+                                ),
                         ),
                       )
                     : null,
