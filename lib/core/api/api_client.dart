@@ -911,7 +911,6 @@ class ApiClient {
 
   Future<Map<String, dynamic>> updateProfile({
     String? displayName,
-    String? phone,
     String? bio,
     String? avatarUrl,
     Map<String, String>? socialLinks,
@@ -920,7 +919,6 @@ class ApiClient {
         '/users/me',
         {
           if (displayName != null) 'displayName': displayName,
-          if (phone != null) 'phone': phone,
           if (bio != null) 'bio': bio,
           if (avatarUrl != null) 'avatarUrl': avatarUrl,
           if (socialLinks != null) 'socialLinks': socialLinks,

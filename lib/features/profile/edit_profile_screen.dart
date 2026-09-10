@@ -21,7 +21,6 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
   final _bioController = TextEditingController();
   bool _initialized = false;
   bool _saving = false;
@@ -31,7 +30,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _phoneController.dispose();
     _bioController.dispose();
     super.dispose();
   }
@@ -39,7 +37,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   void _initFrom(Map<String, dynamic> user) {
     if (_initialized) return;
     _nameController.text = user['displayName'] as String? ?? '';
-    _phoneController.text = user['phone'] as String? ?? '';
     _bioController.text = user['bio'] as String? ?? '';
     _avatarUrl = user['avatarUrl'] as String?;
     _initialized = true;
@@ -91,9 +88,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     try {
       await ref.read(apiClientProvider).updateProfile(
             displayName: _nameController.text.trim(),
-            phone: _phoneController.text.trim().isEmpty
-                ? null
-                : _phoneController.text.trim(),
             bio: _bioController.text.trim(),
           );
       ref.invalidate(profileMeProvider);
@@ -315,24 +309,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               _LabeledField(
                 label: 'PHONE',
                 vc: vc,
-                child: TextField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: vc.onSurface,
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    isCollapsed: true,
-                    filled: false,
-                    hintText: '+91XXXXXXXXXX',
-                    hintStyle: GoogleFonts.inter(fontSize: 14, color: vc.muted),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        (user['phone'] as String?)?.isNotEmpty == true
+                            ? user['phone'] as String
+                            : 'Not set',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: vc.onSurface,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.lock_outline_rounded, size: 14, color: vc.muted),
+                  ],
                 ),
               ),
               const SizedBox(height: 14),
