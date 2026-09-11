@@ -65,7 +65,6 @@ class _ConnectedAccountsScreenState
   final _connecting = <String, bool>{};
   final _disconnecting = <String, bool>{};
   final _pending = <String>{};
-  final _manualEntry = <String>{}; // platforms currently showing the manual @handle fallback
   bool _initialized = false;
   StreamSubscription<Uri>? _linkSub;
 
@@ -426,11 +425,10 @@ class _ConnectedAccountsScreenState
                     isDisconnecting: _disconnecting[p.key] ?? false,
                     // Show syncing whenever connected but stats haven't loaded yet
                     isPending: _isConnected(p.key) && _stats[p.key] == null,
-                    showManualEntry: !p.oauth || _manualEntry.contains(p.key),
+                    showManualEntry: !p.oauth,
                     onConnect: () => _connect(p.key, activeProfile.id),
                     onDisconnect: () => _disconnect(p.key, activeProfile.id),
                     onConnectOAuth: () => _startInstagramOAuth(activeProfile.id),
-                    onShowManualEntry: () => setState(() => _manualEntry.add(p.key)),
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -456,7 +454,6 @@ class _PlatformCard extends StatelessWidget {
     required this.onConnect,
     required this.onDisconnect,
     required this.onConnectOAuth,
-    required this.onShowManualEntry,
   });
 
   final _PlatformMeta meta;
@@ -470,7 +467,6 @@ class _PlatformCard extends StatelessWidget {
   final VoidCallback onConnect;
   final VoidCallback onDisconnect;
   final VoidCallback onConnectOAuth;
-  final VoidCallback onShowManualEntry;
 
   bool get _hasStats => stats != null && stats!.isNotEmpty;
 
@@ -639,14 +635,6 @@ class _PlatformCard extends StatelessWidget {
                                     fontSize: 12, fontWeight: FontWeight.w700)),
                           ),
                   ),
-                  if (!isConnecting)
-                    TextButton(
-                      onPressed: onShowManualEntry,
-                      child: Text(
-                        'Connect manually instead',
-                        style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
-                      ),
-                    ),
                 ],
               ),
             ),

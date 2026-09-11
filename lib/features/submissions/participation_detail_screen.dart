@@ -184,69 +184,78 @@ class _CampaignSummaryCard extends StatelessWidget {
         ? '@${participation.creatorProfile!.handle}'
         : participation.campaign.displayBrand;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: vc.surface,
+    return Material(
+      color: vc.surface,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: vc.border),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: participation.campaign.brandLogoUrl != null
-                ? Image.network(
-                    participation.campaign.brandLogoUrl!,
-                    width: 56,
-                    height: 56,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _brandFallbackIcon(),
-                  )
-                : _brandFallbackIcon(),
+        onTap: () => context.push('/campaigns/${participation.campaignId}'),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: vc.border),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  participation.campaign.title,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: vc.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(fontSize: 13, color: vc.muted),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: participation.campaign.brandLogoUrl != null
+                    ? Image.network(
+                        participation.campaign.brandLogoUrl!,
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _brandFallbackIcon(),
+                      )
+                    : _brandFallbackIcon(),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _MetaPill(
-                      icon: Icons.calendar_today_outlined,
-                      label: 'Joined $joined',
-                      vc: vc,
+                    Text(
+                      participation.campaign.title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: vc.onSurface,
+                      ),
                     ),
-                    _MetaPill(
-                      icon: Icons.photo_camera_outlined,
-                      label: 'Creator',
-                      vc: vc,
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(fontSize: 13, color: vc.muted),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _MetaPill(
+                          icon: Icons.calendar_today_outlined,
+                          label: 'Joined $joined',
+                          vc: vc,
+                        ),
+                        _MetaPill(
+                          icon: Icons.photo_camera_outlined,
+                          label: 'Creator',
+                          vc: vc,
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right_rounded, color: vc.muted),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
