@@ -195,8 +195,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         final username = user['username'] as String?;
         final phone = user['phone'] as String? ?? '';
         final verifiedCreatorId = user['verifiedCreatorId'] as String?;
-        final kycStatus = user['kycStatus'] as String? ?? 'pending';
-        final isVerified = kycStatus == 'verified';
+        // PAN/Aadhaar kycStatus isn't part of the live verification gate —
+        // Instagram-only for now (see verification_gate_screen.dart) — so
+        // checking it here left this badge permanently "Unverified" for
+        // every creator who actually completed the real gate. Confirmed
+        // live: an account with instagramReviewStatus 'verified' still
+        // showed Unverified because kycStatus was untouched at 'not_started'.
+        final onboarding = user['onboarding'] as Map<String, dynamic>? ?? {};
+        final isVerified = onboarding['instagramReviewStatus'] == 'verified';
         final lifetimePaise = dash.valueOrNull?.wallet.lifetimePaise ?? 0;
         final clipsUnderReview = dash.valueOrNull?.clipsUnderReview ?? 0;
         final activeSubmissions = activeCount.valueOrNull ?? 0;
