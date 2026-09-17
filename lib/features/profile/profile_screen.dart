@@ -194,8 +194,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         final avatarUrl = user['avatarUrl'] as String?;
         final username = user['username'] as String?;
         final phone = user['phone'] as String? ?? '';
-        final kycStatus = user['kycStatus'] as String? ?? 'pending';
-        final isVerified = kycStatus == 'verified';
+        final verifiedCreatorId = user['verifiedCreatorId'] as String?;
+        // PAN/Aadhaar kycStatus isn't part of the live verification gate —
+        // Instagram-only for now (see verification_gate_screen.dart) — so
+        // checking it here left this badge permanently "Unverified" for
+        // every creator who actually completed the real gate. Confirmed
+        // live: an account with instagramReviewStatus 'verified' still
+        // showed Unverified because kycStatus was untouched at 'not_started'.
+        final onboarding = user['onboarding'] as Map<String, dynamic>? ?? {};
+        final isVerified = onboarding['instagramReviewStatus'] == 'verified';
         final lifetimePaise = dash.valueOrNull?.wallet.lifetimePaise ?? 0;
         final clipsUnderReview = dash.valueOrNull?.clipsUnderReview ?? 0;
         final activeSubmissions = activeCount.valueOrNull ?? 0;
@@ -227,6 +234,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 avatarUrl: avatarUrl,
                 username: username,
                 phone: phone,
+                verifiedCreatorId: verifiedCreatorId,
                 isVerified: isVerified,
                 initials: _initialsFor(displayName),
                 lifetimePaise: lifetimePaise,
@@ -398,6 +406,7 @@ class _ProfileHeroCard extends StatelessWidget {
     required this.avatarUrl,
     required this.username,
     required this.phone,
+    required this.verifiedCreatorId,
     required this.isVerified,
     required this.initials,
     required this.lifetimePaise,
@@ -413,6 +422,7 @@ class _ProfileHeroCard extends StatelessWidget {
   final String? avatarUrl;
   final String? username;
   final String phone;
+  final String? verifiedCreatorId;
   final bool isVerified;
   final String initials;
   final int lifetimePaise;
@@ -526,6 +536,21 @@ class _ProfileHeroCard extends StatelessWidget {
                         style: GoogleFonts.inter(
                             fontSize: 12, color: vc.muted),
                       ),
+                      // Permanent public id, assigned once on first
+                      // Instagram verification — shown on leaderboards
+                      // instead of your real name. Only present once
+                      // verified, so nothing renders before then.
+                      if (verifiedCreatorId != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          'ID #$verifiedCreatorId',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: vc.muted,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       Row(
                         children: [
