@@ -29,11 +29,17 @@ const _platforms = [
     key: 'youtube',
     label: 'YouTube',
     hint: 'Channel name or URL',
+    // Locked until a real YouTube Data API connection exists — the manual
+    // handle-entry flow behind this button only ever fed unofficial scraped
+    // stats, same reliability problem Instagram just moved off of.
+    locked: true,
   ),
   _PlatformMeta(
     key: 'twitter',
     label: 'Twitter / X',
     hint: '@handle or profile URL',
+    // Same reasoning as YouTube — no official API integration exists yet.
+    locked: true,
   ),
 ];
 
@@ -43,11 +49,13 @@ class _PlatformMeta {
     required this.label,
     required this.hint,
     this.oauth = false,
+    this.locked = false,
   });
   final String key;
   final String label;
   final String hint;
   final bool oauth;
+  final bool locked;
 }
 
 class ConnectedAccountsScreen extends ConsumerStatefulWidget {
@@ -468,6 +476,11 @@ class _PlatformCard extends StatelessWidget {
   final VoidCallback onDisconnect;
   final VoidCallback onConnectOAuth;
 
+  // Locked platforms still show their existing connection (if a creator
+  // connected before the lock went up) — this only hides the entry point
+  // for NEW connections through the unofficial scrape-based flow.
+  bool get _showLocked => meta.locked && !isConnected;
+
   bool get _hasStats => stats != null && stats!.isNotEmpty;
 
   @override
@@ -534,7 +547,7 @@ class _PlatformCard extends StatelessWidget {
                         )
                       else
                         Text(
-                          'Not connected',
+                          _showLocked ? 'Coming soon' : 'Not connected',
                           style: GoogleFonts.inter(
                               fontSize: 11, color: vc.muted),
                         ),
@@ -639,8 +652,36 @@ class _PlatformCard extends StatelessWidget {
               ),
             ),
 
+          // ── Locked notice (replaces manual entry until an official API
+          // integration exists for this platform) ──
+          if (_showLocked)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: vc.background,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: vc.border),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.lock_outline_rounded, size: 15, color: vc.muted),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Connecting ${meta.label} is temporarily unavailable — official API integration coming soon.',
+                        style: GoogleFonts.inter(
+                            fontSize: 11.5, color: vc.muted, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           // ── Input row (manual @handle/URL entry) ──
-          if (!isConnected && showManualEntry)
+          if (!isConnected && showManualEntry && !_showLocked)
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
               child: Row(
