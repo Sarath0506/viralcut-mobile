@@ -1,17 +1,11 @@
-import 'dart:async';
-import 'dart:io' show Platform;
-
-import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/creator_profile/creator_profile_providers.dart';
+import '../../core/instagram/instagram_oauth_flow.dart';
 import '../../core/widgets/social_logo_painters.dart';
 import '../../theme/halchal_colors.dart';
 import '../../core/widgets/vc_scaffold.dart';
@@ -29,11 +23,17 @@ const _platforms = [
     key: 'youtube',
     label: 'YouTube',
     hint: 'Channel name or URL',
+    // Locked until a real YouTube Data API connection exists — the manual
+    // handle-entry flow behind this button only ever fed unofficial scraped
+    // stats, same reliability problem Instagram just moved off of.
+    locked: true,
   ),
   _PlatformMeta(
     key: 'twitter',
     label: 'Twitter / X',
     hint: '@handle or profile URL',
+    // Same reasoning as YouTube — no official API integration exists yet.
+    locked: true,
   ),
 ];
 
@@ -43,11 +43,13 @@ class _PlatformMeta {
     required this.label,
     required this.hint,
     this.oauth = false,
+    this.locked = false,
   });
   final String key;
   final String label;
   final String hint;
   final bool oauth;
+  final bool locked;
 }
 
 class ConnectedAccountsScreen extends ConsumerStatefulWidget {
@@ -58,15 +60,20 @@ class ConnectedAccountsScreen extends ConsumerStatefulWidget {
       _ConnectedAccountsScreenState();
 }
 
-class _ConnectedAccountsScreenState
-    extends ConsumerState<ConnectedAccountsScreen> with WidgetsBindingObserver {
+class _ConnectedAccountsScreenState extends ConsumerState<ConnectedAccountsScreen>
+    with WidgetsBindingObserver, InstagramOAuthFlow<ConnectedAccountsScreen> {
   final _controllers = <String, TextEditingController>{};
   final _stats = <String, Map<String, dynamic>?>{};
+  // Manual-handle-entry connect state (currently only reachable for
+  // YouTube/Twitter if they're ever unlocked — Instagram uses the mixin's
+  // own connectingInstagram instead, see _isConnecting below).
   final _connecting = <String, bool>{};
   final _disconnecting = <String, bool>{};
   final _pending = <String>{};
   bool _initialized = false;
-  StreamSubscription<Uri>? _linkSub;
+
+  bool _isConnecting(String platform) =>
+      platform == 'instagram' ? connectingInstagram : (_connecting[platform] ?? false);
 
   TextEditingController _ctrl(String key) =>
       _controllers.putIfAbsent(key, () => TextEditingController());
@@ -75,146 +82,25 @@ class _ConnectedAccountsScreenState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Instagram's OAuth consent screen opens in a browser and redirects back
-    // here via this custom scheme once the user approves (or cancels).
-    _linkSub = AppLinks().uriLinkStream.listen(
-          _handleInstagramCallback,
-          onError: (_) {},
-        );
+    initInstagramOAuthListener();
   }
 
   @override
   void dispose() {
-    _linkSub?.cancel();
+    disposeInstagramOAuthListener();
     WidgetsBinding.instance.removeObserver(this);
     for (final c in _controllers.values) { c.dispose(); }
     super.dispose();
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed) return;
-    // Safety net: if the user backed out of the Instagram browser without
-    // the deep link ever firing (e.g. just closed it), don't leave the
-    // "Connect" button stuck spinning forever.
-    if (_connecting['instagram'] != true) return;
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (mounted && _connecting['instagram'] == true) {
-        setState(() => _connecting['instagram'] = false);
-      }
-    });
-  }
+  void didChangeAppLifecycleState(AppLifecycleState state) =>
+      handleAppLifecycleStateForInstagramOAuth(state);
 
-  void _handleInstagramCallback(Uri uri) {
-    if (uri.scheme != 'halchal' || uri.host != 'instagram-callback') return;
-    final activeProfile = ref.read(activeCreatorProfileProvider);
-    if (activeProfile == null) return;
-
-    final status = uri.queryParameters['status'];
-    final transactionId = uri.queryParameters['transactionId'];
-    if (status == 'ready' && transactionId != null) {
-      _completeInstagramOAuth(transactionId, activeProfile.id);
-      return;
-    }
-    if (!mounted) return;
-    setState(() => _connecting['instagram'] = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          uri.queryParameters['error'] == 'OAUTH_CANCELLED'
-              ? 'Instagram connection cancelled.'
-              : 'Instagram connection failed. Please try again.',
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  Future<void> _startInstagramOAuth(String profileId) async {
-    setState(() => _connecting['instagram'] = true);
-    try {
-      final start = await ref.read(apiClientProvider).startInstagramOAuth(profileId);
-      if (Platform.isIOS) {
-        // ASWebAuthenticationSession, not externalApplication — Instagram
-        // registers www.instagram.com as an iOS Universal Link domain, so
-        // handing the authorize URL to "the external app" means iOS opens
-        // the native Instagram app itself (when installed) instead of a
-        // browser. Instagram's app then fails with a generic error since
-        // this isn't a real Meta SDK integration. ASWebAuthenticationSession
-        // is Apple's purpose-built OAuth API and is isolated from that
-        // automatic Universal Link takeover, while still reliably handing
-        // the halchal:// redirect back to us as its return value.
-        final result = await FlutterWebAuth2.authenticate(
-          url: start.authorizationUrl,
-          callbackUrlScheme: 'halchal',
-          // preferEphemeral: true — no shared Safari cookies. The backend
-          // already sends force_authentication=1 (always show a fresh
-          // Instagram login), so a shared session that's stale/mismatched
-          // could be fighting that. A fully isolated session removes any
-          // cookie state to conflict with — confirmed live: without this,
-          // Instagram's own page consistently failed with a generic
-          // "Something went wrong" on a real device before ever reaching
-          // our callback.
-          options: const FlutterWebAuth2Options(preferEphemeral: true),
-        );
-        _handleInstagramCallback(Uri.parse(result));
-        return;
-      }
-      // externalApplication (full Chrome), not inAppBrowserView —
-      // SFSafariViewController is unreliable at handing custom-scheme
-      // redirects back to the app; full Chrome does this consistently on
-      // Android, which doesn't have iOS's Universal Link takeover issue.
-      final launched = await launchUrl(
-        Uri.parse(start.authorizationUrl),
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched) throw Exception('launch failed');
-      // _connecting['instagram'] stays true (shows a spinner) while the user
-      // is in the Instagram browser — _handleInstagramCallback or the
-      // lifecycle safety net above clears it once they return.
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() => _connecting['instagram'] = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _connecting['instagram'] = false);
-      final cancelled = e is PlatformException && e.code == 'CANCELED';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            cancelled
-                ? 'Instagram connection cancelled.'
-                : 'Could not open Instagram. Please try again.',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  Future<void> _completeInstagramOAuth(String transactionId, String profileId) async {
-    try {
-      await ref.read(apiClientProvider).completeInstagramOAuth(profileId, transactionId);
-      _initialized = false;
-      ref.invalidate(creatorProfilesProvider);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Instagram connected!'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
-      );
-    } finally {
-      if (mounted) setState(() => _connecting['instagram'] = false);
-    }
+  @override
+  void onInstagramConnected() {
+    _initialized = false;
+    ref.invalidate(creatorProfilesProvider);
   }
 
   String? _lastProfileId;
@@ -421,14 +307,14 @@ class _ConnectedAccountsScreenState
                     controller: _ctrl(p.key),
                     stats: _stats[p.key],
                     isConnected: _isConnected(p.key),
-                    isConnecting: _connecting[p.key] ?? false,
+                    isConnecting: _isConnecting(p.key),
                     isDisconnecting: _disconnecting[p.key] ?? false,
                     // Show syncing whenever connected but stats haven't loaded yet
                     isPending: _isConnected(p.key) && _stats[p.key] == null,
                     showManualEntry: !p.oauth,
                     onConnect: () => _connect(p.key, activeProfile.id),
                     onDisconnect: () => _disconnect(p.key, activeProfile.id),
-                    onConnectOAuth: () => _startInstagramOAuth(activeProfile.id),
+                    onConnectOAuth: () => startInstagramOAuth(activeProfile.id),
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -467,6 +353,11 @@ class _PlatformCard extends StatelessWidget {
   final VoidCallback onConnect;
   final VoidCallback onDisconnect;
   final VoidCallback onConnectOAuth;
+
+  // Locked platforms still show their existing connection (if a creator
+  // connected before the lock went up) — this only hides the entry point
+  // for NEW connections through the unofficial scrape-based flow.
+  bool get _showLocked => meta.locked && !isConnected;
 
   bool get _hasStats => stats != null && stats!.isNotEmpty;
 
@@ -534,7 +425,7 @@ class _PlatformCard extends StatelessWidget {
                         )
                       else
                         Text(
-                          'Not connected',
+                          _showLocked ? 'Coming soon' : 'Not connected',
                           style: GoogleFonts.inter(
                               fontSize: 11, color: vc.muted),
                         ),
@@ -639,8 +530,36 @@ class _PlatformCard extends StatelessWidget {
               ),
             ),
 
+          // ── Locked notice (replaces manual entry until an official API
+          // integration exists for this platform) ──
+          if (_showLocked)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: vc.background,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: vc.border),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.lock_outline_rounded, size: 15, color: vc.muted),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Connecting ${meta.label} is temporarily unavailable — official API integration coming soon.',
+                        style: GoogleFonts.inter(
+                            fontSize: 11.5, color: vc.muted, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           // ── Input row (manual @handle/URL entry) ──
-          if (!isConnected && showManualEntry)
+          if (!isConnected && showManualEntry && !_showLocked)
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
               child: Row(

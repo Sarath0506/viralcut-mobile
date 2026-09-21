@@ -1,18 +1,12 @@
-import 'dart:async';
-import 'dart:io' show Platform;
-
-import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/creator_profile/creator_profile_providers.dart';
+import '../../core/instagram/instagram_oauth_flow.dart';
+import '../../core/widgets/social_logo_painters.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import '../profile/profile_providers.dart';
@@ -37,138 +31,39 @@ class VerificationGateScreen extends ConsumerStatefulWidget {
 }
 
 class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
-    with WidgetsBindingObserver {
-  bool _connectingInstagram = false;
-  StreamSubscription<Uri>? _linkSub;
+    with WidgetsBindingObserver, InstagramOAuthFlow<VerificationGateScreen> {
   bool _navigatedToWaiting = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _linkSub = AppLinks().uriLinkStream.listen(
-          _handleInstagramCallback,
-          onError: (_) {},
-        );
+    initInstagramOAuthListener();
   }
 
   @override
   void dispose() {
-    _linkSub?.cancel();
+    disposeInstagramOAuthListener();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed) return;
-    if (!_connectingInstagram) return;
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (mounted && _connectingInstagram) {
-        setState(() => _connectingInstagram = false);
-      }
-    });
+  void didChangeAppLifecycleState(AppLifecycleState state) =>
+      handleAppLifecycleStateForInstagramOAuth(state);
+
+  @override
+  void onInstagramConnected() {
+    ref.invalidate(creatorProfilesProvider);
+    // The reconnect path (rejected -> pending) changes instagramReviewStatus,
+    // which lives on profileMeProvider, not creatorProfilesProvider — without
+    // this, awaitingReview below keeps evaluating against the stale
+    // pre-reconnect status and the screen never advances to the waiting page.
+    ref.invalidate(profileMeProvider);
   }
 
-  void _handleInstagramCallback(Uri uri) {
-    if (uri.scheme != 'halchal' || uri.host != 'instagram-callback') return;
-    final activeProfile = ref.read(activeCreatorProfileProvider);
-    if (activeProfile == null) return;
-
-    final status = uri.queryParameters['status'];
-    final transactionId = uri.queryParameters['transactionId'];
-    if (status == 'ready' && transactionId != null) {
-      _completeInstagramOAuth(transactionId, activeProfile.id);
-      return;
-    }
-    if (!mounted) return;
-    setState(() => _connectingInstagram = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          uri.queryParameters['error'] == 'OAUTH_CANCELLED'
-              ? 'Instagram connection cancelled.'
-              : 'Instagram connection failed. Please try again.',
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  Future<void> _startInstagramOAuth() async {
-    final activeProfile = ref.read(activeCreatorProfileProvider);
-    if (activeProfile == null) return;
-    setState(() => _connectingInstagram = true);
-    try {
-      final start =
-          await ref.read(apiClientProvider).startInstagramOAuth(activeProfile.id);
-      if (Platform.isIOS) {
-        // ASWebAuthenticationSession, not externalApplication — see
-        // connected_accounts_screen.dart for the full explanation (Universal
-        // Link takeover into the native Instagram app on iOS otherwise).
-        // preferEphemeral: true avoids a stale/shared Safari session
-        // fighting the backend's force_authentication=1.
-        final result = await FlutterWebAuth2.authenticate(
-          url: start.authorizationUrl,
-          callbackUrlScheme: 'halchal',
-          options: const FlutterWebAuth2Options(preferEphemeral: true),
-        );
-        _handleInstagramCallback(Uri.parse(result));
-        return;
-      }
-      final launched = await launchUrl(
-        Uri.parse(start.authorizationUrl),
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched) throw Exception('launch failed');
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() => _connectingInstagram = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _connectingInstagram = false);
-      final cancelled = e is PlatformException && e.code == 'CANCELED';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            cancelled
-                ? 'Instagram connection cancelled.'
-                : 'Could not open Instagram. Please try again.',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  Future<void> _completeInstagramOAuth(String transactionId, String profileId) async {
-    try {
-      await ref.read(apiClientProvider).completeInstagramOAuth(profileId, transactionId);
-      ref.invalidate(creatorProfilesProvider);
-      // The reconnect path (rejected -> pending) changes instagramReviewStatus,
-      // which lives on profileMeProvider, not creatorProfilesProvider — without
-      // this, awaitingReview below keeps evaluating against the stale
-      // pre-reconnect status and the screen never advances to the waiting page.
-      ref.invalidate(profileMeProvider);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Instagram connected! Waiting on admin review.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
-      );
-    } finally {
-      if (mounted) setState(() => _connectingInstagram = false);
-    }
-  }
+  @override
+  String get instagramConnectedMessage => 'Instagram connected! Waiting on admin review.';
 
   @override
   Widget build(BuildContext context) {
@@ -209,26 +104,38 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
           }
 
           return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
             children: [
+              Center(
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: vc.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.verified_user_rounded, color: vc.primary, size: 26),
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
                 'Almost there',
+                textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: vc.onSurface,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
                 'We verify every new clipper before they can browse or join campaigns — connect your Instagram so we can confirm it\'s really you.',
-                style: GoogleFonts.inter(fontSize: 13, height: 1.45, color: vc.muted),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(fontSize: 13, height: 1.5, color: vc.muted),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
               _VerificationSection(
-                icon: Icons.camera_alt_outlined,
-                title: 'Instagram',
                 status: instagramReviewStatus,
                 failureReason: instagramRejectionReason,
                 verifiedNote: 'Reviewed by our team',
@@ -245,31 +152,43 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
                 // to pending once a new connection completes.
                 child: (instagramReviewStatus == 'rejected') ||
                         (instagramReviewStatus == 'not_started' && !instagramHandleConnected)
-                    ? SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: (_connectingInstagram || instagramLoading || activeProfile == null)
-                              ? null
-                              : _startInstagramOAuth,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF7C3AED),
-                            minimumSize: const Size.fromHeight(44),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
+                    ? Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: FilledButton(
+                              onPressed: (connectingInstagram || instagramLoading || activeProfile == null)
+                                  ? null
+                                  : () => startInstagramOAuth(activeProfile.id),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: vc.primary,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                              ),
+                              child: connectingInstagram || instagramLoading
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : Text(
+                                      instagramReviewStatus == 'rejected'
+                                          ? 'Reconnect Instagram'
+                                          : 'Connect with Instagram',
+                                      style: GoogleFonts.inter(
+                                          fontSize: 14, fontWeight: FontWeight.w700),
+                                    ),
+                            ),
                           ),
-                          child: _connectingInstagram || instagramLoading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
-                                )
-                              : Text(
-                                  instagramReviewStatus == 'rejected'
-                                      ? 'Reconnect Instagram'
-                                      : 'Connect with Instagram',
-                                ),
-                        ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Takes under a minute · your account stays private',
+                            style: GoogleFonts.inter(fontSize: 10.5, color: vc.muted),
+                          ),
+                        ],
                       )
                     : null,
               ),
@@ -289,8 +208,6 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
 
 class _VerificationSection extends StatelessWidget {
   const _VerificationSection({
-    required this.icon,
-    required this.title,
     required this.status,
     required this.verifiedNote,
     this.failureReason,
@@ -298,8 +215,6 @@ class _VerificationSection extends StatelessWidget {
     this.child,
   });
 
-  final IconData icon;
-  final String title;
   final String status;
   final String verifiedNote;
   final String? failureReason;
@@ -322,24 +237,27 @@ class _VerificationSection extends StatelessWidget {
           'pending' => 'Under review',
           _ => 'Not started',
         };
+    final borderColor = status == 'verified' || pendingOverrideLabel != null
+        ? color.withValues(alpha: 0.35)
+        : vc.border;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: vc.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: vc.border),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 20, color: vc.onSurface),
-              const SizedBox(width: 10),
+              const SocialLogoBox(platform: 'instagram', size: 42),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  title,
+                  'Instagram',
                   style: GoogleFonts.plusJakartaSans(
                       fontSize: 14, fontWeight: FontWeight.w700, color: vc.onSurface),
                 ),
@@ -359,23 +277,23 @@ class _VerificationSection extends StatelessWidget {
             ],
           ),
           if (status == 'verified') ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Padding(
-              padding: const EdgeInsets.only(left: 30),
+              padding: const EdgeInsets.only(left: 54),
               child: Text(verifiedNote,
                   style: GoogleFonts.inter(fontSize: 11, color: vc.muted)),
             ),
           ],
           if (status == 'rejected' && failureReason?.isNotEmpty == true) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Padding(
-              padding: const EdgeInsets.only(left: 30),
+              padding: const EdgeInsets.only(left: 54),
               child: Text(failureReason!,
                   style: GoogleFonts.inter(fontSize: 11, color: vc.error, height: 1.4)),
             ),
           ],
           if (child != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             child!,
           ],
         ],

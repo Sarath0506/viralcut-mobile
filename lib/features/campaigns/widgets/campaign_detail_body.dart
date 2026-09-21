@@ -1,8 +1,13 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:gal/gal.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
@@ -32,6 +37,19 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
   Campaign get campaign => widget.campaign;
   Participation? get participation => widget.participation;
 
+  final Dio _downloadDio = Dio();
+  // Keyed by the raw (unresolved) asset URL — null/absent = not downloading,
+  // otherwise 0.0-1.0 progress. A Map (not a single flag) so more than one
+  // uploaded source asset can download independently without fighting over
+  // shared state.
+  final Map<String, double> _downloadProgress = {};
+
+  @override
+  void dispose() {
+    _downloadDio.close();
+    super.dispose();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -58,6 +76,67 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not open link')),
       );
+    }
+  }
+
+  /// Downloads a brand-uploaded source video (a real, direct file URL —
+  /// unlike YouTube/Drive links, which stay on the existing open-externally
+  /// path) straight into the device's gallery, so it's reachable from
+  /// whatever video editor the clipper actually uses to build their clip.
+  Future<void> _downloadSourceVideo(BuildContext context, String rawUrl) async {
+    if (_downloadProgress.containsKey(rawUrl)) return; // already in flight
+    final url = resolveCampaignMediaUrl(rawUrl);
+    if (url == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This video link looks invalid.')),
+      );
+      return;
+    }
+
+    final access = await Gal.hasAccess();
+    if (!access) {
+      final granted = await Gal.requestAccess();
+      if (!granted) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Allow photo library access to save the source video.'),
+          ),
+        );
+        return;
+      }
+    }
+
+    setState(() => _downloadProgress[rawUrl] = 0);
+    final tempPath =
+        '${(await getTemporaryDirectory()).path}/source_${DateTime.now().millisecondsSinceEpoch}.mp4';
+    try {
+      await _downloadDio.download(
+        url,
+        tempPath,
+        onReceiveProgress: (received, total) {
+          if (total <= 0 || !mounted) return;
+          setState(() => _downloadProgress[rawUrl] = received / total);
+        },
+      );
+      await Gal.putVideo(tempPath, album: 'Halchal');
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Saved to your gallery')),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not download this video — try again.')),
+      );
+    } finally {
+      try {
+        await File(tempPath).delete();
+      } catch (_) {
+        // Best-effort cleanup of the temp copy gal already saved a
+        // permanent copy of — not fatal if this fails.
+      }
+      if (mounted) setState(() => _downloadProgress.remove(rawUrl));
     }
   }
 
@@ -218,30 +297,54 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
             style: GoogleFonts.inter(fontSize: 12, color: vc.muted),
           ),
           const SizedBox(height: 10),
-          ...c.sourceAssets.map(
-            (asset) => Padding(
+          ...c.sourceAssets.map((asset) {
+            // Brand-uploaded source video: a real, direct file URL — unlike
+            // YouTube/Drive links, this can be downloaded straight into the
+            // gallery instead of just opened externally.
+            final isUpload = asset.type == 'upload';
+            final downloading = _downloadProgress.containsKey(asset.url);
+            return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _LinkRow(
                 label: asset.label?.isNotEmpty == true
                     ? asset.label!
                     : asset.type == 'youtube'
                         ? 'YouTube reference'
-                        : asset.type == 'upload'
+                        : isUpload
                             ? 'Source video'
                             : 'Drive reference',
                 subtitle: asset.type == 'youtube'
                     ? 'Watch on YouTube'
-                    : asset.type == 'upload'
-                        ? 'Open video'
+                    : isUpload
+                        ? (downloading
+                            ? 'Downloading… ${(_downloadProgress[asset.url]! * 100).round()}%'
+                            : 'Tap to save to your gallery')
                         : 'Open in Drive',
-                icon: Icons.folder_outlined,
+                icon: isUpload ? Icons.download_rounded : Icons.folder_outlined,
                 leading: asset.type == 'youtube'
                     ? const SocialLogoBox(platform: 'youtube', size: 34, radius: 11)
                     : null,
-                onTap: () => _openUrl(context, asset.url),
+                trailing: isUpload
+                    ? (downloading
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              value: _downloadProgress[asset.url] == 0
+                                  ? null
+                                  : _downloadProgress[asset.url],
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          )
+                        : Icon(Icons.download_rounded, size: 20, color: vc.muted))
+                    : null,
+                onTap: isUpload
+                    ? () => _downloadSourceVideo(context, asset.url)
+                    : () => _openUrl(context, asset.url),
               ),
-            ),
-          ),
+            );
+          }),
         ],
         const SizedBox(height: 22),
         _HowToParticipate(campaign: c),
@@ -1042,6 +1145,7 @@ class _LinkRow extends StatelessWidget {
     required this.onTap,
     this.subtitle,
     this.leading,
+    this.trailing,
   });
 
   final String label;
@@ -1052,6 +1156,10 @@ class _LinkRow extends StatelessWidget {
   /// Overrides the default icon-in-a-tinted-box treatment — used for real
   /// brand logos (e.g. YouTube) that already draw their own shape/color.
   final Widget? leading;
+
+  /// Overrides the default trailing chevron — used for the source-video
+  /// download row's progress indicator/download icon.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -1111,7 +1219,7 @@ class _LinkRow extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, size: 20, color: vc.muted),
+              trailing ?? Icon(Icons.chevron_right_rounded, size: 20, color: vc.muted),
             ],
           ),
         ),

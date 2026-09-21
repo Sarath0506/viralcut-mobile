@@ -70,6 +70,8 @@ class FormatDeliverable {
     this.shareCount = 0,
     this.estimatedPaise = 0,
     this.ratePer1kPaise = 0,
+    this.paidAt,
+    this.paidAmountPaise,
   });
 
   final String id;
@@ -90,6 +92,8 @@ class FormatDeliverable {
   final int shareCount;
   final int estimatedPaise;
   final int ratePer1kPaise;
+  final String? paidAt;
+  final int? paidAmountPaise;
 
   factory FormatDeliverable.fromJson(Map<String, dynamic> json) =>
       FormatDeliverable(
@@ -115,6 +119,8 @@ class FormatDeliverable {
         shareCount:   json['shareCount']   as int? ?? 0,
         estimatedPaise: json['estimatedPaise'] as int? ?? 0,
         ratePer1kPaise: json['ratePer1kPaise'] as int? ?? 0,
+        paidAt: json['paidAt'] as String?,
+        paidAmountPaise: json['paidAmountPaise'] as int?,
       );
 
   bool get isRejected => status == 'draft_rejected';
@@ -127,6 +133,7 @@ class FormatDeliverable {
   bool get isProofRejected => status == 'proof_rejected';
   bool get hasSubmittedProof =>
       isLiveSubmitted || isProofUnderReview || isProofApproved || isProofRejected;
+  bool get isPaid => paidAt != null;
 
   String? get latestRejectionReason =>
       rejectionReason ??

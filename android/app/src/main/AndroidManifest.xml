@@ -10,10 +10,17 @@
          firebase_messaging.requestPermission() triggers the prompt). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!-- gal: saving a downloaded source video to the gallery on API <= 29
+         (Scoped Storage on API 30+ needs neither the permission nor the
+         legacy flag). -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+                      android:maxSdkVersion="29" />
+
     <application
         android:label="Halchal"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:requestLegacyExternalStorage="true"
         android:enableOnBackInvokedCallback="true">
         <!-- Without an explicit default channel, background/killed-state FCM
              notifications fall back to an ad-hoc "Miscellaneous" channel that

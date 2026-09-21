@@ -10,6 +10,7 @@ import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import 'submission_providers.dart';
 import '../../core/campaign/platform_labels.dart';
+import '../../core/format/money_format.dart';
 import '../../core/participation/participation_status_labels.dart';
 import '../../core/participation/rejection_history.dart';
 import '../../core/widgets/vc_scaffold.dart';
@@ -327,6 +328,24 @@ _StatusBannerData _bannerFor(
   HalchalColors vc,
   String platformLabel,
 ) {
+  // "Paid" isn't its own status — it's paidAt layered on top of
+  // proof_approved once AdminService.payoutCampaign actually transfers the
+  // money — so it has to be checked before the status switch, not as a case
+  // inside it, or a paid deliverable would show "awaiting payout" forever.
+  if (d.isPaid) {
+    final amount = d.paidAmountPaise != null ? formatPaise(d.paidAmountPaise!) : null;
+    final date = d.paidAt != null
+        ? DateFormat('d MMM yyyy').format(DateTime.parse(d.paidAt!).toLocal())
+        : null;
+    return _StatusBannerData(
+      icon: Icons.paid_rounded,
+      color: vc.money,
+      headline: 'Payment received 💸',
+      message: amount != null
+          ? '$amount was transferred to your account${date != null ? ' on $date' : ''}.'
+          : 'Your payout for this $platformLabel post has been transferred to your account.',
+    );
+  }
   switch (d.status) {
     case 'draft_pending':
       return _StatusBannerData(
@@ -447,7 +466,7 @@ class _DeliverableSubmissionCard extends StatelessWidget {
           _HeroBanner(
             banner: banner,
             status: deliverable.status,
-            tag: _tagLabel(deliverable.status),
+            tag: deliverable.isPaid ? 'Paid' : _tagLabel(deliverable.status),
             vc: vc,
           ),
 
