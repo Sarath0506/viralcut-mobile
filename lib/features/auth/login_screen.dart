@@ -87,7 +87,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AuthLabeledField(
-            label: 'Phone or email',
+            label: 'Phone number',
             child: AuthPhoneRow(
               countryController: _countryController,
               phoneController: _phoneController,

@@ -24,7 +24,7 @@ String participationSummaryMessage(String summary) {
     case 'drafts_incomplete':
       return 'Finish uploading drafts for every platform.';
     case 'in_review':
-      return 'The brand is reviewing your drafts. You will be notified when they respond.';
+      return 'Your submission is being reviewed. You will be notified when there\'s an update.';
     case 'action_required':
       return 'Post approved content live or resubmit any rejected drafts.';
     case 'proof_complete':
