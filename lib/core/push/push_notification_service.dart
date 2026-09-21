@@ -1,14 +1,29 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
 import '../auth/auth_provider.dart';
 import '../realtime/realtime_invalidation.dart';
+
+// Same channel id the Android manifest declares for system-triggered
+// (background/killed) FCM notifications — reusing it here means a
+// foreground-shown local notification looks and behaves identically to one
+// Android shows on its own, instead of falling into an ad-hoc default
+// channel a user could have muted separately.
+const _androidChannel = AndroidNotificationChannel(
+  'halchal_default_channel',
+  'Halchal notifications',
+  importance: Importance.high,
+);
+
+final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
 /// The message that launched the app from a terminated state, captured in
 /// main() right after Firebase.initializeApp() (per Firebase's guidance —
@@ -53,6 +68,8 @@ class PushNotificationService {
       // manually in system Settings.
       debugPrint('[Push] permission status: ${settings.authorizationStatus}');
 
+      await _initLocalNotifications();
+
       messaging.onTokenRefresh.listen((newToken) {
         final client = _apiClient;
         if (client != null) unawaited(_registerToken(client, newToken));
@@ -60,9 +77,11 @@ class PushNotificationService {
 
       FirebaseMessaging.onMessage.listen((message) {
         debugPrint('[Push] foreground message: ${message.data}');
-        // No system banner shows for foreground messages by default — just
-        // refresh the existing notification bell/badge instead of building
-        // a separate custom banner.
+        // iOS/Android both suppress the system banner for a message
+        // received while the app is frontmost — showing one ourselves via a
+        // local notification is the only way a creator sees it without
+        // having the app open at exactly notification-bell-checking time.
+        unawaited(_showForegroundNotification(message));
         invalidateAppDataCaches(ref);
       });
 
@@ -82,6 +101,50 @@ class PushNotificationService {
     if (token != null && client != null) {
       await _registerToken(client, token);
     }
+  }
+
+  Future<void> _initLocalNotifications() async {
+    await _localNotifications.initialize(
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        // Permission is requested once above via
+        // messaging.requestPermission — asking again here via Darwin's own
+        // init would show a second, redundant system prompt.
+        iOS: DarwinInitializationSettings(
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        ),
+      ),
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload == null) return;
+        _handleNotificationTap(jsonDecode(payload) as Map<String, dynamic>);
+      },
+    );
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(_androidChannel);
+  }
+
+  Future<void> _showForegroundNotification(RemoteMessage message) async {
+    final notification = message.notification;
+    if (notification == null) return;
+    await _localNotifications.show(
+      id: message.hashCode,
+      title: notification.title,
+      body: notification.body,
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          _androidChannel.id,
+          _androidChannel.name,
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: const DarwinNotificationDetails(),
+      ),
+      payload: jsonEncode(message.data),
+    );
   }
 
   Future<void> _registerToken(ApiClient apiClient, String token) async {
