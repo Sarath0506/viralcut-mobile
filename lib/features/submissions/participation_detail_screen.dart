@@ -315,15 +315,21 @@ class _StatusBannerData {
     required this.color,
     required this.headline,
     required this.message,
+    this.tag,
   });
 
   final IconData icon;
   final Color color;
   final String headline;
   final String message;
+  // Overrides the shared status-derived tag (_tagLabel) for this specific
+  // card — needed once a single deliverable status can render more than one
+  // banner (see 'proof_approved' below), since each one needs its own label
+  // rather than repeating the same tag on every card.
+  final String? tag;
 }
 
-_StatusBannerData _bannerFor(
+List<_StatusBannerData> _bannersFor(
   FormatDeliverable d,
   HalchalColors vc,
   String platformLabel,
@@ -337,77 +343,108 @@ _StatusBannerData _bannerFor(
     final date = d.paidAt != null
         ? DateFormat('d MMM yyyy').format(DateTime.parse(d.paidAt!).toLocal())
         : null;
-    return _StatusBannerData(
-      icon: Icons.paid_rounded,
-      color: vc.money,
-      headline: 'Payment received 💸',
-      message: amount != null
-          ? '$amount was transferred to your account${date != null ? ' on $date' : ''}.'
-          : 'Your payout for this $platformLabel post has been transferred to your account.',
-    );
+    return [
+      _StatusBannerData(
+        icon: Icons.paid_rounded,
+        color: vc.money,
+        headline: 'Payment received 💸',
+        message: amount != null
+            ? '$amount was transferred to your account${date != null ? ' on $date' : ''}.'
+            : 'Your payout for this $platformLabel post has been transferred to your account.',
+      ),
+    ];
   }
   switch (d.status) {
     case 'draft_pending':
-      return _StatusBannerData(
-        icon: Icons.upload_file_outlined,
-        color: vc.primary,
-        headline: 'Ready for your draft',
-        message: 'Upload your $platformLabel draft link to get started.',
-      );
+      return [
+        _StatusBannerData(
+          icon: Icons.upload_file_outlined,
+          color: vc.primary,
+          headline: 'Ready for your draft',
+          message: 'Upload your $platformLabel draft link to get started.',
+        ),
+      ];
     case 'under_review':
-      return _StatusBannerData(
-        icon: Icons.hourglass_top_rounded,
-        color: vc.warning,
-        headline: 'Your draft is under review',
-        message:
-            'The brand is reviewing your submission. We\'ll notify you once they respond.',
-      );
+      return [
+        _StatusBannerData(
+          icon: Icons.hourglass_top_rounded,
+          color: vc.warning,
+          headline: 'Your draft is under review',
+          message:
+              'The brand is reviewing your submission. We\'ll notify you once they respond.',
+        ),
+      ];
     case 'draft_rejected':
-      return _StatusBannerData(
-        icon: Icons.report_problem_outlined,
-        color: vc.error,
-        headline: 'Changes requested',
-        message: d.latestRejectionReason ??
-            'Update your draft with the requested changes and resubmit.',
-      );
+      return [
+        _StatusBannerData(
+          icon: Icons.report_problem_outlined,
+          color: vc.error,
+          headline: 'Changes requested',
+          message: d.latestRejectionReason ??
+              'Update your draft with the requested changes and resubmit.',
+        ),
+      ];
     case 'draft_approved':
-      return _StatusBannerData(
-        icon: Icons.check_circle_rounded,
-        color: vc.money,
-        headline: 'Great news! Your content is approved 🎉',
-        message:
-            'Your submission has been approved. Now submit the link to your live $platformLabel to receive your payout.',
-      );
+      return [
+        _StatusBannerData(
+          icon: Icons.check_circle_rounded,
+          color: vc.money,
+          headline: 'Great news! Your content is approved 🎉',
+          message:
+              'Your submission has been approved. Now submit the link to your live $platformLabel to receive your payout.',
+        ),
+      ];
     case 'live_submitted':
     case 'proof_under_review':
-      return _StatusBannerData(
-        icon: Icons.hourglass_top_rounded,
-        color: vc.warning,
-        headline: 'Proof under review',
-        message: 'We\'re verifying your live post. This usually takes a day or two.',
-      );
+      return [
+        _StatusBannerData(
+          icon: Icons.hourglass_top_rounded,
+          color: vc.warning,
+          headline: 'Proof under review',
+          message: 'We\'re verifying your live post. This usually takes a day or two.',
+        ),
+      ];
     case 'proof_approved':
-      return _StatusBannerData(
-        icon: Icons.check_circle_rounded,
-        color: vc.money,
-        headline: 'Proof approved — awaiting payout',
-        message: 'The brand has verified your live post. Payout will be processed shortly.',
-      );
+      // Two distinct facts, two cards: the proof itself is done (green,
+      // settled) while the payout is a separate, still-pending step
+      // (orange, matches the same "in progress" color used everywhere else
+      // in this screen) — collapsing them into one green banner read as
+      // "you're fully done" when a payout was still outstanding.
+      return [
+        _StatusBannerData(
+          icon: Icons.check_circle_rounded,
+          color: vc.money,
+          headline: 'Proof approved',
+          message: 'The brand has verified your live post.',
+          tag: 'Proof Approved',
+        ),
+        _StatusBannerData(
+          icon: Icons.hourglass_top_rounded,
+          color: vc.warning,
+          headline: 'Awaiting payout',
+          message: 'Your payout will be processed shortly.',
+          tag: 'Awaiting Payout',
+        ),
+      ];
     case 'proof_rejected':
-      return _StatusBannerData(
-        icon: Icons.report_problem_outlined,
-        color: vc.error,
-        headline: 'Proof rejected',
-        message: d.latestRejectionReason ??
-            'Your live post proof was rejected. Contact support for next steps.',
-      );
+      return [
+        _StatusBannerData(
+          icon: Icons.report_problem_outlined,
+          color: vc.error,
+          headline: 'Proof rejected',
+          message: d.latestRejectionReason ??
+              'Your live post proof was rejected. Contact support for next steps.',
+        ),
+      ];
     default:
-      return _StatusBannerData(
-        icon: Icons.info_outline_rounded,
-        color: vc.muted,
-        headline: deliverableStatusLabel(d.status),
-        message: '',
-      );
+      return [
+        _StatusBannerData(
+          icon: Icons.info_outline_rounded,
+          color: vc.muted,
+          headline: deliverableStatusLabel(d.status),
+          message: '',
+        ),
+      ];
   }
 }
 
@@ -437,7 +474,7 @@ class _DeliverableSubmissionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final platformLabel = formatPlatformLabel(deliverable.platform);
-    final banner = _bannerFor(deliverable, vc, platformLabel);
+    final banners = _bannersFor(deliverable, vc, platformLabel);
     final priorEvents = priorRejectionEvents(deliverable);
     final showHistoryReadOnly =
         deliverable.rejectionHistory.isNotEmpty && !deliverable.isRejected;
@@ -462,13 +499,17 @@ class _DeliverableSubmissionCard extends StatelessWidget {
         ),
         const SizedBox(height: 8),
 
-        if (banner.headline.isNotEmpty)
-          _HeroBanner(
-            banner: banner,
-            status: deliverable.status,
-            tag: deliverable.isPaid ? 'Paid' : _tagLabel(deliverable.status),
-            vc: vc,
-          ),
+        for (var i = 0; i < banners.length; i++) ...[
+          if (i > 0) const SizedBox(height: 10),
+          if (banners[i].headline.isNotEmpty)
+            _HeroBanner(
+              banner: banners[i],
+              status: deliverable.status,
+              tag: banners[i].tag ??
+                  (deliverable.isPaid ? 'Paid' : _tagLabel(deliverable.status)),
+              vc: vc,
+            ),
+        ],
 
         if (priorEvents.isNotEmpty || showHistoryReadOnly) ...[
           const SizedBox(height: 12),
@@ -548,7 +589,7 @@ class _DeliverableSubmissionCard extends StatelessWidget {
                     ? 'Your submitted draft'
                     : 'Your approved draft',
             url: deliverable.draftDriveUrl!,
-            color: banner.color,
+            color: banners.first.color,
             vc: vc,
             trailing: _shortSubmittedDate(deliverable.draftSubmittedAt),
           ),
@@ -703,7 +744,7 @@ class _DeliverableSubmissionCard extends StatelessWidget {
           _LinkRow(
             label: 'Your live proof',
             url: deliverable.livePostUrl!,
-            color: banner.color,
+            color: banners.first.color,
             vc: vc,
             trailing: _shortSubmittedDate(deliverable.liveSubmittedAt),
           ),
