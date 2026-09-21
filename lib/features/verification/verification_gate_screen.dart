@@ -107,49 +107,22 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
             children: [
               Center(
-                child: SizedBox(
-                  width: 128,
-                  height: 96,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Ambient glow — the same radial-glow signature used on
-                      // the onboarding carousel, so this gate feels like a
-                      // continuation of the signup flow rather than a
-                      // bolted-on interstitial.
-                      Container(
-                        width: 128,
-                        height: 96,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(64),
-                          gradient: RadialGradient(
-                            colors: [
-                              vc.primary.withValues(alpha: 0.32),
-                              vc.primary.withValues(alpha: 0.0),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: vc.primary.withValues(alpha: 0.14),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: vc.primary.withValues(alpha: 0.25)),
-                        ),
-                        child: Icon(Icons.verified_user_rounded, color: vc.primary, size: 30),
-                      ),
-                    ],
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: vc.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
                   ),
+                  child: Icon(Icons.verified_user_rounded, color: vc.primary, size: 26),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Text(
                 'Almost there',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 23,
+                  fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: vc.onSurface,
                 ),
@@ -201,34 +174,19 @@ class _VerificationGateScreenState extends ConsumerState<VerificationGateScreen>
                                       child: CircularProgressIndicator(
                                           strokeWidth: 2, color: Colors.white),
                                     )
-                                  : Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const SocialLogoBox(platform: 'instagram', size: 20, radius: 6),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          instagramReviewStatus == 'rejected'
-                                              ? 'Reconnect Instagram'
-                                              : 'Connect with Instagram',
-                                          style: GoogleFonts.inter(
-                                              fontSize: 14, fontWeight: FontWeight.w700),
-                                        ),
-                                      ],
+                                  : Text(
+                                      instagramReviewStatus == 'rejected'
+                                          ? 'Reconnect Instagram'
+                                          : 'Connect with Instagram',
+                                      style: GoogleFonts.inter(
+                                          fontSize: 14, fontWeight: FontWeight.w700),
                                     ),
                             ),
                           ),
                           const SizedBox(height: 10),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.lock_outline_rounded, size: 12, color: vc.muted),
-                              const SizedBox(width: 5),
-                              Text(
-                                'Takes under a minute · your account stays private',
-                                style: GoogleFonts.inter(fontSize: 10.5, color: vc.muted),
-                              ),
-                            ],
+                          Text(
+                            'Takes under a minute · your account stays private',
+                            style: GoogleFonts.inter(fontSize: 10.5, color: vc.muted),
                           ),
                         ],
                       )
@@ -284,18 +242,11 @@ class _VerificationSection extends StatelessWidget {
         : vc.border;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: vc.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
