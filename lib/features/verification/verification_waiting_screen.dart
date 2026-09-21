@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/auth/auth_provider.dart';
 import '../../core/creator_profile/creator_profile_providers.dart';
+import '../../core/widgets/social_logo_painters.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import '../profile/profile_providers.dart';
@@ -116,7 +117,7 @@ class VerificationWaitingScreen extends ConsumerWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.camera_alt_outlined, size: 16, color: vc.muted),
+                        const SocialLogoBox(platform: 'instagram', size: 18),
                         const SizedBox(width: 8),
                         Text(
                           '@${activeProfile.handle}',
