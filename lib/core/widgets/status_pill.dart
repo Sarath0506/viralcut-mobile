@@ -57,17 +57,17 @@ class StatusPill extends StatelessWidget {
       case 'draft_approved':
       case 'live_submitted':
       case 'proof_complete':
+      case 'joined':
         return vc.money;
       case 'rejected':
       case 'draft_rejected':
+      case 'action_required':
         return vc.error;
       case 'awaiting_live_link':
-      case 'action_required':
         return vc.primary;
       case 'in_review':
       case 'under_review':
       case 'drafts_incomplete':
-      case 'joined':
       case 'draft_pending':
         return vc.warning;
       default:
