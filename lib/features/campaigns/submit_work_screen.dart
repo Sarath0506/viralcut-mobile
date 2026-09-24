@@ -14,6 +14,7 @@ import 'campaign_providers.dart';
 import '../../core/participation/rejection_history.dart';
 import '../../core/layout/app_spacing.dart';
 import '../../core/validation/drive_url.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import '../marketplace/marketplace_providers.dart';
@@ -197,7 +198,10 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
       error: (e, _) => VcScaffold(
         title: 'Submit your work',
         showBack: true,
-        body: Center(child: Text('$e')),
+        body: RetryErrorView(
+          message: '$e',
+          onRetry: () => ref.invalidate(participationSubmitProvider(widget.campaignId)),
+        ),
       ),
       data: (p) {
         for (final d in p.deliverables) {

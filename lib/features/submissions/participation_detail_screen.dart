@@ -13,6 +13,7 @@ import '../../core/campaign/platform_labels.dart';
 import '../../core/format/money_format.dart';
 import '../../core/participation/participation_status_labels.dart';
 import '../../core/participation/rejection_history.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import '../marketplace/marketplace_providers.dart';
@@ -101,7 +102,10 @@ class _ParticipationDetailScreenState
       error: (e, _) => VcScaffold(
         title: 'Submission Details',
         showBack: true,
-        body: Center(child: Text('$e')),
+        body: RetryErrorView(
+          message: '$e',
+          onRetry: () => ref.invalidate(participationDetailProvider(widget.id)),
+        ),
       ),
       data: (p) {
         return VcScaffold(
