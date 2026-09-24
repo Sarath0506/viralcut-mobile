@@ -891,7 +891,8 @@ class _ChecklistRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = item.passed ? vc.money : vc.error;
+    final iconColor = item.passed ? vc.money : vc.error;
+    final textColor = vc.onSurface;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -902,7 +903,7 @@ class _ChecklistRow extends StatelessWidget {
             style: GoogleFonts.inter(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
-              color: color,
+              color: textColor,
             ),
           ),
         ),
@@ -910,13 +911,13 @@ class _ChecklistRow extends StatelessWidget {
         Icon(
           item.passed ? Icons.check_circle_rounded : Icons.cancel_rounded,
           size: 13,
-          color: color,
+          color: iconColor,
         ),
         const SizedBox(width: 5),
         Expanded(
           child: Text(
             item.text,
-            style: GoogleFonts.inter(fontSize: 12.5, height: 1.4, color: color),
+            style: GoogleFonts.inter(fontSize: 12.5, height: 1.4, color: textColor),
           ),
         ),
       ],
