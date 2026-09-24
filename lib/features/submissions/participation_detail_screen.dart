@@ -955,7 +955,7 @@ class _ChecklistRow extends StatelessWidget {
                 ),
                 if (note != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 3, left: 18),
+                    padding: const EdgeInsets.only(top: 3),
                     child: Text(
                       note,
                       style: GoogleFonts.inter(
