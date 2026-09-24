@@ -542,8 +542,9 @@ class _DeliverableSubmissionCard extends StatelessWidget {
           ),
           if (historyExpanded)
             ...((showHistoryReadOnly ? deliverable.rejectionHistory : priorEvents)
-                .map(
-              (event) => Padding(
+                .map((event) {
+              final checklist = _parseChecklistMessage(event.rejectionReason);
+              return Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Container(
                   padding: const EdgeInsets.all(10),
@@ -568,15 +569,39 @@ class _DeliverableSubmissionCard extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        event.rejectionReason,
-                        style: GoogleFonts.inter(fontSize: 13, color: vc.onSurface),
-                      ),
+                      if (checklist != null) ...[
+                        if (checklist.header != null) ...[
+                          Text(
+                            checklist.header!,
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: vc.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                        ],
+                        for (var i = 0; i < checklist.items.length; i++)
+                          Padding(
+                            padding: EdgeInsets.only(
+                              bottom: i == checklist.items.length - 1 ? 0 : 5,
+                            ),
+                            child: _ChecklistRow(
+                              index: i + 1,
+                              item: checklist.items[i],
+                              vc: vc,
+                            ),
+                          ),
+                      ] else
+                        Text(
+                          event.rejectionReason,
+                          style: GoogleFonts.inter(fontSize: 13, color: vc.onSurface),
+                        ),
                     ],
                   ),
                 ),
-              ),
-            )),
+              );
+            })),
         ],
 
         // Draft link — shown whenever a draft exists and proof hasn't been submitted yet
@@ -825,6 +850,80 @@ String? _shortSubmittedDate(String? iso) {
   }
 }
 
+class _ChecklistItem {
+  const _ChecklistItem({required this.passed, required this.text});
+  final bool passed;
+  final String text;
+}
+
+/// Parses the backend's auto-review rejection text (buildAutoRejectionReason
+/// in auto-review.service.ts — a header line followed by "✓ …"/"✗ …" lines)
+/// into a header plus individual checklist items, so they can be numbered
+/// and color-coded instead of shown as one flat paragraph. Returns null for
+/// any message that isn't in that shape (a plain rejection note, or any
+/// other banner's ordinary prose) — callers fall back to rendering the raw
+/// message as-is in that case.
+({String? header, List<_ChecklistItem> items})? _parseChecklistMessage(
+  String message,
+) {
+  final items = <_ChecklistItem>[];
+  String? header;
+  for (final line in message.split('\n')) {
+    if (line.startsWith('✓ ') || line.startsWith('✗ ')) {
+      items.add(_ChecklistItem(
+        passed: line.startsWith('✓ '),
+        text: line.substring(2).trim(),
+      ));
+    } else if (header == null && line.trim().isNotEmpty) {
+      header = line.trim();
+    }
+  }
+  if (items.isEmpty) return null;
+  return (header: header, items: items);
+}
+
+class _ChecklistRow extends StatelessWidget {
+  const _ChecklistRow({required this.index, required this.item, required this.vc});
+
+  final int index;
+  final _ChecklistItem item;
+  final HalchalColors vc;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = item.passed ? vc.money : vc.error;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 16,
+          child: Text(
+            '$index.',
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Icon(
+          item.passed ? Icons.check_circle_rounded : Icons.cancel_rounded,
+          size: 13,
+          color: color,
+        ),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            item.text,
+            style: GoogleFonts.inter(fontSize: 12.5, height: 1.4, color: color),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _HeroBanner extends StatelessWidget {
   const _HeroBanner({
     required this.banner,
@@ -842,6 +941,7 @@ class _HeroBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = banner.color;
     final illustration = _illustrationIcons(status);
+    final checklist = _parseChecklistMessage(banner.message);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
@@ -906,7 +1006,32 @@ class _HeroBanner extends StatelessWidget {
                             height: 1.2,
                           ),
                         ),
-                        if (banner.message.isNotEmpty) ...[
+                        if (checklist != null) ...[
+                          const SizedBox(height: 6),
+                          if (checklist.header != null) ...[
+                            Text(
+                              checklist.header!,
+                              style: GoogleFonts.inter(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                height: 1.4,
+                                color: vc.onSurface.withValues(alpha: 0.85),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                          ],
+                          for (var i = 0; i < checklist.items.length; i++)
+                            Padding(
+                              padding: EdgeInsets.only(
+                                bottom: i == checklist.items.length - 1 ? 0 : 5,
+                              ),
+                              child: _ChecklistRow(
+                                index: i + 1,
+                                item: checklist.items[i],
+                                vc: vc,
+                              ),
+                            ),
+                        ] else if (banner.message.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
                             banner.message,
