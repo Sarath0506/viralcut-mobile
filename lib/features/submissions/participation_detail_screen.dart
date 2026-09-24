@@ -882,6 +882,13 @@ class _ChecklistItem {
   return (header: header, items: items);
 }
 
+// Splits a trailing "(optional — not counted toward this decision)" note
+// (see buildAutoRejectionReason) off the main sentence, so it can render as
+// a smaller, muted aside instead of running into the check's description at
+// full size — the rest of item.text (e.g. a failed check's own parenthetical
+// explanation) is left untouched.
+final _optionalNoteRegex = RegExp(r'\s*(\(optional[^)]*\))$');
+
 class _ChecklistRow extends StatelessWidget {
   const _ChecklistRow({required this.index, required this.item, required this.vc});
 
@@ -891,36 +898,78 @@ class _ChecklistRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = item.passed ? vc.money : vc.error;
-    final textColor = vc.onSurface;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 16,
-          child: Text(
-            '$index.',
-            style: GoogleFonts.inter(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: textColor,
+    final badgeColor = item.passed ? vc.money : vc.error;
+    final noteMatch = _optionalNoteRegex.firstMatch(item.text);
+    final mainText = noteMatch == null
+        ? item.text
+        : item.text.substring(0, noteMatch.start);
+    final note = noteMatch?.group(1);
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(color: badgeColor, shape: BoxShape.circle),
+            child: Icon(
+              item.passed ? Icons.check_rounded : Icons.close_rounded,
+              size: 13,
+              color: Colors.white,
             ),
           ),
-        ),
-        const SizedBox(width: 4),
-        Icon(
-          item.passed ? Icons.check_circle_rounded : Icons.cancel_rounded,
-          size: 13,
-          color: iconColor,
-        ),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(
-            item.text,
-            style: GoogleFonts.inter(fontSize: 12.5, height: 1.4, color: textColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$index',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: vc.onSurface.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        mainText,
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5,
+                          height: 1.4,
+                          color: vc.onSurface,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (note != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3, left: 18),
+                    child: Text(
+                      note,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                        color: vc.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1008,7 +1057,7 @@ class _HeroBanner extends StatelessWidget {
                           ),
                         ),
                         if (checklist != null) ...[
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 10),
                           if (checklist.header != null) ...[
                             Text(
                               checklist.header!,
@@ -1019,12 +1068,12 @@ class _HeroBanner extends StatelessWidget {
                                 color: vc.onSurface.withValues(alpha: 0.85),
                               ),
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 10),
                           ],
                           for (var i = 0; i < checklist.items.length; i++)
                             Padding(
                               padding: EdgeInsets.only(
-                                bottom: i == checklist.items.length - 1 ? 0 : 5,
+                                bottom: i == checklist.items.length - 1 ? 0 : 8,
                               ),
                               child: _ChecklistRow(
                                 index: i + 1,
