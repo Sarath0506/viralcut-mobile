@@ -66,16 +66,20 @@ class _BrandLeading extends StatelessWidget {
     final primary = Theme.of(context).colorScheme.primary;
 
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
         const AuthAppIcon.header(),
         const SizedBox(width: AppSpacing.sm),
-        Text(
-          variant.title,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: variant == ShellTopBarVariant.home ? primary : vc.onSurface,
+        Flexible(
+          child: Text(
+            variant.title,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: variant == ShellTopBarVariant.home ? primary : vc.onSurface,
+            ),
           ),
         ),
       ],
