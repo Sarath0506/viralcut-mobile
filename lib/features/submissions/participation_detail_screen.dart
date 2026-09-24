@@ -974,7 +974,7 @@ class _ChecklistRow extends StatelessWidget {
   }
 }
 
-class _HeroBanner extends StatelessWidget {
+class _HeroBanner extends StatefulWidget {
   const _HeroBanner({
     required this.banner,
     required this.status,
@@ -988,7 +988,21 @@ class _HeroBanner extends StatelessWidget {
   final HalchalColors vc;
 
   @override
+  State<_HeroBanner> createState() => _HeroBannerState();
+}
+
+class _HeroBannerState extends State<_HeroBanner> {
+  // Collapsed by default — a 5-7 item checklist expanded inline made this
+  // card dominate the whole screen; most creators only need the headline
+  // and can tap in for the full breakdown when they actually want it.
+  bool _checklistExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final banner = widget.banner;
+    final status = widget.status;
+    final tag = widget.tag;
+    final vc = widget.vc;
     final color = banner.color;
     final illustration = _illustrationIcons(status);
     final checklist = _parseChecklistMessage(banner.message);
@@ -1058,7 +1072,7 @@ class _HeroBanner extends StatelessWidget {
                         ),
                         if (checklist != null) ...[
                           const SizedBox(height: 10),
-                          if (checklist.header != null) ...[
+                          if (checklist.header != null)
                             Text(
                               checklist.header!,
                               style: GoogleFonts.inter(
@@ -1068,19 +1082,53 @@ class _HeroBanner extends StatelessWidget {
                                 color: vc.onSurface.withValues(alpha: 0.85),
                               ),
                             ),
-                            const SizedBox(height: 10),
-                          ],
-                          for (var i = 0; i < checklist.items.length; i++)
-                            Padding(
-                              padding: EdgeInsets.only(
-                                bottom: i == checklist.items.length - 1 ? 0 : 8,
-                              ),
-                              child: _ChecklistRow(
-                                index: i + 1,
-                                item: checklist.items[i],
-                                vc: vc,
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: () => setState(
+                              () => _checklistExpanded = !_checklistExpanded,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _checklistExpanded
+                                        ? Icons.expand_less_rounded
+                                        : Icons.expand_more_rounded,
+                                    size: 17,
+                                    color: vc.onSurface.withValues(alpha: 0.6),
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    _checklistExpanded
+                                        ? 'Hide details'
+                                        : 'View all ${checklist.items.length} checks',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: vc.onSurface.withValues(alpha: 0.6),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
+                          ),
+                          if (_checklistExpanded) ...[
+                            const SizedBox(height: 8),
+                            for (var i = 0; i < checklist.items.length; i++)
+                              Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: i == checklist.items.length - 1 ? 0 : 8,
+                                ),
+                                child: _ChecklistRow(
+                                  index: i + 1,
+                                  item: checklist.items[i],
+                                  vc: vc,
+                                ),
+                              ),
+                          ],
                         ] else if (banner.message.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
