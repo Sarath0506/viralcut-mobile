@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/layout/app_spacing.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import 'widgets/bank_card_preview.dart';
@@ -62,7 +63,10 @@ class PayoutMethodsScreen extends ConsumerWidget {
       showBack: true,
       body: methods.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => RetryErrorView(
+          message: '$e',
+          onRetry: () => ref.invalidate(payoutMethodsProvider),
+        ),
         data: (list) {
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(payoutMethodsProvider),

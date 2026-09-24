@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/auth/auth_provider.dart';
 import '../../core/creator_profile/creator_profile_providers.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../core/widgets/social_logo_painters.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
@@ -74,7 +75,10 @@ class VerificationWaitingScreen extends ConsumerWidget {
       ],
       body: me.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => RetryErrorView(
+          message: '$e',
+          onRetry: () => ref.invalidate(profileMeProvider),
+        ),
         data: (_) {
           return Padding(
             padding: const EdgeInsets.all(28),

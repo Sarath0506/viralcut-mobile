@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import 'profile_providers.dart';
@@ -138,7 +139,10 @@ class _KycStatusScreenState extends ConsumerState<KycStatusScreen> {
       showBack: true,
       body: me.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => RetryErrorView(
+          message: '$e',
+          onRetry: () => ref.invalidate(profileMeProvider),
+        ),
         data: (user) {
           final status = user['kycStatus'] as String? ?? 'not_started';
           final rejectionReason = user['kycRejectionReason'] as String?;

@@ -6,6 +6,7 @@ import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/creator_profile/creator_profile_providers.dart';
 import '../../core/instagram/instagram_oauth_flow.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../core/widgets/social_logo_painters.dart';
 import '../../theme/halchal_colors.dart';
 import '../../core/widgets/vc_scaffold.dart';
@@ -253,7 +254,10 @@ class _ConnectedAccountsScreenState extends ConsumerState<ConnectedAccountsScree
       showBack: true,
       body: profiles.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => RetryErrorView(
+          message: '$e',
+          onRetry: () => ref.invalidate(creatorProfilesProvider),
+        ),
         data: (_) {
           if (activeProfile == null) {
             return Center(

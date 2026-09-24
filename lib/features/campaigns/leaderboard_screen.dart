@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/format/money_format.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import 'campaign_providers.dart';
@@ -51,8 +52,11 @@ class LeaderboardScreen extends ConsumerWidget {
       showBack: true,
       body: leaderboard.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Text('$e', style: TextStyle(color: vc.muted)),
+        error: (e, _) => RetryErrorView(
+          message: '$e',
+          onRetry: () => id != null
+              ? ref.invalidate(campaignLeaderboardProvider(id))
+              : ref.invalidate(overallLeaderboardProvider),
         ),
         data: (board) {
           if (board.entries.isEmpty) {

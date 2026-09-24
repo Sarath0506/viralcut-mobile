@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import '../profile/profile_providers.dart';
@@ -60,7 +61,10 @@ class NotificationsScreen extends ConsumerWidget {
       ],
       body: notifications.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => RetryErrorView(
+          message: '$e',
+          onRetry: () => ref.invalidate(notificationsProvider),
+        ),
         data: (items) {
           if (items.isEmpty) {
             return Center(

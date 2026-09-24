@@ -663,7 +663,19 @@ class _MarketplaceReuseSection extends ConsumerWidget {
         padding: EdgeInsets.symmetric(vertical: 20),
         child: Center(child: CircularProgressIndicator()),
       ),
-      error: (e, _) => Text('$e', style: TextStyle(fontSize: 12, color: vc.muted)),
+      error: (e, _) => Row(
+        children: [
+          Expanded(
+            child: Text('$e', style: TextStyle(fontSize: 12, color: vc.muted)),
+          ),
+          TextButton(
+            onPressed: () => ref.invalidate(
+              marketplaceListingsProvider((campaignId, creatorProfileId)),
+            ),
+            child: const Text('Try again'),
+          ),
+        ],
+      ),
       data: (items) {
         final matching = items.where((l) => l.platform == platform).toList();
         if (matching.isEmpty) {

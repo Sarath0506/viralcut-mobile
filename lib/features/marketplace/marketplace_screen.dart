@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import 'marketplace_providers.dart';
@@ -59,11 +60,9 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
       showBack: true,
       body: listings.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text('$e', textAlign: TextAlign.center),
-          ),
+        error: (e, _) => RetryErrorView(
+          message: '$e',
+          onRetry: () => ref.invalidate(marketplaceListingsProvider(_args)),
         ),
         data: (items) {
           if (items.isEmpty) {
