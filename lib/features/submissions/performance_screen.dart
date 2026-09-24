@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/auth/auth_provider.dart';
 import '../../core/participation/participation_models.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
@@ -91,6 +92,28 @@ class _PerformanceBodyState extends ConsumerState<_PerformanceBody> {
   // (the deliverable:metrics_updated realtime push, or the 5-minute
   // background sweep). Always reading straight from widget.deliverable is
   // what makes those automatic updates actually reach the screen.
+
+  bool _refreshingViews = false;
+
+  Future<void> _refreshViews() async {
+    if (_refreshingViews) return;
+    setState(() => _refreshingViews = true);
+    try {
+      await ref.read(apiClientProvider).refreshDeliverableViews(widget.deliverable.id);
+      widget.onRefresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Views updated')),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    } finally {
+      if (mounted) setState(() => _refreshingViews = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -332,6 +355,31 @@ class _PerformanceBodyState extends ConsumerState<_PerformanceBody> {
                           ),
                         ),
                       ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: _refreshingViews ? null : _refreshViews,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: vc.deepSurface,
+                          shape: BoxShape.circle,
+                        ),
+                        child: _refreshingViews
+                            ? SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: vc.muted,
+                                ),
+                              )
+                            : Icon(Icons.refresh_rounded,
+                                size: 16, color: vc.muted),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),

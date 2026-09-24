@@ -766,6 +766,12 @@ class ApiClient {
         (_) {},
       );
 
+  Future<void> refreshDeliverableViews(String deliverableId) => post<void>(
+        '/creator/deliverables/$deliverableId/refresh-views',
+        {},
+        (_) {},
+      );
+
   Future<Map<String, dynamic>> fetchSocialStats(String platform, String handle) {
     return post<Map<String, dynamic>>(
       '/users/me/social-stats/$platform',
