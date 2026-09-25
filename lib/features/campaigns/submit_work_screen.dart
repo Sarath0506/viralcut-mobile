@@ -212,7 +212,6 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
             p.deliverables.where((d) => d.isRejected || d.isDraftPending).toList();
         final otherDeliverables =
             p.deliverables.where((d) => !d.isRejected && !d.isDraftPending).toList();
-        final hasRate = (p.campaign.ratePer1kPaise ?? 0) > 0;
 
         return CampaignRealtimeScope(
           campaignId: widget.campaignId,

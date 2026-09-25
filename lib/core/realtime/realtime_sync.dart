@@ -88,7 +88,9 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
   void _refreshIfStale() {
     final now = DateTime.now();
     if (_lastRefresh != null &&
-        now.difference(_lastRefresh!) < const Duration(minutes: 5)) return;
+        now.difference(_lastRefresh!) < const Duration(minutes: 5)) {
+      return;
+    }
     _lastRefresh = now;
     invalidateAppDataCaches(ref);
   }

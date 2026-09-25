@@ -198,7 +198,7 @@ class TermsScreen extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) => LegalScreen(
+  Widget build(BuildContext context) => const LegalScreen(
         title: 'Terms & Conditions',
         lastUpdated: 'July 7, 2026',
         sections: _sections,
@@ -268,7 +268,7 @@ class PrivacyScreen extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) => LegalScreen(
+  Widget build(BuildContext context) => const LegalScreen(
         title: 'Privacy Policy',
         lastUpdated: 'July 7, 2026',
         sections: _sections,
