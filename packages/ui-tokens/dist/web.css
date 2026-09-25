@@ -26,7 +26,7 @@
   --vc-primary-variant: #A78BFA;
   --vc-money: #34D399;
   --vc-money-bright: #4ADE80;
-  --vc-background: #0B1220;
+  --vc-background: #000000;
   --vc-surface: #111827;
   --vc-surface-variant: #1F2937;
   --vc-on-background: #F1F5F9;
@@ -37,7 +37,7 @@
   --vc-error: #F87171;
   --vc-warning: #FB923C;
   --vc-on-primary: #FFFFFF;
-  --vc-auth-gradient-start: #0B1220;
+  --vc-auth-gradient-start: #000000;
   --vc-auth-gradient-mid: #111827;
   --vc-auth-gradient-end: #1F2937;
   --vc-info-surface: #1E293B;

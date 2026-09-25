@@ -11,7 +11,7 @@ abstract final class ViralCutTokenColors {
   static const moneyBrightLight = Color(0xFF16A34A);
   static const moneyBrightDark = Color(0xFF4ADE80);
   static const backgroundLight = Color(0xFFF8F9FF);
-  static const backgroundDark = Color(0xFF0B1220);
+  static const backgroundDark = Color(0xFF000000);
   static const surfaceLight = Color(0xFFFFFFFF);
   static const surfaceDark = Color(0xFF111827);
   static const surfaceVariantLight = Color(0xFFEEF0FF);
@@ -35,7 +35,7 @@ abstract final class ViralCutTokenColors {
   static const onPrimaryLight = Color(0xFFFFFFFF);
   static const onPrimaryDark = Color(0xFFFFFFFF);
   static const authGradientStartLight = Color(0xFFF3EEFF);
-  static const authGradientStartDark = Color(0xFF0B1220);
+  static const authGradientStartDark = Color(0xFF000000);
   static const authGradientMidLight = Color(0xFFF8F9FF);
   static const authGradientMidDark = Color(0xFF111827);
   static const authGradientEndLight = Color(0xFFEDE9FE);
