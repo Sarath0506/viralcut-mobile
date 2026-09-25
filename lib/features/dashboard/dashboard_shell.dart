@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,13 +10,42 @@ import 'widgets/shell_top_bar.dart';
 
 // Tab switches go through context.go() (see _onTabSelected), which REPLACES
 // the current route rather than pushing on top of it — so there's normally
-// nothing under e.g. Campaigns for iOS's left-edge "swipe back" gesture to
-// pop to, and the drag falls through to iOS's own system gesture and leaves
-// the app entirely. This stack is a manual back-history for the tab bar:
-// every tab switch pushes the tab being left, and swiping back from the
-// left edge pops it and returns to wherever the creator actually came from
-// (not just always Dashboard) — see _EdgeSwipeBack below.
+// nothing under e.g. Campaigns for a "swipe back" gesture to pop to, and
+// the drag falls through to the OS's own system gesture and leaves the app
+// entirely. This stack is a manual back-history for the tab bar: every tab
+// switch pushes the tab being left, and swiping back returns to wherever
+// the creator actually came from (not just always Dashboard) — see the
+// PopScope wrapping DashboardShell's Scaffold below.
+//
+// This used to be driven by a custom GestureDetector watching raw edge
+// touches (_EdgeSwipeBack). That approach fundamentally couldn't win:
+// HitTestBehavior only controls how *Flutter* sees a touch — Android's own
+// gesture recognizer runs outside the Flutter engine entirely and acts on
+// the SAME raw touch in parallel, so a correctly-firing in-app handler and
+// the OS's own edge-swipe-back/home gesture both fired on every swipe.
+// Confirmed live on a real Samsung device (dumpsys + adb logcat): our
+// handler's navigation ran successfully, but Android — seeing no back
+// stack to pop inside this route since it has no actual Navigator entries
+// under it — independently finished/backgrounded the Activity on the same
+// touch, which is FlutterActivity's default behavior for an unhandled
+// system back gesture. `View.setSystemGestureExclusionRects` doesn't fix
+// this either: it only ever covers the OS's "back" category specifically,
+// never the home/recents-switching gesture (permanently unexcludable by
+// design) or Samsung's own proprietary Edge Panel/Pay edge shortcuts.
+//
+// PopScope + Android's official OnBackInvokedCallback (already enabled —
+// see AndroidManifest.xml's android:enableOnBackInvokedCallback) sidesteps
+// all of this: instead of racing the OS for ownership of a raw touch, it's
+// the SAME explicit system channel FlutterActivity already registers a
+// callback on for every edge-swipe-back gesture. canPop: false there tells
+// Android directly not to run its default action (finish the Activity) so
+// there's nothing left to race against.
 final tabHistoryProvider = StateProvider<List<String>>((ref) => []);
+
+// A dedicated channel to MainActivity.kt, separate from Flutter's own
+// internal `flutter/platform` channel — see the long comment on
+// DashboardShell.build for why sharing that one doesn't work here.
+const _backGestureChannel = MethodChannel('com.halchal.app/back_gesture');
 
 class DashboardShell extends ConsumerWidget {
   const DashboardShell({super.key, required this.child});
@@ -62,85 +92,73 @@ class DashboardShell extends ConsumerWidget {
     final path = GoRouterState.of(context).uri.path;
     final index = _indexForPath(path);
     final vc = HalchalColors.of(context);
+    final history = ref.watch(tabHistoryProvider);
 
-    return Scaffold(
-      backgroundColor: vc.background,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SafeArea(
-            bottom: false,
-            child: ShellTopBar(currentPath: path),
-          ),
-          Expanded(child: _EdgeSwipeBack(child: child)),
-        ],
+    // PopScope's canPop below *should* be enough on its own — Flutter is
+    // supposed to derive ModalRoute.popDisposition from it and relay that to
+    // Android via the SystemNavigator.setFrameworkHandlesBack platform
+    // channel call, which is what actually makes native register its
+    // OnBackInvokedCallback at a priority that can pre-empt the OS's own
+    // edge-swipe-back/home gesture. Confirmed live (raw adb logcat) that
+    // this relay silently doesn't happen for a ShellRoute branch reached via
+    // context.go() (which replaces the stack instead of pushing, so this
+    // route is always Navigator's lone/"first" entry): canPop was correctly
+    // false and onPopInvokedWithResult never fired, and Android's own
+    // ShellBackPreview logged choosing mType=TYPE_RETURN_TO_HOME — its
+    // default for "nothing registered wants this" — for a swipe that should
+    // have been ours to intercept.
+    //
+    // Calling SystemNavigator.setFrameworkHandlesBack ourselves *also*
+    // wasn't enough on its own — confirmed live that Flutter's own internal
+    // mechanism keeps calling the SAME method with its own (wrong, for this
+    // route) determination, on its own schedule, and whichever call landed
+    // last won — so our explicit "true" kept getting silently clobbered by
+    // Flutter's automatic "false" straight after. _backGestureChannel is a
+    // separate channel Flutter's internals never touch, so MainActivity.kt
+    // can OR our explicit intent together with Flutter's own signal instead
+    // of racing it — our intent can only turn interception ON that
+    // Flutter's automatic calls would've turned off, never the reverse.
+    _backGestureChannel.invokeMethod('setInterceptEnabled', history.isNotEmpty);
+    ref.listen<List<String>>(tabHistoryProvider, (previous, next) {
+      _backGestureChannel.invokeMethod('setInterceptEnabled', next.isNotEmpty);
+    });
+
+    return PopScope(
+      // History empty (e.g. Dashboard right after a fresh launch, nothing
+      // to go back to) -> canPop: true, _backGestureChannel above already
+      // told native not to intercept, so the system's default back action
+      // (exit to home) happens normally. History non-empty -> canPop: false
+      // plus native's OR'd-in intercept together stop Android from running
+      // its default action, so onPopInvokedWithResult's navigation below is
+      // the only thing that runs on the gesture, instead of racing it.
+      canPop: history.isEmpty,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        final current = ref.read(tabHistoryProvider);
+        if (current.isEmpty) return;
+        final previous = current.last;
+        ref.read(tabHistoryProvider.notifier).state =
+            current.sublist(0, current.length - 1);
+        context.go(previous);
+      },
+      child: Scaffold(
+        backgroundColor: vc.background,
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SafeArea(
+              bottom: false,
+              child: ShellTopBar(currentPath: path),
+            ),
+            Expanded(child: child),
+          ],
+        ),
+        extendBody: true,
+        bottomNavigationBar: _BottomNav(
+          selectedIndex: index,
+          onTap: (i) => _onTabSelected(ref, i, context),
+        ),
       ),
-      extendBody: true,
-      bottomNavigationBar: _BottomNav(
-        selectedIndex: index,
-        onTap: (i) => _onTabSelected(ref, i, context),
-      ),
-    );
-  }
-}
-
-/// Detects a drag starting at the left screen edge and, if it travels far
-/// enough right, pops the last entry off [tabHistoryProvider] and navigates
-/// there — a manual stand-in for the native "swipe back" gesture, since
-/// go_router's context.go() leaves nothing for the real one to pop. A no-op
-/// (nothing happens, touch is just consumed) when the history is empty —
-/// e.g. Dashboard right after a fresh launch, with nowhere to go back to.
-class _EdgeSwipeBack extends ConsumerStatefulWidget {
-  const _EdgeSwipeBack({required this.child});
-
-  final Widget child;
-
-  @override
-  ConsumerState<_EdgeSwipeBack> createState() => _EdgeSwipeBackState();
-}
-
-class _EdgeSwipeBackState extends ConsumerState<_EdgeSwipeBack> {
-  // Confirmed live on a real Samsung device (One UI's own edge-gesture zone
-  // is wider/more aggressive than stock Android's): a drag starting within
-  // roughly the leftmost 8dp gets swallowed by Android's OWN system back
-  // gesture before Flutter ever sees the touch at all — not just "our
-  // handler loses the gesture arena", the touch never arrives here. 24dp
-  // (iOS's typical edge-hit-zone width, what this used to be) sat entirely
-  // inside that reserved strip on this device, so the feature was
-  // effectively dead on Android despite working fine in code review. 72dp
-  // starts safely past what OEMs reserve for themselves while still
-  // reading as "swipe in from the left side".
-  static const _edgeZone = 72.0;
-  static const _triggerDistance = 60.0;
-
-  bool _startedAtEdge = false;
-  double _dragDx = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onHorizontalDragStart: (details) {
-        _startedAtEdge = details.localPosition.dx <= _edgeZone;
-        _dragDx = 0;
-      },
-      onHorizontalDragUpdate: (details) {
-        if (_startedAtEdge) _dragDx += details.delta.dx;
-      },
-      onHorizontalDragEnd: (details) {
-        if (_startedAtEdge && _dragDx > _triggerDistance) {
-          final history = ref.read(tabHistoryProvider);
-          if (history.isNotEmpty) {
-            final previous = history.last;
-            ref.read(tabHistoryProvider.notifier).state =
-                history.sublist(0, history.length - 1);
-            context.go(previous);
-          }
-        }
-        _startedAtEdge = false;
-        _dragDx = 0;
-      },
-      child: widget.child,
     );
   }
 }
