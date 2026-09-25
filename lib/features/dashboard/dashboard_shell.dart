@@ -100,8 +100,17 @@ class _EdgeSwipeBack extends ConsumerStatefulWidget {
 }
 
 class _EdgeSwipeBackState extends ConsumerState<_EdgeSwipeBack> {
-  // Matches the width iOS's own edge-swipe-back hit zone typically uses.
-  static const _edgeZone = 24.0;
+  // Confirmed live on a real Samsung device (One UI's own edge-gesture zone
+  // is wider/more aggressive than stock Android's): a drag starting within
+  // roughly the leftmost 8dp gets swallowed by Android's OWN system back
+  // gesture before Flutter ever sees the touch at all — not just "our
+  // handler loses the gesture arena", the touch never arrives here. 24dp
+  // (iOS's typical edge-hit-zone width, what this used to be) sat entirely
+  // inside that reserved strip on this device, so the feature was
+  // effectively dead on Android despite working fine in code review. 72dp
+  // starts safely past what OEMs reserve for themselves while still
+  // reading as "swipe in from the left side".
+  static const _edgeZone = 72.0;
   static const _triggerDistance = 60.0;
 
   bool _startedAtEdge = false;
