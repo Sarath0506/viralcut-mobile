@@ -64,3 +64,11 @@ flutter:
     - assets/images/platform_x.svg
     - assets/images/campaigns_empty_caught_up.svg
     - assets/images/campaigns_empty_none.svg
+    # Bundled Inter/Plus Jakarta Sans weights — google_fonts prefers a
+    # matching local asset file over its own HTTP fetch (see its README),
+    # so every existing GoogleFonts.inter()/.plusJakartaSans() call in the
+    # app now resolves offline with no code changes needed. Without this,
+    # any of those calls could render blank text if the device can't reach
+    # fonts.gstatic.com at that exact moment — worst case, on the login/
+    # signup screen a brand-new user sees first.
+    - assets/google_fonts/
