@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,7 +46,14 @@ final tabHistoryProvider = StateProvider<List<String>>((ref) => []);
 // A dedicated channel to MainActivity.kt, separate from Flutter's own
 // internal `flutter/platform` channel — see the long comment on
 // DashboardShell.build for why sharing that one doesn't work here.
+// Android-only: no iOS side registers a handler for it (iOS doesn't have
+// the OS-level edge-gesture-arena conflict this works around — Apple's
+// swipe-back only acts within Flutter's own Navigator, it doesn't run a
+// separate, parallel system recognizer against Flutter's PopScope the way
+// Android's predictive back does), so calling it unguarded there throws
+// MissingPluginException on every tab switch.
 const _backGestureChannel = MethodChannel('com.halchal.app/back_gesture');
+final _isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
 class DashboardShell extends ConsumerWidget {
   const DashboardShell({super.key, required this.child});
@@ -118,10 +126,12 @@ class DashboardShell extends ConsumerWidget {
     // can OR our explicit intent together with Flutter's own signal instead
     // of racing it — our intent can only turn interception ON that
     // Flutter's automatic calls would've turned off, never the reverse.
-    _backGestureChannel.invokeMethod('setInterceptEnabled', history.isNotEmpty);
-    ref.listen<List<String>>(tabHistoryProvider, (previous, next) {
-      _backGestureChannel.invokeMethod('setInterceptEnabled', next.isNotEmpty);
-    });
+    if (_isAndroid) {
+      _backGestureChannel.invokeMethod('setInterceptEnabled', history.isNotEmpty);
+      ref.listen<List<String>>(tabHistoryProvider, (previous, next) {
+        _backGestureChannel.invokeMethod('setInterceptEnabled', next.isNotEmpty);
+      });
+    }
 
     return PopScope(
       // History empty (e.g. Dashboard right after a fresh launch, nothing
