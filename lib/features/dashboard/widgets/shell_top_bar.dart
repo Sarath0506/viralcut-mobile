@@ -47,6 +47,16 @@ class ShellTopBar extends ConsumerWidget {
         child: Row(
           children: [
             Expanded(child: _BrandLeading(variant: variant)),
+            // A dedicated gap, not just leftover Flexible slack — the title
+            // Text sits in a Flexible (loose fit), so it only takes as much
+            // width as it needs and doesn't reserve any margin of its own.
+            // Shorter titles (Dashboard, Campaigns, Wallet) happened to
+            // leave slack after the text and looked fine; "Submissions" is
+            // long enough to fill its entire Expanded allotment (FittedBox
+            // scales it down to exactly fit, with nothing left over), so it
+            // butted right up against the profile switcher chip with zero
+            // gap between them.
+            const SizedBox(width: AppSpacing.sm),
             _Trailing(variant: variant),
           ],
         ),
