@@ -372,14 +372,17 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Icon(Icons.lock_outline_rounded, size: 13, color: vc.muted),
                                 const SizedBox(width: 5),
-                                Text(
-                                  'To change your account number, contact support.',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: vc.muted,
+                                Expanded(
+                                  child: Text(
+                                    'To change your account number, contact support.',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      color: vc.muted,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -556,9 +559,14 @@ class _ReadOnlyRow extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Text(
-                value,
-                style: TextStyle(fontSize: 15, color: vc.muted),
+              Flexible(
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(fontSize: 15, color: vc.muted),
+                ),
               ),
               if (trailing != null) ...[
                 const SizedBox(width: 8),

@@ -220,13 +220,15 @@ class _LeaderboardRow extends StatelessWidget {
                   children: [
                     Icon(Icons.visibility_outlined, size: 11, color: vc.muted),
                     const SizedBox(width: 3),
-                    Text(
-                      entry.handle != null
-                          ? '@${entry.handle} · ${_formatViews(entry.totalViews)} views'
-                          : '${_formatViews(entry.totalViews)} views',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
+                    Flexible(
+                      child: Text(
+                        entry.handle != null
+                            ? '@${entry.handle} · ${_formatViews(entry.totalViews)} views'
+                            : '${_formatViews(entry.totalViews)} views',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(fontSize: 11, color: vc.muted),
+                      ),
                     ),
                   ],
                 ),

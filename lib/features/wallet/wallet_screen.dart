@@ -151,11 +151,15 @@ class _BalanceCard extends StatelessWidget {
                         children: [
                           const Icon(Icons.schedule_rounded, size: 11, color: Colors.white38),
                           const SizedBox(width: 3),
-                          Text(
-                            'Available soon',
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              color: Colors.white38,
+                          Flexible(
+                            child: Text(
+                              'Available soon',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                color: Colors.white38,
+                              ),
                             ),
                           ),
                         ],
