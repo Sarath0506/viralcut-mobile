@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Overrides values/colors.xml's app_window_background for OS dark mode,
+         to match HalchalColors' backgroundDark token (see
+         packages/ui-tokens/lib/viralcut_token_colors.dart). This is the
+         native Android window background shown behind/before Flutter's own
+         canvas paints — every screen transition (tab switches especially)
+         briefly shows it before Flutter's next frame draws over it, so it
+         has to track the Dart-side dark background color or a stale shade
+         flashes on every navigation. Confirmed live on a real device: the
+         old #0B1220 (this file didn't exist, so the default in
+         values/colors.xml applied even in dark mode) flashed on every tab
+         switch after the Dart-side background token changed to pure black. -->
+    <color name="app_window_background">#000000</color>
+</resources>
