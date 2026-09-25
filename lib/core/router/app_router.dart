@@ -113,25 +113,45 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (_, __, child) => DashboardShell(child: child),
         routes: [
+          // pageBuilder + NoTransitionPage, not the default builder:, on all
+          // five of these — bottom-nav tab switches should swap instantly
+          // (standard UX for a tab bar, no app does an animated transition
+          // between tabs), and the platform-default MaterialPage transition
+          // (Android's Material 3 zoom fade) has an actual bug for our case
+          // beyond just being the wrong UX: it fills the transitioning
+          // page's own background with colorScheme.surface — NOT
+          // Scaffold.backgroundColor — for the transition's duration. Our
+          // surface tone is a dark navy while background (dark mode) is
+          // pure black, so every tab switch flashed that navy for
+          // ~300-500ms before settling to the real black.
+          // Confirmed via adb screenrecord + frame-by-frame pixel sampling
+          // on a real device: a sustained (not single-frame) navy fill at
+          // exactly colorScheme.surface's RGB, lasting one transition's
+          // duration, on every tab switch.
           GoRoute(
             path: '/dashboard',
-            builder: (_, __) => const DashboardScreen(),
+            pageBuilder: (_, __) =>
+                const NoTransitionPage(child: DashboardScreen()),
           ),
           GoRoute(
             path: '/campaigns',
-            builder: (_, __) => const CampaignsScreen(),
+            pageBuilder: (_, __) =>
+                const NoTransitionPage(child: CampaignsScreen()),
           ),
           GoRoute(
             path: '/submissions',
-            builder: (_, __) => const SubmissionsScreen(),
+            pageBuilder: (_, __) =>
+                const NoTransitionPage(child: SubmissionsScreen()),
           ),
           GoRoute(
             path: '/wallet',
-            builder: (_, __) => const WalletScreen(),
+            pageBuilder: (_, __) =>
+                const NoTransitionPage(child: WalletScreen()),
           ),
           GoRoute(
             path: '/profile',
-            builder: (_, __) => const ProfileScreen(),
+            pageBuilder: (_, __) =>
+                const NoTransitionPage(child: ProfileScreen()),
           ),
         ],
       ),
