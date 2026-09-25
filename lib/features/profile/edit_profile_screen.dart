@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/widgets/primary_action_button.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import 'profile_providers.dart';
@@ -116,7 +117,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       showBack: true,
       body: me.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => RetryErrorView(
+          message: '$e',
+          onRetry: () => ref.invalidate(profileMeProvider),
+        ),
         data: (user) {
           _initFrom(user);
           final primary = Theme.of(context).colorScheme.primary;

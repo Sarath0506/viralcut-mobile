@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/layout/app_spacing.dart';
 import '../../core/layout/list_entrance.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../theme/halchal_colors.dart';
 import 'submission_providers.dart';
 import 'widgets/submission_list_card.dart';
@@ -83,7 +84,7 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen>
           child: participations.when(
             skipLoadingOnRefresh: true,
             loading: () => const ScreenLoader(),
-            error: (e, _) => Center(child: Text('$e')),
+            error: (e, _) => RetryErrorView(message: '$e', onRetry: _refreshList),
             data: (list) {
               if (list.isEmpty) {
                 return Center(

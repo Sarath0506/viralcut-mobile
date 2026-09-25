@@ -103,7 +103,17 @@ class _ProfileSwitcherSheetState extends ConsumerState<ProfileSwitcherSheet> {
                   ),
                   error: (e, _) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text('$e', style: TextStyle(color: vc.muted)),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text('$e', style: TextStyle(color: vc.muted)),
+                        ),
+                        TextButton(
+                          onPressed: () => ref.invalidate(creatorProfilesProvider),
+                          child: const Text('Try again'),
+                        ),
+                      ],
+                    ),
                   ),
                   data: (list) => Column(
                     children: list

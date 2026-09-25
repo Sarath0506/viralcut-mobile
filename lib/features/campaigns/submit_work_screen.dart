@@ -14,6 +14,7 @@ import 'campaign_providers.dart';
 import '../../core/participation/rejection_history.dart';
 import '../../core/layout/app_spacing.dart';
 import '../../core/validation/drive_url.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import '../marketplace/marketplace_providers.dart';
@@ -197,7 +198,10 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
       error: (e, _) => VcScaffold(
         title: 'Submit your work',
         showBack: true,
-        body: Center(child: Text('$e')),
+        body: RetryErrorView(
+          message: '$e',
+          onRetry: () => ref.invalidate(participationSubmitProvider(widget.campaignId)),
+        ),
       ),
       data: (p) {
         for (final d in p.deliverables) {
@@ -208,7 +212,6 @@ class _SubmitWorkScreenState extends ConsumerState<SubmitWorkScreen>
             p.deliverables.where((d) => d.isRejected || d.isDraftPending).toList();
         final otherDeliverables =
             p.deliverables.where((d) => !d.isRejected && !d.isDraftPending).toList();
-        final hasRate = (p.campaign.ratePer1kPaise ?? 0) > 0;
 
         return CampaignRealtimeScope(
           campaignId: widget.campaignId,
@@ -659,7 +662,19 @@ class _MarketplaceReuseSection extends ConsumerWidget {
         padding: EdgeInsets.symmetric(vertical: 20),
         child: Center(child: CircularProgressIndicator()),
       ),
-      error: (e, _) => Text('$e', style: TextStyle(fontSize: 12, color: vc.muted)),
+      error: (e, _) => Row(
+        children: [
+          Expanded(
+            child: Text('$e', style: TextStyle(fontSize: 12, color: vc.muted)),
+          ),
+          TextButton(
+            onPressed: () => ref.invalidate(
+              marketplaceListingsProvider((campaignId, creatorProfileId)),
+            ),
+            child: const Text('Try again'),
+          ),
+        ],
+      ),
       data: (items) {
         final matching = items.where((l) => l.platform == platform).toList();
         if (matching.isEmpty) {

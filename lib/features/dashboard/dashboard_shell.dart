@@ -7,6 +7,16 @@ import '../../theme/halchal_colors.dart';
 import '../submissions/submission_providers.dart';
 import 'widgets/shell_top_bar.dart';
 
+// Tab switches go through context.go() (see _onTabSelected), which REPLACES
+// the current route rather than pushing on top of it — so there's normally
+// nothing under e.g. Campaigns for iOS's left-edge "swipe back" gesture to
+// pop to, and the drag falls through to iOS's own system gesture and leaves
+// the app entirely. This stack is a manual back-history for the tab bar:
+// every tab switch pushes the tab being left, and swiping back from the
+// left edge pops it and returns to wherever the creator actually came from
+// (not just always Dashboard) — see _EdgeSwipeBack below.
+final tabHistoryProvider = StateProvider<List<String>>((ref) => []);
+
 class DashboardShell extends ConsumerWidget {
   const DashboardShell({super.key, required this.child});
 
@@ -35,11 +45,16 @@ class DashboardShell extends ConsumerWidget {
   }
 
   void _onTabSelected(WidgetRef ref, int index, BuildContext context) {
+    final target = _tabs[index];
+    final current = GoRouterState.of(context).uri.path;
+    if (current != target) {
+      ref.read(tabHistoryProvider.notifier).update((h) => [...h, current]);
+    }
     if (index == 2) {
       ref.invalidate(participationsProvider('active'));
       ref.invalidate(participationsProvider('completed'));
     }
-    context.go(_tabs[index]);
+    context.go(target);
   }
 
   @override
@@ -57,7 +72,7 @@ class DashboardShell extends ConsumerWidget {
             bottom: false,
             child: ShellTopBar(currentPath: path),
           ),
-          Expanded(child: child),
+          Expanded(child: _EdgeSwipeBack(child: child)),
         ],
       ),
       extendBody: true,
@@ -65,6 +80,58 @@ class DashboardShell extends ConsumerWidget {
         selectedIndex: index,
         onTap: (i) => _onTabSelected(ref, i, context),
       ),
+    );
+  }
+}
+
+/// Detects a drag starting at the left screen edge and, if it travels far
+/// enough right, pops the last entry off [tabHistoryProvider] and navigates
+/// there — a manual stand-in for the native "swipe back" gesture, since
+/// go_router's context.go() leaves nothing for the real one to pop. A no-op
+/// (nothing happens, touch is just consumed) when the history is empty —
+/// e.g. Dashboard right after a fresh launch, with nowhere to go back to.
+class _EdgeSwipeBack extends ConsumerStatefulWidget {
+  const _EdgeSwipeBack({required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<_EdgeSwipeBack> createState() => _EdgeSwipeBackState();
+}
+
+class _EdgeSwipeBackState extends ConsumerState<_EdgeSwipeBack> {
+  // Matches the width iOS's own edge-swipe-back hit zone typically uses.
+  static const _edgeZone = 24.0;
+  static const _triggerDistance = 60.0;
+
+  bool _startedAtEdge = false;
+  double _dragDx = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragStart: (details) {
+        _startedAtEdge = details.localPosition.dx <= _edgeZone;
+        _dragDx = 0;
+      },
+      onHorizontalDragUpdate: (details) {
+        if (_startedAtEdge) _dragDx += details.delta.dx;
+      },
+      onHorizontalDragEnd: (details) {
+        if (_startedAtEdge && _dragDx > _triggerDistance) {
+          final history = ref.read(tabHistoryProvider);
+          if (history.isNotEmpty) {
+            final previous = history.last;
+            ref.read(tabHistoryProvider.notifier).state =
+                history.sublist(0, history.length - 1);
+            context.go(previous);
+          }
+        }
+        _startedAtEdge = false;
+        _dragDx = 0;
+      },
+      child: widget.child,
     );
   }
 }

@@ -11,7 +11,10 @@ import 'realtime_invalidation.dart';
 import 'realtime_providers.dart';
 
 /// Connects Socket.IO when authed and keeps creator-app data in sync.
-/// Falls back to polling every 30 seconds if WebSocket events are missed.
+/// Falls back to a full refetch every 5 minutes ONLY when the socket is
+/// actually disconnected — a real safety net for missed events, not a
+/// routine "reload everything" that fires regardless of whether anything
+/// was actually missed.
 class RealtimeSync extends ConsumerStatefulWidget {
   const RealtimeSync({super.key, required this.child});
 
@@ -58,9 +61,15 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
   void _startPolling() {
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(minutes: 5), (_) {
-      if (ref.read(authStateProvider) == AuthStatus.authed) {
-        _refreshIfStale();
-      }
+      if (ref.read(authStateProvider) != AuthStatus.authed) return;
+      // The socket already delivers live updates while connected — only
+      // fall back to a blanket refetch when it's actually down, instead of
+      // invalidating ~10 providers app-wide every 5 minutes regardless of
+      // whether anything was actually missed (previously: every signed-in
+      // user's whole app refetched on this exact cadence, seen as the UI
+      // "hard reloading" every 5 minutes).
+      if (ref.read(realtimeServiceProvider).isConnected) return;
+      _refreshIfStale();
     });
   }
 
@@ -79,7 +88,9 @@ class _RealtimeSyncState extends ConsumerState<RealtimeSync>
   void _refreshIfStale() {
     final now = DateTime.now();
     if (_lastRefresh != null &&
-        now.difference(_lastRefresh!) < const Duration(minutes: 5)) return;
+        now.difference(_lastRefresh!) < const Duration(minutes: 5)) {
+      return;
+    }
     _lastRefresh = now;
     invalidateAppDataCaches(ref);
   }

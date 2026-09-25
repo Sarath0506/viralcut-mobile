@@ -7,7 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
-import '../../core/participation/participation_models.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import 'submission_providers.dart';
@@ -56,7 +56,10 @@ class PerformanceScreen extends ConsumerWidget {
       return VcScaffold(
         title: 'Performance & Earnings',
         showBack: true,
-        body: Center(child: Text('${detail.error}')),
+        body: RetryErrorView(
+          message: '${detail.error}',
+          onRetry: () => ref.invalidate(participationDetailProvider(participationId)),
+        ),
       );
     }
 

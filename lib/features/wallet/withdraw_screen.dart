@@ -8,6 +8,7 @@ import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/format/money_format.dart';
 import '../../core/layout/app_spacing.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
 import 'wallet_providers.dart';
@@ -97,7 +98,10 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
       showBack: true,
       body: methods.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => RetryErrorView(
+          message: '$e',
+          onRetry: () => ref.invalidate(payoutMethodsProvider),
+        ),
         data: (list) {
           if (list.isNotEmpty && _methodId == null) {
             WidgetsBinding.instance.addPostFrameCallback(

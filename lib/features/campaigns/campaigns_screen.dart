@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/campaign/platform_labels.dart';
 import '../../core/layout/app_spacing.dart';
 import '../../core/layout/list_entrance.dart';
+import '../../core/widgets/retry_error_view.dart';
 import 'campaign_providers.dart';
 import '../../theme/halchal_colors.dart';
 import '../submissions/submission_providers.dart';
@@ -70,11 +71,13 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen>
     return campaigns.when(
       skipLoadingOnRefresh: true,
       loading: () => const ScreenLoader(),
-      error: (e, _) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text('$e', textAlign: TextAlign.center),
-        ),
+      error: (e, _) => RetryErrorView(
+        message: '$e',
+        onRetry: () {
+          ref.invalidate(campaignsProvider);
+          ref.invalidate(participationsProvider('active'));
+          ref.invalidate(participationsProvider('completed'));
+        },
       ),
       data: (rawList) {
         final list =

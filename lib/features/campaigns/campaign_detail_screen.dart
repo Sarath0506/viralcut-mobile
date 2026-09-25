@@ -12,6 +12,7 @@ import '../../core/format/money_format.dart';
 import '../../core/layout/app_spacing.dart';
 import 'campaign_providers.dart';
 import '../../core/widgets/primary_action_button.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../core/widgets/root_scaffold_messenger.dart';
 import '../../core/widgets/vc_scaffold.dart';
 import '../../theme/halchal_colors.dart';
@@ -271,7 +272,13 @@ class CampaignDetailScreen extends ConsumerWidget {
       error: (e, _) => VcScaffold(
         title: 'Campaign',
         showBack: true,
-        body: Center(child: Text('$e')),
+        body: RetryErrorView(
+          message: '$e',
+          onRetry: () {
+            ref.invalidate(campaignDetailProvider(id));
+            ref.invalidate(campaignParticipationProvider(id));
+          },
+        ),
       ),
       data: (c) {
         final p = participation.valueOrNull;

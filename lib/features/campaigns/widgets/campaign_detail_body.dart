@@ -68,6 +68,47 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
     );
   }
 
+  /// Full-screen preview for a brand-uploaded source video — reuses the same
+  /// video page as the reference-assets gallery above, just without the
+  /// multi-asset PageView/type-branching that gallery needs (a source video
+  /// is always exactly one real file, previewed on its own).
+  void _previewSourceVideo(BuildContext context, String rawUrl) {
+    final url = resolveCampaignMediaUrl(rawUrl);
+    if (url == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This video link looks invalid.')),
+      );
+      return;
+    }
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (_) => Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Stack(
+          children: [
+            _GalleryVideoPage(url: url, isActive: true),
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              right: 12,
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _openUrl(BuildContext context, String url) async {
     final uri = Uri.tryParse(url);
     if (uri == null) return;
@@ -318,9 +359,9 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
                     : isUpload
                         ? (downloading
                             ? 'Downloading… ${(_downloadProgress[asset.url]! * 100).round()}%'
-                            : 'Tap to save to your gallery')
+                            : 'Tap to preview · download to save')
                         : 'Open in Drive',
-                icon: isUpload ? Icons.download_rounded : Icons.folder_outlined,
+                icon: isUpload ? Icons.play_circle_outline_rounded : Icons.folder_outlined,
                 leading: asset.type == 'youtube'
                     ? const SocialLogoBox(platform: 'youtube', size: 34, radius: 11)
                     : null,
@@ -339,8 +380,10 @@ class _CampaignDetailBodyState extends State<CampaignDetailBody> {
                           )
                         : Icon(Icons.download_rounded, size: 20, color: vc.muted))
                     : null,
+                onTrailingTap:
+                    isUpload ? () => _downloadSourceVideo(context, asset.url) : null,
                 onTap: isUpload
-                    ? () => _downloadSourceVideo(context, asset.url)
+                    ? () => _previewSourceVideo(context, asset.url)
                     : () => _openUrl(context, asset.url),
               ),
             );
@@ -1146,6 +1189,7 @@ class _LinkRow extends StatelessWidget {
     this.subtitle,
     this.leading,
     this.trailing,
+    this.onTrailingTap,
   });
 
   final String label;
@@ -1160,6 +1204,12 @@ class _LinkRow extends StatelessWidget {
   /// Overrides the default trailing chevron — used for the source-video
   /// download row's progress indicator/download icon.
   final Widget? trailing;
+
+  /// When set, `trailing` becomes its own independent tap target instead of
+  /// sharing the row's main `onTap` — used by the source-video row, where
+  /// tapping the row previews the video but tapping the download icon
+  /// specifically downloads it, without one gesture fighting the other.
+  final VoidCallback? onTrailingTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1219,7 +1269,18 @@ class _LinkRow extends StatelessWidget {
                   ],
                 ),
               ),
-              trailing ?? Icon(Icons.chevron_right_rounded, size: 20, color: vc.muted),
+              if (onTrailingTap != null)
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onTrailingTap,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: trailing ??
+                        Icon(Icons.chevron_right_rounded, size: 20, color: vc.muted),
+                  ),
+                )
+              else
+                trailing ?? Icon(Icons.chevron_right_rounded, size: 20, color: vc.muted),
             ],
           ),
         ),

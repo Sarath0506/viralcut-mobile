@@ -7,6 +7,7 @@ import '../../core/api/api_client.dart';
 import '../../core/format/money_format.dart';
 import '../../core/layout/app_spacing.dart';
 import '../../core/layout/list_entrance.dart';
+import '../../core/widgets/retry_error_view.dart';
 import '../../theme/halchal_colors.dart';
 import 'wallet_providers.dart';
 
@@ -21,7 +22,13 @@ class WalletScreen extends ConsumerWidget {
     return wallet.when(
       skipLoadingOnRefresh: true,
       loading: () => const ScreenLoader(),
-      error: (e, _) => Center(child: Text('$e')),
+      error: (e, _) => RetryErrorView(
+        message: '$e',
+        onRetry: () {
+          ref.invalidate(walletProvider);
+          ref.invalidate(walletTransactionsProvider);
+        },
+      ),
       data: (w) {
         return RefreshIndicator(
           onRefresh: () async {
@@ -47,7 +54,10 @@ class WalletScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               _EarningsOverview(wallet: w),
               const SizedBox(height: 24),
-              _TransactionSection(transactions: transactions),
+              _TransactionSection(
+                transactions: transactions,
+                onRetry: () => ref.invalidate(walletTransactionsProvider),
+              ),
             ],
           ),
         );
@@ -141,11 +151,15 @@ class _BalanceCard extends StatelessWidget {
                         children: [
                           const Icon(Icons.schedule_rounded, size: 11, color: Colors.white38),
                           const SizedBox(width: 3),
-                          Text(
-                            'Available soon',
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              color: Colors.white38,
+                          Flexible(
+                            child: Text(
+                              'Available soon',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                color: Colors.white38,
+                              ),
                             ),
                           ),
                         ],
@@ -348,9 +362,10 @@ class _StatBox extends StatelessWidget {
 }
 
 class _TransactionSection extends StatelessWidget {
-  const _TransactionSection({required this.transactions});
+  const _TransactionSection({required this.transactions, required this.onRetry});
 
   final AsyncValue<List<TransactionItem>> transactions;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -371,7 +386,18 @@ class _TransactionSection extends StatelessWidget {
         transactions.when(
           skipLoadingOnRefresh: true,
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Text('Could not load transactions', style: TextStyle(color: vc.muted)),
+          error: (e, _) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text('Could not load transactions',
+                      style: TextStyle(color: vc.muted)),
+                ),
+                TextButton(onPressed: onRetry, child: const Text('Try again')),
+              ],
+            ),
+          ),
           data: (list) {
             if (list.isEmpty) {
               return Padding(
